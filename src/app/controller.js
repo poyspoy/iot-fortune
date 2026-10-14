@@ -24,8 +24,9 @@ function makeIdGen() {
  * เปลี่ยนแหล่งข้อมูล = dispose อะแดปเตอร์/engine เดิม แล้วสร้างใหม่ (ไม่ใช้ค่าเดิมเป็นค่าปัจจุบัน)
  */
 export class Controller {
-  constructor({ dbName } = {}) {
-    this.repo = new IdbRepo({ name: dbName });
+  constructor({ dbName, idb } = {}) {
+    this.repo = new IdbRepo({ name: dbName, ...(idb ?? {}) });
+    this.memoryOnly = !!idb;
     this.listeners = new Set();
     this.engine = null;
     this.adapter = null;

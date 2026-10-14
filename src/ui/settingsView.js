@@ -1,4 +1,4 @@
-import { h, select, field, replaceChildren, download } from './dom.js';
+import { h, select, field, replaceChildren, download, confirmClick } from './dom.js';
 import { ruleText } from './format.js';
 import { renderPlan } from './plan2d.js';
 import { SYSTEMS, RULE_TYPES, SEVERITY, AREA_KINDS } from '../domain/constants.js';
@@ -373,16 +373,15 @@ function storageSection(app) {
       h('p.hint', 'แทนที่การตั้งค่าจุดและเกณฑ์ด้วยค่าตัวอย่างเริ่มต้น (ประวัติไม่ถูกลบ)'),
       h('button.btn.danger', {
         type: 'button',
-        onclick: async () => {
-          if (!confirm('คืนค่าการตั้งค่าจุดและเกณฑ์เป็นค่าเริ่มต้น?')) return;
+        onclick: (e) => confirmClick(e.currentTarget, 'กดอีกครั้งเพื่อยืนยันการคืนค่า', async () => {
           // จุดที่ผู้ใช้เพิ่มเองถูกเก็บถาวรไว้ เพื่อให้ประวัติยังอ้างอิงได้
           const def = createDefaultConfig();
           const ids = new Set(def.points.map((p) => p.id));
           for (const p of app.config.points) if (!ids.has(p.id)) def.points.push({ ...structuredClone(p), status: 'archived' });
           const r = await ctl.saveConfig(def);
-          if (!r.ok) alert(r.errors.join('\n'));
+          if (!r.ok) ctl.storageNotice = { ok: false, text: `คืนค่าไม่สำเร็จ: ${r.errors[0]}`, at: Date.now() };
           app.editDraft = null; app.render();
-        },
+        }),
       }, 'คืนค่าเริ่มต้น')),
     h('p', h('a', { href: 'materials.html' }, 'แหล่งที่มา สัญญาอนุญาต และข้อจำกัดของต้นแบบ →')));
 }

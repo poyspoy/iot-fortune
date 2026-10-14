@@ -15,10 +15,10 @@
     "fixture": "node scripts/fixture-server.mjs"
   },
   "dependencies": {
+    "fake-indexeddb": "6.2.5",
     "three": "0.180.0"
   },
   "devDependencies": {
-    "fake-indexeddb": "6.2.5",
     "vite": "6.4.3"
   }
 }

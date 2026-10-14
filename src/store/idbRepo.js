@@ -23,8 +23,9 @@ export class StorageError extends Error {
 export class IdbRepo {
   /** @param {{ indexedDB?: IDBFactory, IDBKeyRange?: typeof IDBKeyRange, name?: string }} o */
   constructor(o = {}) {
-    this.idb = o.indexedDB ?? globalThis.indexedDB;
-    this.KR = o.IDBKeyRange ?? globalThis.IDBKeyRange;
+    // การอ่าน indexedDB อาจโยนข้อผิดพลาดในบางกรอบ/โหมดส่วนตัว — ให้ open() รายงานแทน
+    try { this.idb = o.indexedDB ?? globalThis.indexedDB; } catch { this.idb = null; }
+    try { this.KR = o.IDBKeyRange ?? globalThis.IDBKeyRange; } catch { this.KR = null; }
     this.name = o.name ?? DB_NAME;
     this.db = null;
   }

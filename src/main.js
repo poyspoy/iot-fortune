@@ -7,9 +7,17 @@ async function boot() {
   // ใช้ฐานข้อมูลแยกได้ด้วย ?db=ชื่อ (สำหรับทดสอบ ไม่ปนกับข้อมูลใช้งาน)
   const dbParam = new URLSearchParams(location.search).get('db');
   const dbName = dbParam && /^[\w-]{1,40}$/.test(dbParam) ? `iot-fortune-${dbParam}` : undefined;
-  const ctl = new Controller({ dbName });
+  let ctl = new Controller({ dbName });
   try {
-    await ctl.init();
+    try {
+      await ctl.init();
+    } catch (e) {
+      // เบราว์เซอร์/กรอบที่ปิด IndexedDB (เช่นโหมดส่วนตัวบางแบบ) → ใช้ฐานข้อมูลในหน่วยความจำ ข้อมูลหายเมื่อปิดหน้า
+      const { IDBFactory, IDBKeyRange } = await import('fake-indexeddb');
+      ctl = new Controller({ dbName, idb: { indexedDB: new IDBFactory(), IDBKeyRange } });
+      await ctl.init();
+      ctl.configWarning = `บันทึกลงเครื่องไม่ได้ในหน้านี้ (${e.message}) — ใช้หน่วยความจำชั่วคราว ข้อมูลและการตั้งค่าจะหายเมื่อปิดหรือรีเฟรชหน้า`;
+    }
   } catch (e) {
     root.replaceChildren();
     const p = document.createElement('p');

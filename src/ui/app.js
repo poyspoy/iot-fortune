@@ -1,4 +1,4 @@
-import { h, select, replaceChildren } from './dom.js';
+import { h, select, replaceChildren, confirmClick } from './dom.js';
 import { sevBadge, qualBadge, sourceBadge, systemLabel, valueText, ruleText, reasonText } from './format.js';
 import { renderPlan } from './plan2d.js';
 import { renderMetricChart } from './chart.js';
@@ -346,7 +346,8 @@ export class App {
         this.modeVolatile,
         h('button.btn.small.danger', {
           type: 'button', 'data-focus-key': 'reset-demo',
-          onclick: async () => { if (confirm('ล้างประวัติและการแจ้งเตือนของข้อมูลจำลองทั้งหมด? (ข้อมูลจาก API ไม่ถูกแตะต้อง)')) await ctl.resetDemo(); },
+          title: 'ล้างประวัติและการแจ้งเตือนของข้อมูลจำลองทั้งหมด (ข้อมูลจาก API ไม่ถูกแตะต้อง)',
+          onclick: (e) => confirmClick(e.currentTarget, 'กดอีกครั้งเพื่อยืนยันการรีเซ็ต', () => ctl.resetDemo()),
         }, 'รีเซ็ตข้อมูลจำลอง'),
       );
     } else {

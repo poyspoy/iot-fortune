@@ -76,6 +76,10 @@ export function field(label, control, hint) {
 }
 
 export function download(filename, text, type = 'application/json') {
+  // ในกรอบที่จำกัด (เช่นหน้าแชร์ลิงก์) เบราว์เซอร์บล็อกการดาวน์โหลด — แสดงข้อความให้คัดลอกแทน
+  let framed = false;
+  try { framed = window.self !== window.top; } catch { framed = true; }
+  if (framed) { showCopyDialog(filename, text); return; }
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = h('a', { href: url, download: filename });
@@ -83,6 +87,43 @@ export function download(filename, text, type = 'application/json') {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function showCopyDialog(filename, text) {
+  const ta = h('textarea', { readonly: true, rows: 12, 'aria-label': `เนื้อหาไฟล์ ${filename}` });
+  ta.value = text.replace(/^\uFEFF/, '');
+  const msg = h('p.form-msg', { role: 'status' });
+  const close = () => overlay.remove();
+  const overlay = h('div.copy-overlay', { role: 'dialog', 'aria-modal': 'true', 'aria-label': `ส่งออก ${filename}`, onkeydown: (e) => { if (e.key === 'Escape') close(); } },
+    h('div.copy-dialog',
+      h('h3', `ส่งออก ${filename}`),
+      h('p.hint', 'หน้านี้เปิดผ่านลิงก์แชร์ซึ่งดาวน์โหลดไฟล์ไม่ได้ — คัดลอกเนื้อหาไปวางในไฟล์ใหม่ชื่อนี้แทน หรือเปิดจากโปรเจกต์บนเครื่องเพื่อดาวน์โหลดตรง'),
+      ta,
+      h('div.btn-row',
+        h('button.btn.primary', {
+          type: 'button',
+          onclick: async () => {
+            try { await navigator.clipboard.writeText(ta.value); msg.textContent = 'คัดลอกแล้ว'; } catch { ta.focus(); ta.select(); msg.textContent = 'คัดลอกอัตโนมัติไม่ได้ — เลือกข้อความแล้วกด Ctrl+C'; }
+          },
+        }, 'คัดลอกทั้งหมด'),
+        h('button.btn', { type: 'button', onclick: close }, 'ปิด')),
+      msg));
+  document.body.appendChild(overlay);
+  overlay.querySelector('button')?.focus();
+}
+
+/** ปุ่มยืนยันสองจังหวะ (ใช้แทน confirm() ซึ่งบางกรอบแสดงไม่ได้) */
+export function confirmClick(btn, confirmLabel, action) {
+  if (btn.dataset.armed === '1') {
+    btn.dataset.armed = '';
+    btn.textContent = btn.dataset.label;
+    return action();
+  }
+  btn.dataset.label = btn.textContent;
+  btn.dataset.armed = '1';
+  btn.textContent = confirmLabel;
+  setTimeout(() => { if (btn.dataset.armed === '1') { btn.dataset.armed = ''; btn.textContent = btn.dataset.label; } }, 5000);
+  return undefined;
 }
 
 export function fmtNum(v, decimals = 1) {
