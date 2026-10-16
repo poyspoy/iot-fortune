@@ -254,10 +254,22 @@ export class MallScene {
     edges.position.y = slabT;
     group.add(edges);
 
-    const label = textSprite(floor.plan.shared ? `${floor.name} · ${floor.plan.sharedLabel ?? 'ผังอ้างอิงร่วม'}` : floor.name, { scale: 0.011 });
-    label.position.set(m.cx - m.width / 2 - 0.2, floor.kind === 'tower' ? 0.12 : 0.35, m.cz + m.depth / 2);
-    label.center.set(1, 0.5);
-    group.add(label);
+    // ป้ายชื่อชั้นข้างแผ่นชั้น (หันเข้ากล้องเสมอ) — ใช้คำว่า "ชั้น …" ไม่ใช่เลขเดี่ยว เพื่อไม่สับสนกับหมายเลขจุดตรวจวัด
+    // ห้าง: ด้านซ้ายนอกตัวอาคาร · ชั้น 5 (ลานจอด) อยู่ค่อนขวา จึงวางด้านขวานอกตัวอาคาร · สำนักงาน: ด้านซ้ายของทาวเวอร์
+    const tower = floor.kind === 'tower';
+    const lblScale = tower ? 0.0045 : 0.0125;
+    const lblText = `ชั้น ${floor.id}`; // รูปแบบเดียวกันทุกชั้น
+    const label = textSprite(lblText, { scale: lblScale });
+    const hlLabel = textSprite(lblText, { scale: lblScale * 1.12, color: '#ffffff', bg: 'rgba(15,111,105,0.96)' });
+    const podiumHalf = 11.25; // ขอบอาคารห้าง (กว้าง 22) + ระยะห่าง
+    const right = false; // ทุกชั้นห้าง (G–5) วางด้านซ้ายนอกอาคาร ตำแหน่งเดียวกัน
+    for (const l of [label, hlLabel]) {
+      l.center.set(right ? 0 : 1, 0.5);
+      l.position.set(right ? podiumHalf : (tower ? m.cx - m.width / 2 - 0.1 : -podiumHalf), tower ? 0.12 : 0.3, tower ? m.cz + m.depth / 2 : 1.9); // ห้าง: แนวเดียวกันทุกชั้น (ขอบหน้าชั้น G–3)
+      l.renderOrder = 11;
+      group.add(l);
+    }
+    label.name = 'floor-label'; hlLabel.name = 'floor-label-hl';
 
     // ป้ายชื่อชั้นตัวใหญ่ข้างโมเดล — แสดงเมื่อแยกดูชั้นนี้
     const isoLabel = textSprite(floor.name, { scale: 0.022, size: 44, color: '#ffffff', bg: 'rgba(15,111,105,0.95)' });
@@ -268,7 +280,7 @@ export class MallScene {
     group.add(isoLabel);
 
     this.root.add(group);
-    return { group, slab, slabT, plan, shell, shellMat, edges, label, isoLabel, floor, planMat, target: new THREE.Vector3() };
+    return { group, slab, slabT, plan, shell, shellMat, edges, label, hlLabel, isoLabel, floor, planMat, target: new THREE.Vector3() };
   }
 
   /**
@@ -405,11 +417,12 @@ export class MallScene {
       plinth.position.set(m.cx, m.elevation / 2, m.cz);
       g.add(plinth);
     }
-    const label = textSprite(`ทาวเวอร์สำนักงาน ชั้น ${tower[0].id}–${tower[tower.length - 1].id} · ผังอ้างอิงร่วม · ตำแหน่งยังไม่ยืนยัน`, { scale: 0.011 });
+    const label = textSprite(`ชั้นสำนักงาน ${tower[0].id}–${tower[tower.length - 1].id} · ผังอ้างอิงร่วม`, { scale: 0.011 });
     label.position.set(m.cx, top.elevation + top.height + 0.45, m.cz);
     g.add(label);
     this.towerDeco = g;
     this.root.add(g);
+    this.towerCenter = new THREE.Vector3(m.cx, BASE_Y + (m.elevation + top.elevation + top.height) / 2, m.cz);
   }
 
   #buildEquipment() {
@@ -767,7 +780,7 @@ export class MallScene {
     const iso = this.isolatedId;
     for (const fg of this.floorGroups.values()) {
       const f = fg.floor;
-      const isSel = f.id === this.floorId;
+      const isSel = !!iso && f.id === iso; // เน้นชั้นเฉพาะตอนแยกดูชั้นนั้น
       const t = iso === f.id ? isolatedOffset(f, ISO_CENTER) : assembledOffset(f, this.mode);
       fg.target.set(t.x, t.y, t.z);
       if (instant) { fg.group.position.copy(fg.target); fg.anim = null; }
@@ -792,7 +805,7 @@ export class MallScene {
       fg.slab.visible = fg.plan.visible = !showDetail;
       if (fg.model) fg.model.visible = !showDetail;
       fg.shell.visible = !hasModel && !showDetail;
-      fg.edges.visible = (!hasModel || isSel) && !(showDetail && iso);
+      fg.edges.visible = !hasModel && !showDetail;
       // มุมมองเปิดปล่อง: ซ่อนกระจก/ผนังแบบง่ายของห้าง (แผ่นพื้นและผังสีร้านคงเดิม)
       const cut = this.liftView && !iso && f.kind !== 'tower';
       if (fg.facade) for (const o of fg.facade) o.visible = !iso && !cut;
@@ -803,13 +816,27 @@ export class MallScene {
       for (const eq of [this.tank, this.pump]) if (eq && eq.floorId === f.id) eq.group.visible = !showDetail;
       fg.edges.material.color.set(isSel ? '#0f6f69' : '#8fa79f');
       fg.edges.material.opacity = isSel ? 0.95 : (f.kind === 'tower' ? 0.3 : 0.5);
-      fg.label.visible = iso ? false : (isSel || (this.mode === 'exploded' && f.kind !== 'tower')); // มุมมองเดี่ยวใช้ป้ายตัวใหญ่แทน
-      fg.isoLabel.visible = iso === f.id;
+      fg.isoLabel.visible = iso === f.id; // มุมมองเดี่ยวใช้ป้ายตัวใหญ่แทนป้ายข้างแผ่นชั้น
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
+    this.#applyLabels();
     if (this.lift) this.lift.rig.group.visible = !iso; // มุมมองชั้นเดี่ยวใช้สัญลักษณ์ลิฟต์ในโมเดลของผู้ใช้
     if (this.roomSel && !this.floorGroups.get(this.roomSel.floorId)?.group.visible) { this.selectRoom(null); this.onRoom(null); }
     this.#placeMarkers();
+  }
+
+  /**
+   * ป้ายชื่อชั้นในมุมมองทั้งอาคาร: ทุกชั้นห้างแสดงเสมอ ชั้นที่เลือกเป็นป้ายสีเขียวเด่น ชั้นอื่นจางลง
+   * ชั้นสำนักงาน 11–32 แสดงรายชั้นเมื่อกล้องเข้าใกล้ทาวเวอร์พอจะอ่านได้ (ไกลกว่านั้นใช้ป้ายรวม "ชั้นสำนักงาน 11–32")
+   */
+  #applyLabels() {
+    const iso = this.isolatedId;
+    for (const fg of this.floorGroups.values()) {
+      const f = fg.floor;
+      // ทั้งอาคาร: ทุกชั้นเด่นเท่ากัน ไม่มีชั้นที่ถูกเลือก (ไฮไลต์เฉพาะตอนแยกดูชั้น ด้วยป้ายใหญ่ของชั้นนั้น)
+      fg.label.visible = !iso && fg.group.visible && (f.kind !== 'tower' || this.towerNear);
+      fg.hlLabel.visible = false;
+    }
   }
 
   #placeMarkers() {
@@ -913,7 +940,13 @@ export class MallScene {
           pos = target.clone().add(dir.multiplyScalar(dist));
           break;
         }
-        default: target = new THREE.Vector3(-0.5, 2.2, -1.8); pos = new THREE.Vector3(4, 15, 20);
+        default: {
+          // ทั้งอาคาร: ให้เห็นทั้งห้าง ทาวเวอร์ และป้ายชื่อชั้นด้านซ้ายพอดีกรอบ (ปรับตามสัดส่วนพื้นที่แสดงผล)
+          target = new THREE.Vector3(-1.2, 2.2, -1.8);
+          const dir = new THREE.Vector3(4.5, 12.8, 21.8).normalize();
+          const dist = Math.max(25.4, this.#fitDistance(26, 12, 36));
+          pos = target.clone().add(dir.multiplyScalar(dist));
+        }
       }
     }
     if (instant) { this.tween = null; this.camera.position.copy(pos); this.controls.target.copy(target); this.controls.update(); }
@@ -968,6 +1001,10 @@ export class MallScene {
     }
     if (moving) this.#placeMarkers();
     this.#stepLift();
+    if (this.towerCenter && !this.isolatedId) {
+      const near = this.camera.position.distanceTo(this.towerCenter) < 10.5;
+      if (near !== this.towerNear) { this.towerNear = near; this.#applyLabels(); }
+    }
     if (this.tween) {
       const tw = this.tween;
       tw.t = Math.min(1, (nowMs - tw.start) / 800);

@@ -413,8 +413,7 @@ tr.archived td { color: var(--muted); }
 
 /* ลิฟต์จำลอง */
 .lift-panel {
-  position: absolute; right: 8px; top: 8px; z-index: 4; width: min(280px, calc(100% - 16px));
-  background: rgba(251,252,249,0.96); border: 1px solid var(--line); border-left: 5px solid #c9a227; border-radius: 10px;
+  background: #fbfcf9; border: 1px solid var(--line); border-left: 5px solid #c9a227; border-radius: 10px;
   box-shadow: 0 3px 12px rgba(0,0,0,0.28); padding: 8px 10px; display: grid; gap: 6px; font-size: 0.85rem;
 }
 .lift-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -449,17 +448,15 @@ tr.archived td { color: var(--muted); }
 .lift-btn.target:disabled { opacity: 1; }
 .lift-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .lift-actions .btn.active { background: var(--teal); color: #fff; }
-.lift-note { display: none; }
+.lift-note { margin: 0; font-size: 0.72rem; color: var(--muted); }
 .lift-mini { display: none; font-size: 0.8rem; font-weight: 700; color: var(--teal-2); }
 .lift-panel.collapsed .lift-mini { display: inline; }
 .lift-panel.collapsed .lift-sim { display: none; }
-@media (max-width: 760px) { .lift-panel { top: auto; bottom: 34px; left: 8px; right: 8px; width: auto; } }
 @media (max-width: 760px) {
   .lift-panel { padding: 6px 8px; gap: 4px; }
   .lift-status { min-height: 40px; padding: 4px 8px; }
   .lift-btn { min-width: 36px; min-height: 36px; }
 }
-@media (min-width: 761px) { .viewport:has(.lift-panel) .floor-banner { right: 300px; } }
 
 /* เลือกชั้นแบบปุ่ม */
 .floor-chips .btn { min-width: 36px; }
@@ -508,4 +505,11 @@ tr.archived td { color: var(--muted); }
   background: rgba(251,252,249,0.95); font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0 10px; }
 .viewport.vp-full { position: fixed; inset: 0; height: 100vh; height: 100dvh; z-index: 30; border-radius: 0; }
 body.has-vp-full { overflow: hidden; }
-@media (max-width: 760px) { .viewport:not(.vp-full) .lift-panel { bottom: 54px; } }
+
+/* โมเดล 3 มิติ (ซ้าย) + แผงลิฟต์ (คอลัมน์ขวา) — แผงอยู่นอกกรอบโมเดล ไม่บังโมเดลทุกขนาดจอ */
+.stage-body { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.stage-body.has-lift { grid-template-columns: minmax(0, 1fr) 260px; }
+.lift-side { min-width: 0; }
+.stage-body:not(.has-lift) .lift-side { display: none; }
+.lift-side .lift-panel { box-shadow: none; }
+@media (max-width: 1180px) { .stage-body.has-lift { grid-template-columns: minmax(0, 1fr); } } /* จอแคบ/แท็บเล็ต/โทรศัพท์: แผงลิฟต์อยู่ใต้โมเดล */

@@ -30,15 +30,13 @@ export class ElevatorPanel {
       h('div.lift-buttons', { role: 'group', 'aria-label': 'เลือกชั้นปลายทาง' }, h('span.lift-go', 'ไปชั้น'), [...this.buttons.values()]),
       h('div.lift-actions', this.camBtn, this.viewBtn, this.openBtn),
       h('p.lift-note', opts.note));
-    const small = typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
     this.el = h('section.lift-panel', { 'data-testid': 'lift-panel', 'aria-label': `${opts.name} (จำลอง)` },
       h('header.lift-head', h('strong', opts.name), h('span.lift-sim', { title: opts.note }, 'จำลอง · ไม่ใช่ข้อมูลจริง'), this.mini,
-        h('button.lift-toggle', { type: 'button', 'aria-expanded': String(!small), 'aria-label': 'ย่อ/ขยายแผงลิฟต์', onclick: (e) => {
+        h('button.lift-toggle', { type: 'button', 'aria-expanded': 'true', 'aria-label': 'ย่อ/ขยายแผงลิฟต์', onclick: (e) => {
           const open = this.el.classList.toggle('collapsed') === false;
           e.currentTarget.setAttribute('aria-expanded', String(open));
         } }, '▾')),
       this.body, this.isoNote);
-    if (small) this.el.classList.add('collapsed'); // จอเล็ก: เริ่มแบบย่อ ไม่บังโมเดล
   }
 
   /** ข้อความสั้นชั่วคราว (เช่น กดชั้นเดิม) */

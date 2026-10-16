@@ -244,7 +244,7 @@ export class App {
 
   #mountLiftPanel() {
     const floors = this.scene?.elevatorFloors() ?? [];
-    if (!floors.length) { this.liftPanel?.el.remove(); return; }
+    if (!floors.length) { this.liftPanel?.el.remove(); this.stageBody?.classList.remove('has-lift'); return; }
     if (!this.liftPanel || this.liftPanel.opts.floors.join() !== floors.join()) {
       this.liftPanel = new ElevatorPanel({
         floors, name: ELEVATOR_L1.name, note: ELEVATOR_L1.note,
@@ -262,17 +262,15 @@ export class App {
       if (s0) this.liftPanel.update(s0);
     }
     this.liftPanel.setIsolated(!!this.state.isolated);
-    this.viewport.appendChild(this.liftPanel.el);
+    this.liftSide.appendChild(this.liftPanel.el);
+    this.stageBody.classList.add('has-lift');
   }
 
   /** สถานะลิฟต์จากฉาก (ตำแหน่งเดียวกับที่วาดห้องลิฟต์) → แผง และไฮไลต์ชั้นที่ลิฟต์ถึง */
   #onElevator(status) {
     this.liftPanel?.update(status);
     const st = this.state;
-    if (status.phase === 'open' && status.atFloor && !st.isolated && st.viewMode === '3d' && st.view === 'overview' && st.floorId !== status.atFloor && this.liftPanel?.moved) {
-      this.changeView({ floorId: status.atFloor }); // ชั้นที่เลือก (ขอบเขียว/ป้ายชั้น) = ชั้นที่ลิฟต์ถึง — ไม่แยกชั้นอัตโนมัติ
-    }
-    if (status.phase !== 'open' && this.liftPanel) this.liftPanel.moved = true;
+    // ไม่ตั้งชั้นที่เลือกตามลิฟต์ — ในมุมมองทั้งอาคารทุกชั้นเด่นเท่ากัน (ไฮไลต์เฉพาะตอนผู้ใช้แยกดูชั้น)
   }
 
   /** ป้าย "กำลังดู" บนพื้นที่แสดงผล */
@@ -529,7 +527,9 @@ export class App {
     this.legendEl = h('p.legend');
     stage.append(this.stageToolbar,
       h('details.scene-toggle', { open: st.sceneOpen, ontoggle: (e) => { if (e.target.open !== st.sceneOpen) this.setState({ sceneOpen: e.target.open }, { render: false }); } },
-        h('summary', st.viewMode === '3d' ? 'แสดง/ซ่อนโมเดลอาคาร' : 'แสดง/ซ่อนผังชั้น'), this.viewport),
+        h('summary', st.viewMode === '3d' ? 'แสดง/ซ่อนโมเดลอาคาร' : 'แสดง/ซ่อนผังชั้น'),
+        // โมเดลอยู่ซ้าย แผงลิฟต์เป็นคอลัมน์แยกด้านขวา (จอเล็กอยู่ใต้โมเดล) — ไม่ทับโมเดล
+        this.stageBody = h('div.stage-body', this.viewport, this.liftSide = h('aside.lift-side', { 'aria-label': 'ควบคุมลิฟต์จำลอง' }))),
       this.legendEl);
     this.detailsEl = h('aside.details', { 'aria-label': 'รายละเอียดจุดที่เลือก' });
     this.trendsEl = h('section.trends', { 'aria-label': 'แนวโน้มของจุดที่เลือก' });
@@ -636,6 +636,7 @@ export class App {
       if (this.roomCardEl) this.viewport.appendChild(this.roomCardEl);
     } else {
       this.viewport.classList.remove('vp-full'); document.body.classList.remove('has-vp-full');
+      this.liftPanel?.el.remove(); this.stageBody?.classList.remove('has-lift');
       this.planHost = h('div.plan-host');
       this.sigs?.delete('plan');
       this.floorBannerEl = h('div.floor-banner.static', { 'aria-live': 'polite' });

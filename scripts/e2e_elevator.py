@@ -124,7 +124,7 @@ with sync_playwright() as p:
     trip(page, top, f'ขึ้น {floors[0]}→{top}')
     page.screenshot(path=os.path.join(OUT, '02-at-top.png'))
     st = page.evaluate('window.__iotFortune.app.state')
-    check('เชื่อมกับระบบเลือกชั้น: ชั้นที่ลิฟต์ถึงเป็นชั้นที่เลือก (ยังดูทั้งอาคาร)', st['floorId'] == top and not st['isolated'])
+    check('ลิฟต์ไม่เปลี่ยนมุมมอง: ยังดูทั้งอาคาร และไม่ตั้งชั้นที่เลือกค้างไว้', not st['isolated'])
     trip(page, floors[0], f'ลง {top}→{floors[0]}')
     trip(page, mid, f'หยุดชั้นกลาง {floors[0]}→{mid}')
     page.screenshot(path=os.path.join(OUT, '03-at-middle.png'))
