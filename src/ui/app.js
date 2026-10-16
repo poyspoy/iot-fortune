@@ -42,6 +42,7 @@ export class App {
       layers: { electrical: true, hvac: true, water: true, environment: true, ...(ui.layers ?? {}) },
       filters: { search: '', floor: '', area: '', system: '', severity: '', quality: '', attention: false, ...(ui.filters ?? {}) },
       detailsOpen: false, // เปิดเว็บ: แผงรายละเอียดจุดพับไว้ก่อน ให้โมเดลเด่นที่สุด (กดหมุด/จุดจึงขยาย)
+      buildingStyle: ['solid', 'transparent', 'wire'].includes(ui.buildingStyle) ? ui.buildingStyle : 'solid', // รูปแบบอาคาร
       sceneOpen: ui.sceneOpen ?? true, // เว็บไซต์ 3 มิติ: เปิดโมเดลทุกขนาดจอ
       trendRange: ui.trendRange ?? '1h',
       planZoom: 1,
@@ -91,7 +92,7 @@ export class App {
   setState(patch, { render = true } = {}) {
     Object.assign(this.state, patch);
     const st = this.state;
-    this.ctl.saveUi({ view: st.view, selectedId: st.selectedId, floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, sceneMode: st.sceneMode, layers: st.layers, filters: st.filters, detailsOpen: st.detailsOpen, sceneOpen: st.sceneOpen, trendRange: st.trendRange });
+    this.ctl.saveUi({ view: st.view, selectedId: st.selectedId, floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, sceneMode: st.sceneMode, layers: st.layers, filters: st.filters, detailsOpen: st.detailsOpen, sceneOpen: st.sceneOpen, buildingStyle: st.buildingStyle, trendRange: st.trendRange });
     if (render) this.render();
   }
 
@@ -302,6 +303,7 @@ export class App {
     if (!this.scene) return;
     if (this.state.isolated) this.showBuilding();
     this.scene.setLayerVisible('elevator', true);
+    this.setBuildingStyle('transparent', { temporary: true }); // เห็นรถลิฟต์วิ่งภายในอาคาร
     if (!this.scene.liftView) { this.scene.setLiftView(true); if (this.liftPanel) { this.liftPanel.liftView = true; this.liftPanel.update(this.scene.elevatorStatus()); } }
     if (this.state.detailsOpen) this.setState({ detailsOpen: false });
     requestAnimationFrame(() => this.scene?.preset('lift'));
@@ -671,6 +673,24 @@ export class App {
     this.#renderTrends();
   }
 
+  /**
+   * รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร) — temporary = เปลี่ยนชั่วคราวระหว่างสาธิต แล้วคืนค่าที่ผู้ใช้เลือกด้วย restoreBuildingStyle()
+   */
+  setBuildingStyle(style, { temporary = false } = {}) {
+    if (temporary) { if (!this.styleOverride) this.styleOverride = { prev: this.state.buildingStyle }; }
+    else this.styleOverride = null;
+    this.setState({ buildingStyle: style }, { render: false });
+    this.scene?.setBuildingStyle(style);
+    if (this.stageToolbar?.isConnected) this.#renderToolbar();
+  }
+
+  restoreBuildingStyle() {
+    if (!this.styleOverride) return;
+    const prev = this.styleOverride.prev;
+    this.styleOverride = null;
+    this.setBuildingStyle(prev);
+  }
+
   /** ขยายโมเดล: ซ่อน Sidebar ชั่วคราว (โมเดลเต็มความกว้าง) — กดอีกครั้งเพื่อแสดงแผงข้าง */
   toggleSide(on = !this.sideHidden) {
     this.sideHidden = !!on;
@@ -722,6 +742,10 @@ export class App {
         }, `ขยาย ${z}×`))) : null,
         is3d ? h('div.seg', { role: 'group', 'aria-label': 'มุมกล้อง' },
           presets.filter((p) => p !== 'all' && p !== 'fit' && p !== 'floor').map((p) => h('button', { type: 'button', class: 'btn small ghost', 'data-focus-key': `preset-${p}`, onclick: () => this.scene.preset(p) }, PRESET[p]))) : null,
+        is3d ? h('div.bstyle', { role: 'group', 'aria-label': 'รูปแบบอาคาร' }, h('span.tb-label', 'รูปแบบอาคาร'),
+          h('div.seg.bstyle-seg', [['solid', 'ทึบ'], ['transparent', 'โปร่งใส'], ['wire', 'โครงอาคาร']].map(([k, t]) => h('button', { type: 'button', class: `btn small ${st.buildingStyle === k ? 'active' : ''}`, 'aria-pressed': String(st.buildingStyle === k),
+            'data-testid': `bstyle-${k}`, onclick: () => this.setBuildingStyle(k) }, t))),
+          select([['solid', 'ทึบ'], ['transparent', 'โปร่งใส'], ['wire', 'โครงอาคาร']], st.buildingStyle, { class: 'bstyle-sel', 'aria-label': 'รูปแบบอาคาร', onchange: (e) => this.setBuildingStyle(e.target.value) })) : null,
         is3d && !st.isolated ? h('label.inline', h('span', 'การแสดงผล'), select([['exterior', 'ภายนอก'], ['cutaway', 'ตัดชั้นบน']], st.sceneMode === 'exploded' ? 'exterior' : st.sceneMode, {
           'data-focus-key': 'scenemode', onchange: (e) => { this.setState({ sceneMode: e.target.value }, { render: false }); this.scene.setMode(e.target.value); },
         })) : null,
@@ -764,6 +788,7 @@ export class App {
           this.scene.setFloor(st.floorId);
           this.scene.setMode(st.sceneMode);
           this.scene.setLayers(st.layers);
+          this.scene.setBuildingStyle(st.buildingStyle, { instant: true });
           if (st.isolated) this.scene.isolate(st.floorId, { instant: true });
           else this.scene.preset('all', { instant: true });
           this.#renderToolbar();

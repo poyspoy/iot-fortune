@@ -717,3 +717,17 @@ body.presenting .toasts { bottom: 92px; }
 .ov-side .lift-note .sim-chip { font-size: 0.74rem; }
 .ov-side .lift-actions, .ov-side .lift-demo { gap: 6px; }
 @media (max-width: 760px) { .stage-body.has-side .viewport { height: max(340px, 54vh); } }
+/* แผงลิฟต์ใน Sidebar แบบกระชับ: ข้อมูล 4 ค่าเป็น 2 คอลัมน์ ปุ่มชั้นแถวเดียว ให้เห็นเกจระดับน้ำพร้อมกัน */
+.ov-side .lift-info { grid-template-columns: max-content 1fr max-content 1fr; font-size: 0.78rem; }
+.ov-side .lift-buttons { gap: 4px; }
+.ov-side .lift-go { flex-basis: 100%; font-size: 0.8rem; }
+.ov-side .lift-btn { min-width: 32px; min-height: 32px; padding: 0; }
+.ov-side .lift-body { gap: 8px; }
+.ov-side .lift-demo .btn, .ov-side .lift-actions .btn { padding: 3px 8px; font-size: 0.8rem; }
+.ov-side .lift-demo, .ov-side .lift-actions { display: inline-flex; }
+/* ป้าย "ข้อมูลจำลอง · ไม่ใช่ข้อมูลจริง" เด่นชัดตลอดการสาธิต */
+.sim-badge { font-size: 0.92rem; font-weight: 800; padding: 6px 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+/* รูปแบบอาคาร: Desktop = ปุ่ม 3 โหมด · มือถือ = เมนูเลือกขนาดเล็ก */
+.bstyle { display: inline-flex; align-items: center; gap: 6px; }
+.bstyle-sel { display: none; font-size: 0.85rem; padding: 4px 6px; border-radius: 8px; }
+@media (max-width: 760px) { .bstyle-seg { display: none; } .bstyle-sel { display: inline-block; } }

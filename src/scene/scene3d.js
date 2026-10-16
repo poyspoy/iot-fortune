@@ -42,6 +42,9 @@ const COLORS = {
   normal: '#2f8f83', warning: '#d99a1e', critical: '#c8423a', unknown: '#7d8a91',
 };
 
+/** รูปแบบอาคาร: a = ความทึบของวัสดุอาคาร (คูณค่าเดิม), l = ความเข้มของเส้นโครง */
+const BUILDING_STYLES = { solid: { a: 1, l: 0 }, transparent: { a: 0.22, l: 0 }, wire: { a: 0, l: 1 } };
+
 export class MallScene {
   /**
    * @param {HTMLElement} container
@@ -311,6 +314,7 @@ export class MallScene {
         this.sceneLayers.assign(clone, 'building');
       }
       this.modelLoaded = true;
+      this.#applyStyle();
       this.onDetail?.("building", "ready");
       this.#applyMode();
     }, undefined, () => { this.modelLoaded = false; });
@@ -383,6 +387,7 @@ export class MallScene {
   /** วาดหนึ่งเฟรมทันที (ใช้กับนาฬิกาที่ตั้งเอง) — อ่านภาพจาก canvas ได้ในงานเดียวกันหลังเรียก */
   renderNow() {
     this.#stepLift();
+    if (this.styleAnim) this.#styleFrame(performance.now());
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.#projectMarkers();
@@ -459,6 +464,7 @@ export class MallScene {
       const R = 0.17; const H = 0.38;
       const g = new THREE.Group();
       g.name = `water-${id}`;
+      g.userData.keepOpaque = true; // ถังเซนเซอร์ไม่โปร่งตามรูปแบบอาคาร
       const shell = kind === 'pit' ? new THREE.BoxGeometry(R * 2.2, H, R * 2.2, 1, 1, 1) : new THREE.CylinderGeometry(R, R, H, 32, 1, true);
       const glass = new THREE.Mesh(shell, new THREE.MeshStandardMaterial({ color: '#d7ebe8', transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false }));
       glass.position.y = H / 2;
@@ -501,6 +507,7 @@ export class MallScene {
       g.add(motor, fan, pipe);
       g.position.set(p.x - 0.6, SLAB_T, p.z);
       fg.group.add(g);
+      g.userData.keepOpaque = true;
       this.pump = { group: g, fan, floorId: pumpPoint.floorId };
       this.equipment.push(g);
     } else this.pump = null;
@@ -645,6 +652,7 @@ export class MallScene {
       this.#touchDetail(det.src);
       this.#loadRooms(fg);
       this.#applyMode();
+      this.#applyStyle();
       this.onDetail(id, 'ready');
     }, () => {
       if (this.floorGroups.get(id) !== fg) return;
@@ -802,6 +810,99 @@ export class MallScene {
 
   setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.#placeMarkers(); return ok; }
   layerList() { return this.sceneLayers.list(); }
+
+  // ---------------------------------------------------------------- รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร)
+  /**
+   * เปลี่ยนรูปแบบการแสดงตัวอาคารโดยใช้โมเดลเดิม — วัสดุต้นฉบับเก็บไว้ที่ userData.styleOrig และสลับกลับได้เหมือนเดิมทุกประการ
+   * วัสดุโปร่งใสและเส้นขอบสร้างครั้งเดียวต่อวัสดุ/geometry (แคช) · ลิฟต์ หมุด ถังเซนเซอร์ และป้าย ไม่ถูกเปลี่ยน
+   * @param {'solid'|'transparent'|'wire'} style
+   */
+  setBuildingStyle(style, { instant = false } = {}) {
+    if (!BUILDING_STYLES[style]) return;
+    const cur = this.#styleNow();
+    this.buildingStyle = style;
+    const to = BUILDING_STYLES[style];
+    if (instant || this.disposed) { this.styleAnim = null; this.styleState = { a: to.a, l: to.l }; this.#applyStyle(); return; }
+    this.styleAnim = { from: cur, to: { a: to.a, l: to.l }, start: performance.now(), dur: 400 };
+    if (to.l > 0) this.#ensureStyleLines();
+    this.#applyStyle();
+  }
+
+  /** ตรวจสอบ (ทดสอบเบราว์เซอร์): วัสดุที่ใช้อยู่ ณ ตอนนี้ และจำนวนชิ้นที่ยังใช้วัสดุแทน */
+  styleProbe() {
+    let meshes = 0; let swapped = 0; let lines = 0; const ids = [];
+    this.#buildingMeshes((o) => { meshes++; if (o.userData.styleOrig) swapped++; if (o.userData.styleLineObj) lines++; ids.push(Array.isArray(o.material) ? o.material.map((m) => m.uuid).join('+') : o.material.uuid); });
+    let h = 0; for (const c of ids.join('|')) h = (h * 31 + c.charCodeAt(0)) | 0;
+    return { style: this.buildingStyle ?? 'solid', meshes, swapped, lines, matHash: h, ghostCache: this.styleMatCache?.size ?? 0, edgeCache: this.edgeCache?.size ?? 0, anim: !!this.styleAnim };
+  }
+
+  #styleNow() { return { ...(this.styleState ?? { a: 1, l: 0 }) }; }
+
+  #styleFrame(nowMs) {
+    const an = this.styleAnim;
+    const k = Math.min(1, (nowMs - an.start) / an.dur);
+    const e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+    this.styleState = { a: an.from.a + (an.to.a - an.from.a) * e, l: an.from.l + (an.to.l - an.from.l) * e };
+    if (k >= 1) { this.styleAnim = null; this.styleState = { ...an.to }; }
+    this.#applyStyle();
+  }
+
+  /** ชิ้นส่วนอาคาร (ไม่รวมลิฟต์ หมุด ถังเซนเซอร์ ไฮไลต์ห้อง และเส้นขอบโหมดโครง) */
+  #buildingMeshes(fn) {
+    const walk = (o) => {
+      if (o.userData.keepOpaque || o.userData.styleLine || o.name === 'room-highlight') return;
+      if (o.isMesh && o.material) fn(o);
+      for (const c of o.children) walk(c);
+    };
+    for (const fg of this.floorGroups.values()) walk(fg.group);
+    if (this.towerDeco) walk(this.towerDeco);
+  }
+
+  #ensureStyleLines() {
+    this.styleLineMat ??= new THREE.LineBasicMaterial({ color: '#6fd3c4', transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+    this.edgeCache ??= new Map(); // geometry.uuid → EdgesGeometry (สร้างครั้งเดียว)
+    this.#buildingMeshes((o) => {
+      if (o.userData.styleLineObj) return;
+      let eg = this.edgeCache.get(o.geometry.uuid);
+      if (!eg) { eg = new THREE.EdgesGeometry(o.geometry, 40); this.edgeCache.set(o.geometry.uuid, eg); }
+      const line = new THREE.LineSegments(eg, this.styleLineMat);
+      line.userData.styleLine = true;
+      line.layers.mask = o.layers.mask;
+      line.renderOrder = 3;
+      line.raycast = () => {};
+      o.add(line);
+      o.userData.styleLineObj = line;
+    });
+  }
+
+  /** ใส่วัสดุตามสถานะปัจจุบัน (a = ความทึบของตัวอาคาร, l = ความเข้มเส้นโครง) */
+  #applyStyle() {
+    const st = this.styleState ?? { a: 1, l: 0 };
+    if (st.l > 0 || (this.styleAnim?.to.l ?? 0) > 0) this.#ensureStyleLines(); // ชิ้นที่เพิ่งโหลดได้เส้นโครงด้วย
+    this.styleMatCache ??= new Map(); // วัสดุต้นฉบับ → วัสดุโปร่ง (แคช ไม่สร้างใหม่ทุกเฟรม)
+    const solid = st.a >= 0.999 && !this.styleAnim;
+    const ghost = (m) => {
+      let g = this.styleMatCache.get(m);
+      if (!g) { g = m.clone(); g.transparent = true; g.depthWrite = false; this.styleMatCache.set(m, g); }
+      g.opacity = m.opacity * st.a;
+      g.visible = st.a > 0.01;
+      if (g.clippingPlanes !== m.clippingPlanes) { g.clippingPlanes = m.clippingPlanes; g.needsUpdate = true; }
+      return g;
+    };
+    this.#buildingMeshes((o) => {
+      const orig = o.userData.styleOrig ?? o.material;
+      if (solid) {
+        if (o.userData.styleOrig) { o.material = o.userData.styleOrig; delete o.userData.styleOrig; }
+      } else {
+        o.userData.styleOrig = orig;
+        o.material = Array.isArray(orig) ? orig.map(ghost) : ghost(orig);
+      }
+    });
+    if (this.styleLineMat) {
+      this.styleLineMat.opacity = 0.42 * st.l;
+      this.styleLineMat.visible = st.l > 0.01;
+    }
+  }
 
   #cutPlane() {
     if (!this.clipPlane) {
@@ -1132,6 +1233,7 @@ export class MallScene {
     }
     if (moving) this.#placeMarkers();
     this.#stepLift();
+    if (this.styleAnim) this.#styleFrame(nowMs);
     // ป้ายในฉาก: ซ่อนเมื่อกล้องไกลมาก (ระดับซูม = ระยะมาตรฐาน 22 / ระยะจริง) ไม่ให้ป้ายบังโมเดล
     this.sceneLayers.updateZoom(22 / Math.max(1, this.camera.position.distanceTo(this.controls.target)));
     if (this.towerCenter && !this.isolatedId) {

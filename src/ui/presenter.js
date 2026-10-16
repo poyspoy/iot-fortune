@@ -103,6 +103,7 @@ export class Presenter {
 
   #finish() {
     this.running = false;
+    this.app.restoreBuildingStyle?.(); // จบการสาธิต: คืนรูปแบบอาคารที่ผู้ใช้เลือกไว้
     this.el.remove();
     document.body.classList.remove('presenting');
     this.app.refreshDemoBar?.();
