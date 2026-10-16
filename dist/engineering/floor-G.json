@@ -1,0 +1,4203 @@
+{
+ "schema": "iot-fortune.engineering/v1",
+ "floorId": "G",
+ "coordSpace": "plan-normalized",
+ "simulated": true,
+ "disclaimer": "แบบวิศวกรรมจำลอง · ไม่ใช่แบบก่อสร้างจริง",
+ "source": {
+  "kind": "generated",
+  "script": "scripts/gen-engineering-g.mjs",
+  "future": "DXF / SVG / GeoJSON / Backend API"
+ },
+ "layers": [
+  {
+   "id": "structure",
+   "name": "โครงสร้าง",
+   "system": "STR",
+   "color": "#d9a62e",
+   "description": "เสา คาน และเส้นกริด",
+   "features": [
+    {
+     "type": "Feature",
+     "id": "STR-GL-1",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.02
+       ],
+       [
+        0.04,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-1",
+      "name": "เส้นกริดแนว 1"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.02
+       ],
+       [
+        0.1236,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-2",
+      "name": "เส้นกริดแนว 2"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.02
+       ],
+       [
+        0.2073,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-3",
+      "name": "เส้นกริดแนว 3"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.02
+       ],
+       [
+        0.2909,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-4",
+      "name": "เส้นกริดแนว 4"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.02
+       ],
+       [
+        0.3745,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-5",
+      "name": "เส้นกริดแนว 5"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.02
+       ],
+       [
+        0.4582,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-6",
+      "name": "เส้นกริดแนว 6"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.02
+       ],
+       [
+        0.5418,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-7",
+      "name": "เส้นกริดแนว 7"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.02
+       ],
+       [
+        0.6255,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-8",
+      "name": "เส้นกริดแนว 8"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.02
+       ],
+       [
+        0.7091,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-9",
+      "name": "เส้นกริดแนว 9"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.02
+       ],
+       [
+        0.7927,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-10",
+      "name": "เส้นกริดแนว 10"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.02
+       ],
+       [
+        0.8764,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-11",
+      "name": "เส้นกริดแนว 11"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-12",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.96,
+        0.02
+       ],
+       [
+        0.96,
+        0.98
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-12",
+      "name": "เส้นกริดแนว 12"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-A",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0,
+        0.2
+       ],
+       [
+        1,
+        0.2
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-A",
+      "name": "เส้นกริดแนว A"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-B",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0,
+        0.38
+       ],
+       [
+        1,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-B",
+      "name": "เส้นกริดแนว B"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-C",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0,
+        0.52
+       ],
+       [
+        1,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-C",
+      "name": "เส้นกริดแนว C"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-D",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0,
+        0.66
+       ],
+       [
+        1,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-D",
+      "name": "เส้นกริดแนว D"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-GL-E",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0,
+        0.79
+       ],
+       [
+        1,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "grid",
+      "code": "GL-E",
+      "name": "เส้นกริดแนว E"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.04,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B1",
+      "name": "เสา B1",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.04,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C1",
+      "name": "เสา C1",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.04,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D1",
+      "name": "เสา D1",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.04,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E1",
+      "name": "เสา E1",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.1236,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B2",
+      "name": "เสา B2",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.1236,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C2",
+      "name": "เสา C2",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.1236,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D2",
+      "name": "เสา D2",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.1236,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E2",
+      "name": "เสา E2",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B3",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2073,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B3",
+      "name": "เสา B3",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C3",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2073,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C3",
+      "name": "เสา C3",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D3",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2073,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D3",
+      "name": "เสา D3",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E3",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2073,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E3",
+      "name": "เสา E3",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B4",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2909,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B4",
+      "name": "เสา B4",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C4",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2909,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C4",
+      "name": "เสา C4",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D4",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2909,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D4",
+      "name": "เสา D4",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E4",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.2909,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E4",
+      "name": "เสา E4",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B5",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.3745,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B5",
+      "name": "เสา B5",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C5",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.3745,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C5",
+      "name": "เสา C5",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D5",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.3745,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D5",
+      "name": "เสา D5",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E5",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.3745,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E5",
+      "name": "เสา E5",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B6",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.4582,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B6",
+      "name": "เสา B6",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C6",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.4582,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C6",
+      "name": "เสา C6",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D6",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.4582,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D6",
+      "name": "เสา D6",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E6",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.4582,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E6",
+      "name": "เสา E6",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B7",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.5418,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B7",
+      "name": "เสา B7",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C7",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.5418,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C7",
+      "name": "เสา C7",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D7",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.5418,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D7",
+      "name": "เสา D7",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E7",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.5418,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E7",
+      "name": "เสา E7",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B8",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.6255,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B8",
+      "name": "เสา B8",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C8",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.6255,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C8",
+      "name": "เสา C8",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D8",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.6255,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D8",
+      "name": "เสา D8",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E8",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.6255,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E8",
+      "name": "เสา E8",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-A9",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7091,
+       0.2
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-A9",
+      "name": "เสา A9",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "381 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B9",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7091,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B9",
+      "name": "เสา B9",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "388 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C9",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7091,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C9",
+      "name": "เสา C9",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "395 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D9",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7091,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D9",
+      "name": "เสา D9",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "402 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E9",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7091,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E9",
+      "name": "เสา E9",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "409 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-A10",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7927,
+       0.2
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-A10",
+      "name": "เสา A10",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "394 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B10",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7927,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B10",
+      "name": "เสา B10",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "401 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C10",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7927,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C10",
+      "name": "เสา C10",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "408 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D10",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7927,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D10",
+      "name": "เสา D10",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "415 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E10",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.7927,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E10",
+      "name": "เสา E10",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "422 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-A11",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.8764,
+       0.2
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-A11",
+      "name": "เสา A11",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "394 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B11",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.8764,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B11",
+      "name": "เสา B11",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "401 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C11",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.8764,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C11",
+      "name": "เสา C11",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "408 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-D11",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.8764,
+       0.66
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-D11",
+      "name": "เสา D11",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "415 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-E11",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.8764,
+       0.79
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-E11",
+      "name": "เสา E11",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "422 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-A12",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.96,
+       0.2
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-A12",
+      "name": "เสา A12",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "394 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-B12",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.96,
+       0.38
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-B12",
+      "name": "เสา B12",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "401 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-C-C12",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.96,
+       0.52
+      ]
+     },
+     "properties": {
+      "kind": "column",
+      "code": "C-C12",
+      "name": "เสา C12",
+      "size": "0.60 × 0.60 ม.",
+      "material": "คอนกรีตเสริมเหล็ก",
+      "load": "408 ตัน (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B1-B2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.38
+       ],
+       [
+        0.1236,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B1/B2",
+      "name": "คาน B1–B2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B1-C1",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.38
+       ],
+       [
+        0.04,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B1/C1",
+      "name": "คาน B1–C1",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C1-C2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.52
+       ],
+       [
+        0.1236,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C1/C2",
+      "name": "คาน C1–C2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C1-D1",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.52
+       ],
+       [
+        0.04,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C1/D1",
+      "name": "คาน C1–D1",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D1-D2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.66
+       ],
+       [
+        0.1236,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D1/D2",
+      "name": "คาน D1–D2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D1-E1",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.66
+       ],
+       [
+        0.04,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D1/E1",
+      "name": "คาน D1–E1",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E1-E2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.79
+       ],
+       [
+        0.1236,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E1/E2",
+      "name": "คาน E1–E2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B2-B3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.38
+       ],
+       [
+        0.2073,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B2/B3",
+      "name": "คาน B2–B3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B2-C2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.38
+       ],
+       [
+        0.1236,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B2/C2",
+      "name": "คาน B2–C2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C2-C3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.52
+       ],
+       [
+        0.2073,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C2/C3",
+      "name": "คาน C2–C3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C2-D2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.52
+       ],
+       [
+        0.1236,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C2/D2",
+      "name": "คาน C2–D2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D2-D3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.66
+       ],
+       [
+        0.2073,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D2/D3",
+      "name": "คาน D2–D3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D2-E2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.66
+       ],
+       [
+        0.1236,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D2/E2",
+      "name": "คาน D2–E2",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E2-E3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.1236,
+        0.79
+       ],
+       [
+        0.2073,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E2/E3",
+      "name": "คาน E2–E3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B3-B4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.38
+       ],
+       [
+        0.2909,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B3/B4",
+      "name": "คาน B3–B4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B3-C3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.38
+       ],
+       [
+        0.2073,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B3/C3",
+      "name": "คาน B3–C3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C3-C4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.52
+       ],
+       [
+        0.2909,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C3/C4",
+      "name": "คาน C3–C4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C3-D3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.52
+       ],
+       [
+        0.2073,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C3/D3",
+      "name": "คาน C3–D3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D3-D4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.66
+       ],
+       [
+        0.2909,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D3/D4",
+      "name": "คาน D3–D4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D3-E3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.66
+       ],
+       [
+        0.2073,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D3/E3",
+      "name": "คาน D3–E3",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E3-E4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2073,
+        0.79
+       ],
+       [
+        0.2909,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E3/E4",
+      "name": "คาน E3–E4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B4-B5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.38
+       ],
+       [
+        0.3745,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B4/B5",
+      "name": "คาน B4–B5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B4-C4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.38
+       ],
+       [
+        0.2909,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B4/C4",
+      "name": "คาน B4–C4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C4-C5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.52
+       ],
+       [
+        0.3745,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C4/C5",
+      "name": "คาน C4–C5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C4-D4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.52
+       ],
+       [
+        0.2909,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C4/D4",
+      "name": "คาน C4–D4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D4-D5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.66
+       ],
+       [
+        0.3745,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D4/D5",
+      "name": "คาน D4–D5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D4-E4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.66
+       ],
+       [
+        0.2909,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D4/E4",
+      "name": "คาน D4–E4",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E4-E5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.2909,
+        0.79
+       ],
+       [
+        0.3745,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E4/E5",
+      "name": "คาน E4–E5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B5-B6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.38
+       ],
+       [
+        0.4582,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B5/B6",
+      "name": "คาน B5–B6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B5-C5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.38
+       ],
+       [
+        0.3745,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B5/C5",
+      "name": "คาน B5–C5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C5-C6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.52
+       ],
+       [
+        0.4582,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C5/C6",
+      "name": "คาน C5–C6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C5-D5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.52
+       ],
+       [
+        0.3745,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C5/D5",
+      "name": "คาน C5–D5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D5-D6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.66
+       ],
+       [
+        0.4582,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D5/D6",
+      "name": "คาน D5–D6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D5-E5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.66
+       ],
+       [
+        0.3745,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D5/E5",
+      "name": "คาน D5–E5",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E5-E6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.3745,
+        0.79
+       ],
+       [
+        0.4582,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E5/E6",
+      "name": "คาน E5–E6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B6-B7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.38
+       ],
+       [
+        0.5418,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B6/B7",
+      "name": "คาน B6–B7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B6-C6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.38
+       ],
+       [
+        0.4582,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B6/C6",
+      "name": "คาน B6–C6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C6-C7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.52
+       ],
+       [
+        0.5418,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C6/C7",
+      "name": "คาน C6–C7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C6-D6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.52
+       ],
+       [
+        0.4582,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C6/D6",
+      "name": "คาน C6–D6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D6-D7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.66
+       ],
+       [
+        0.5418,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D6/D7",
+      "name": "คาน D6–D7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D6-E6",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.66
+       ],
+       [
+        0.4582,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D6/E6",
+      "name": "คาน D6–E6",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E6-E7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4582,
+        0.79
+       ],
+       [
+        0.5418,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E6/E7",
+      "name": "คาน E6–E7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B7-B8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.38
+       ],
+       [
+        0.6255,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B7/B8",
+      "name": "คาน B7–B8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B7-C7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.38
+       ],
+       [
+        0.5418,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B7/C7",
+      "name": "คาน B7–C7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C7-C8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.52
+       ],
+       [
+        0.6255,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C7/C8",
+      "name": "คาน C7–C8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C7-D7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.52
+       ],
+       [
+        0.5418,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C7/D7",
+      "name": "คาน C7–D7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D7-D8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.66
+       ],
+       [
+        0.6255,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D7/D8",
+      "name": "คาน D7–D8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D7-E7",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.66
+       ],
+       [
+        0.5418,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D7/E7",
+      "name": "คาน D7–E7",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E7-E8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5418,
+        0.79
+       ],
+       [
+        0.6255,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E7/E8",
+      "name": "คาน E7–E8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B8-B9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.38
+       ],
+       [
+        0.7091,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B8/B9",
+      "name": "คาน B8–B9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B8-C8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.38
+       ],
+       [
+        0.6255,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B8/C8",
+      "name": "คาน B8–C8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C8-C9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.52
+       ],
+       [
+        0.7091,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C8/C9",
+      "name": "คาน C8–C9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C8-D8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.52
+       ],
+       [
+        0.6255,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C8/D8",
+      "name": "คาน C8–D8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D8-D9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.66
+       ],
+       [
+        0.7091,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D8/D9",
+      "name": "คาน D8–D9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D8-E8",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.66
+       ],
+       [
+        0.6255,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D8/E8",
+      "name": "คาน D8–E8",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E8-E9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.6255,
+        0.79
+       ],
+       [
+        0.7091,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E8/E9",
+      "name": "คาน E8–E9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A9-A10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.2
+       ],
+       [
+        0.7927,
+        0.2
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A9/A10",
+      "name": "คาน A9–A10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A9-B9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.2
+       ],
+       [
+        0.7091,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A9/B9",
+      "name": "คาน A9–B9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B9-B10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.38
+       ],
+       [
+        0.7927,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B9/B10",
+      "name": "คาน B9–B10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B9-C9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.38
+       ],
+       [
+        0.7091,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B9/C9",
+      "name": "คาน B9–C9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C9-C10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.52
+       ],
+       [
+        0.7927,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C9/C10",
+      "name": "คาน C9–C10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C9-D9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.52
+       ],
+       [
+        0.7091,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C9/D9",
+      "name": "คาน C9–D9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D9-D10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.66
+       ],
+       [
+        0.7927,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D9/D10",
+      "name": "คาน D9–D10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D9-E9",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.66
+       ],
+       [
+        0.7091,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D9/E9",
+      "name": "คาน D9–E9",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E9-E10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7091,
+        0.79
+       ],
+       [
+        0.7927,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E9/E10",
+      "name": "คาน E9–E10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A10-A11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.2
+       ],
+       [
+        0.8764,
+        0.2
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A10/A11",
+      "name": "คาน A10–A11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A10-B10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.2
+       ],
+       [
+        0.7927,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A10/B10",
+      "name": "คาน A10–B10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B10-B11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.38
+       ],
+       [
+        0.8764,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B10/B11",
+      "name": "คาน B10–B11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B10-C10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.38
+       ],
+       [
+        0.7927,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B10/C10",
+      "name": "คาน B10–C10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C10-C11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.52
+       ],
+       [
+        0.8764,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C10/C11",
+      "name": "คาน C10–C11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C10-D10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.52
+       ],
+       [
+        0.7927,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C10/D10",
+      "name": "คาน C10–D10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D10-D11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.66
+       ],
+       [
+        0.8764,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D10/D11",
+      "name": "คาน D10–D11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D10-E10",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.66
+       ],
+       [
+        0.7927,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D10/E10",
+      "name": "คาน D10–E10",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-E10-E11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.7927,
+        0.79
+       ],
+       [
+        0.8764,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-E10/E11",
+      "name": "คาน E10–E11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A11-A12",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.2
+       ],
+       [
+        0.96,
+        0.2
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A11/A12",
+      "name": "คาน A11–A12",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A11-B11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.2
+       ],
+       [
+        0.8764,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A11/B11",
+      "name": "คาน A11–B11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B11-B12",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.38
+       ],
+       [
+        0.96,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B11/B12",
+      "name": "คาน B11–B12",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B11-C11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.38
+       ],
+       [
+        0.8764,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B11/C11",
+      "name": "คาน B11–C11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C11-C12",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.52
+       ],
+       [
+        0.96,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C11/C12",
+      "name": "คาน C11–C12",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-C11-D11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.52
+       ],
+       [
+        0.8764,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-C11/D11",
+      "name": "คาน C11–D11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-D11-E11",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.8764,
+        0.66
+       ],
+       [
+        0.8764,
+        0.79
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-D11/E11",
+      "name": "คาน D11–E11",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-A12-B12",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.96,
+        0.2
+       ],
+       [
+        0.96,
+        0.38
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-A12/B12",
+      "name": "คาน A12–B12",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "STR-B-B12-C12",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.96,
+        0.38
+       ],
+       [
+        0.96,
+        0.52
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "beam",
+      "code": "B-B12/C12",
+      "name": "คาน B12–C12",
+      "size": "0.40 × 0.80 ม.",
+      "material": "คอนกรีตเสริมเหล็ก"
+     }
+    }
+   ]
+  },
+  {
+   "id": "electrical",
+   "name": "ไฟฟ้า",
+   "system": "ELE",
+   "color": "#ff7a45",
+   "description": "แนวสายไฟและตำแหน่งตู้/อุปกรณ์",
+   "features": [
+    {
+     "type": "Feature",
+     "id": "ELE-MDB-G",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.03,
+       0.6
+      ]
+     },
+     "properties": {
+      "kind": "panel",
+      "code": "MDB-G",
+      "name": "ตู้ไฟฟ้าหลัก MDB-G",
+      "rating": "1600 A · 400/230 V",
+      "feeder": "จากหม้อแปลง TR-1 (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-FD-MAIN",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.03,
+        0.6
+       ],
+       [
+        0.06,
+        0.585
+       ],
+       [
+        0.69,
+        0.585
+       ],
+       [
+        0.69,
+        0.45
+       ],
+       [
+        0.95,
+        0.45
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "FD-G-01",
+      "name": "สายป้อนหลัก (Cable tray)",
+      "cable": "NYY 4×240 mm² (จำลอง)",
+      "length": "≈ 210 ม."
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-BR-DB-G1",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.17,
+        0.585
+       ],
+       [
+        0.17,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "BR-DB-G1",
+      "name": "สายป้อนย่อยไป DB-G1",
+      "cable": "THW 4×35 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.17,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "panel",
+      "code": "DB-G1",
+      "name": "ตู้ไฟฟ้าย่อย DB-G1",
+      "zone": "ร้านค้าโซนตะวันตก",
+      "rating": "250 A (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G1-L1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.205,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G1-L1",
+      "name": "ชุดโคมไฟ DB-G1-L1",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G1-L2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.24,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G1-L2",
+      "name": "ชุดโคมไฟ DB-G1-L2",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G1-CIR",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.17,
+        0.43
+       ],
+       [
+        0.24,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "DB-G1-C1",
+      "name": "วงจรแสงสว่าง DB-G1-C1",
+      "cable": "THW 2×2.5 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-BR-DB-G2",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.33,
+        0.585
+       ],
+       [
+        0.33,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "BR-DB-G2",
+      "name": "สายป้อนย่อยไป DB-G2",
+      "cable": "THW 4×35 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.33,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "panel",
+      "code": "DB-G2",
+      "name": "ตู้ไฟฟ้าย่อย DB-G2",
+      "zone": "ทางเดินกลาง",
+      "rating": "250 A (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G2-L1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.365,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G2-L1",
+      "name": "ชุดโคมไฟ DB-G2-L1",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G2-L2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.4,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G2-L2",
+      "name": "ชุดโคมไฟ DB-G2-L2",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G2-CIR",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.33,
+        0.43
+       ],
+       [
+        0.4,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "DB-G2-C1",
+      "name": "วงจรแสงสว่าง DB-G2-C1",
+      "cable": "THW 2×2.5 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-BR-DB-G3",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5,
+        0.585
+       ],
+       [
+        0.5,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "BR-DB-G3",
+      "name": "สายป้อนย่อยไป DB-G3",
+      "cable": "THW 4×35 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G3",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.5,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "panel",
+      "code": "DB-G3",
+      "name": "ตู้ไฟฟ้าย่อย DB-G3",
+      "zone": "ร้านค้าโซนกลาง",
+      "rating": "250 A (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G3-L1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.535,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G3-L1",
+      "name": "ชุดโคมไฟ DB-G3-L1",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G3-L2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.57,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G3-L2",
+      "name": "ชุดโคมไฟ DB-G3-L2",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G3-CIR",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.5,
+        0.43
+       ],
+       [
+        0.57,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "DB-G3-C1",
+      "name": "วงจรแสงสว่าง DB-G3-C1",
+      "cable": "THW 2×2.5 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-BR-DB-G4",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.66,
+        0.585
+       ],
+       [
+        0.66,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "BR-DB-G4",
+      "name": "สายป้อนย่อยไป DB-G4",
+      "cable": "THW 4×35 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G4",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.66,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "panel",
+      "code": "DB-G4",
+      "name": "ตู้ไฟฟ้าย่อย DB-G4",
+      "zone": "โถงลิฟต์",
+      "rating": "250 A (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G4-L1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.695,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G4-L1",
+      "name": "ชุดโคมไฟ DB-G4-L1",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G4-L2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.73,
+       0.43
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G4-L2",
+      "name": "ชุดโคมไฟ DB-G4-L2",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G4-CIR",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.66,
+        0.43
+       ],
+       [
+        0.73,
+        0.43
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "DB-G4-C1",
+      "name": "วงจรแสงสว่าง DB-G4-C1",
+      "cable": "THW 2×2.5 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-BR-DB-G5",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.86,
+        0.45
+       ],
+       [
+        0.86,
+        0.3
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "BR-DB-G5",
+      "name": "สายป้อนย่อยไป DB-G5",
+      "cable": "THW 4×35 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G5",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.86,
+       0.3
+      ]
+     },
+     "properties": {
+      "kind": "panel",
+      "code": "DB-G5",
+      "name": "ตู้ไฟฟ้าย่อย DB-G5",
+      "zone": "ห้องเครื่องสูบน้ำ",
+      "rating": "250 A (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G5-L1",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.895,
+       0.3
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G5-L1",
+      "name": "ชุดโคมไฟ DB-G5-L1",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G5-L2",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.93,
+       0.3
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "DB-G5-L2",
+      "name": "ชุดโคมไฟ DB-G5-L2",
+      "load": "0.4 kW (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-DB-G5-CIR",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.86,
+        0.3
+       ],
+       [
+        0.93,
+        0.3
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "DB-G5-C1",
+      "name": "วงจรแสงสว่าง DB-G5-C1",
+      "cable": "THW 2×2.5 mm² (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-PUMP-CP",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.83,
+       0.71
+      ]
+     },
+     "properties": {
+      "kind": "device",
+      "code": "CP-P003",
+      "name": "ตู้ควบคุมปั๊มน้ำ P-003",
+      "rating": "30 A (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "ELE-PUMP-FD",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.86,
+        0.3
+       ],
+       [
+        0.86,
+        0.55
+       ],
+       [
+        0.83,
+        0.71
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "cable",
+      "code": "BR-CP-P003",
+      "name": "สายไฟฟ้าไปตู้ควบคุมปั๊ม",
+      "cable": "THW 4×16 mm² (จำลอง)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "plumbing",
+   "name": "ประปา",
+   "system": "PLB",
+   "color": "#3fa7ff",
+   "description": "แนวท่อและวาล์ว",
+   "features": [
+    {
+     "type": "Feature",
+     "id": "PLB-SUC",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.88,
+        0.86
+       ],
+       [
+        0.82,
+        0.78
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "pipe",
+      "code": "WS-SUC-01",
+      "name": "ท่อดูดจากบ่อสูบน้ำ",
+      "dia": "Ø100 มม.",
+      "material": "HDPE (จำลอง)",
+      "flow": "น้ำดิบ"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-MAIN",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.82,
+        0.78
+       ],
+       [
+        0.8,
+        0.73
+       ],
+       [
+        0.04,
+        0.73
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "pipe",
+      "code": "WS-MAIN-G",
+      "name": "ท่อประปาเมนชั้น G",
+      "dia": "Ø80 มม.",
+      "material": "PPR PN20 (จำลอง)",
+      "pressure": "3.5 บาร์ (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-CV-01",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.81,
+       0.765
+      ]
+     },
+     "properties": {
+      "kind": "valve",
+      "code": "CV-01",
+      "name": "วาล์วกันกลับ CV-01",
+      "type": "Check valve",
+      "dia": "Ø80 มม.",
+      "state": "ปกติ (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-GV-01",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.74,
+       0.73
+      ]
+     },
+     "properties": {
+      "kind": "valve",
+      "code": "GV-01",
+      "name": "ประตูน้ำ GV-01",
+      "type": "Gate valve",
+      "dia": "Ø80 มม.",
+      "state": "เปิด (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-WS-BR-01",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.12,
+        0.73
+       ],
+       [
+        0.12,
+        0.66
+       ],
+       [
+        0.16,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "pipe",
+      "code": "WS-BR-01",
+      "name": "ท่อแยกไปห้องน้ำโซนตะวันตก",
+      "dia": "Ø40 มม.",
+      "material": "PPR PN20 (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-BV-02",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.12,
+       0.7
+      ]
+     },
+     "properties": {
+      "kind": "valve",
+      "code": "BV-02",
+      "name": "บอลวาล์ว BV-02",
+      "type": "Ball valve",
+      "dia": "Ø40 มม.",
+      "state": "เปิด (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-WS-BR-02",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.4,
+        0.73
+       ],
+       [
+        0.4,
+        0.66
+       ],
+       [
+        0.44,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "pipe",
+      "code": "WS-BR-02",
+      "name": "ท่อแยกไปห้องน้ำโซนกลาง",
+      "dia": "Ø40 มม.",
+      "material": "PPR PN20 (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-BV-03",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.4,
+       0.7
+      ]
+     },
+     "properties": {
+      "kind": "valve",
+      "code": "BV-03",
+      "name": "บอลวาล์ว BV-03",
+      "type": "Ball valve",
+      "dia": "Ø40 มม.",
+      "state": "เปิด (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-WS-BR-03",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.62,
+        0.73
+       ],
+       [
+        0.62,
+        0.66
+       ],
+       [
+        0.66,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "pipe",
+      "code": "WS-BR-03",
+      "name": "ท่อแยกไปร้านอาหาร (จุดจ่ายน้ำ)",
+      "dia": "Ø40 มม.",
+      "material": "PPR PN20 (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-BV-04",
+     "geometry": {
+      "type": "Point",
+      "coordinates": [
+       0.62,
+       0.7
+      ]
+     },
+     "properties": {
+      "kind": "valve",
+      "code": "BV-04",
+      "name": "บอลวาล์ว BV-04",
+      "type": "Ball valve",
+      "dia": "Ø40 มม.",
+      "state": "เปิด (จำลอง)"
+     }
+    },
+    {
+     "type": "Feature",
+     "id": "PLB-RISER",
+     "geometry": {
+      "type": "LineString",
+      "coordinates": [
+       [
+        0.04,
+        0.73
+       ],
+       [
+        0.03,
+        0.66
+       ]
+      ]
+     },
+     "properties": {
+      "kind": "pipe",
+      "code": "WS-RS-01",
+      "name": "ท่อขึ้นถังเก็บน้ำชั้น 4 (Riser)",
+      "dia": "Ø65 มม.",
+      "material": "PPR PN20 (จำลอง)",
+      "to": "ถังเก็บน้ำ WL-002 ชั้น 4"
+     }
+    }
+   ]
+  }
+ ]
+}

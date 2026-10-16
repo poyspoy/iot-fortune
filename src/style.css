@@ -731,3 +731,41 @@ body.presenting .toasts { bottom: 92px; }
 .bstyle { display: inline-flex; align-items: center; gap: 6px; }
 .bstyle-sel { display: none; font-size: 0.85rem; padding: 4px 6px; border-radius: 8px; }
 @media (max-width: 760px) { .bstyle-seg { display: none; } .bstyle-sel { display: inline-block; } }
+
+/* ---------------- แบบวิศวกรรม (Engineering Drawing Mode · จำลอง) ---------------- */
+.eng-btn.active { background: #1d3a5c; border-color: #1d3a5c; color: #fff; }
+.eng-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 6; pointer-events: none;
+  background: #1d3a5c; color: #fff; font-weight: 800; font-size: 0.9rem; padding: 6px 14px; border-radius: 999px; border: 2px solid #ffd23f; box-shadow: 0 4px 14px rgba(0,0,0,0.35); white-space: nowrap; }
+.eng-panel { background: var(--card); border: 1px solid var(--line); border-left: 4px solid #3f7fd0; border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; flex: 0 0 auto; }
+.eng-head { display: flex; align-items: center; justify-content: space-between; }
+.eng-head strong { font-size: 0.98rem; }
+.eng-disclaimer { margin: 0; background: #fff4d6; color: #7a5a00; border: 1px solid #f0d58a; border-radius: 6px; padding: 3px 8px; font-size: 0.78rem; font-weight: 800; }
+.eng-note, .eng-hint { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.eng-view { display: flex; } .eng-view .btn { flex: 1; }
+.eng-layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.eng-layers li { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+.eng-layers li.off { opacity: 0.6; }
+.eng-layers .btn { justify-self: start; font-size: 0.76rem; padding: 2px 8px; }
+.eng-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.eng-toggle span { display: grid; } .eng-toggle small { color: var(--muted); font-size: 0.72rem; }
+.eng-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; flex: none; }
+.eng-info { border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 8px; padding: 8px; display: grid; gap: 6px; background: #fbfcf9; }
+.eng-info-head { display: flex; align-items: center; gap: 6px; } .eng-info-head strong { flex: 1; font-size: 0.9rem; }
+.eng-2d { position: absolute; inset: 0; z-index: 4; background: #0f1d2b; display: flex; flex-direction: column; justify-content: center; padding: 48px 10px 10px; overflow: auto; }
+.eng-svg { width: 100%; height: auto; display: block; }
+.eng-paper { fill: #12263a; }
+.eng-under { opacity: 0.22; }
+.eng-outline { fill: none; stroke: #8fb3d6; stroke-width: 2; }
+.eng-line { fill: none; stroke: var(--c); stroke-linecap: round; stroke-linejoin: round; }
+.eng-hit { fill: transparent; stroke: transparent; stroke-linecap: round; cursor: pointer; pointer-events: stroke; }
+circle.eng-hit { pointer-events: all; }
+.eng-sym { fill: #12263a; stroke: var(--c); } .eng-sym.fill { fill: var(--c); stroke: none; }
+.eng-bubble { fill: #12263a; stroke: var(--c); } .eng-bubble-t { fill: var(--c); text-anchor: middle; font-weight: 700; }
+.eng-f { cursor: pointer; outline: none; }
+.eng-f:hover .eng-line, .eng-f:focus-visible .eng-line { stroke-width: 6; }
+.eng-f.sel .eng-line { stroke: #fff; } .eng-f.sel .eng-sym { stroke: #fff; } .eng-f.sel .eng-sym.fill { fill: #fff; }
+.eng-2d-cap { margin: 8px 0 0; color: #cfe0f0; font-size: 0.8rem; text-align: center; }
+@media (max-width: 760px) { .eng-banner { font-size: 0.74rem; padding: 4px 10px; top: 6px; } .eng-2d { padding-top: 40px; } }
+.eng-2d-scroll { overflow-x: auto; overflow-y: hidden; }
+.eng-2d-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; margin-top: 8px; color: #cfe0f0; font-size: 0.8rem; }
+.eng-2d-bar .btn { background: #1d3a5c; color: #e6f0fa; border-color: #2f5680; } .eng-2d-bar .btn.active { background: #3f7fd0; }

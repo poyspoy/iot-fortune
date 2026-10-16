@@ -13,6 +13,10 @@ import { renderSettingsView } from './settingsView.js';
 import { Sound } from './sound.js';
 import { viewingFloorId, normalizeViewState } from '../domain/viewState.js';
 import { ElevatorPanel } from './elevatorPanel.js';
+import { EngPanel } from './engPanel.js';
+import { renderEngPlan } from './engPlan2d.js';
+import { loadEngineering, ENGINEERING_FLOORS } from '../app/engineeringSource.js';
+import { soloVisibility, ENG_DISCLAIMER } from '../domain/engineering.js';
 import { roomCard } from './roomCard.js';
 import { WaterPanel } from './waterPanel.js';
 import { Presenter } from './presenter.js';
@@ -671,6 +675,7 @@ export class App {
     this.#renderPointTable(true);
     this.trendSig = '';
     this.#renderTrends();
+    this.#mountEng();
   }
 
   /**
@@ -689,6 +694,84 @@ export class App {
     const prev = this.styleOverride.prev;
     this.styleOverride = null;
     this.setBuildingStyle(prev);
+  }
+
+  // ---------------------------------------------------------------- แบบวิศวกรรม (Engineering Drawing Mode)
+  /**
+   * เปิด/ปิดแบบวิศวกรรมจำลอง: แยกดูชั้น G · อาคารจางเหลือ 15% · ซ้อนเส้นโครงสร้าง/ไฟฟ้า/ประปา
+   * ลิฟต์และเซนเซอร์ทำงานต่อเนื่อง (ไม่รีเซ็ต) · ปิดแล้วคืนมุมมองและรูปแบบอาคารเดิม
+   */
+  async toggleEngineering(on = !this.eng?.on) {
+    if (on === !!this.eng?.on) return;
+    if (on) {
+      const floorId = ENGINEERING_FLOORS.includes(this.state.floorId) && this.state.isolated ? this.state.floorId : ENGINEERING_FLOORS[0];
+      this.eng = { on: true, loading: true, view: '3d', vis: {}, sel: null, data: null, floorId, prev: { isolated: this.state.isolated, floorId: this.state.floorId, viewMode: this.state.viewMode } };
+      if (this.state.viewMode !== '3d') this.changeView({ viewMode: '3d' });
+      this.isolateFloor(floorId);
+      this.setBuildingStyle('engineering', { temporary: true });
+      if (this.state.detailsOpen) this.setState({ detailsOpen: false });
+      const data = await loadEngineering(floorId);
+      if (!this.eng?.on) return;
+      if (!data) { this.#toast('ไม่พบข้อมูลแบบวิศวกรรมของชั้นนี้', 'warning'); this.toggleEngineering(false); return; }
+      Object.assign(this.eng, { loading: false, data, vis: Object.fromEntries(data.layers.map((l) => [l.id, true])) });
+      this.scene?.setLayerVisible('engineering', true);
+      this.scene?.setEngineering(data, this.eng.vis);
+    } else {
+      const prev = this.eng?.prev;
+      this.eng = null;
+      this.scene?.setEngineering(null);
+      this.restoreBuildingStyle();
+      if (prev) { if (prev.isolated) this.isolateFloor(prev.floorId); else this.showBuilding(); }
+    }
+    if (this.stageToolbar?.isConnected) this.#renderToolbar();
+    this.#mountEng();
+  }
+
+  setEngView(view) { if (!this.eng) return; this.eng.view = view; this.#mountEng(); }
+  setEngLayer(id, on) { if (!this.eng?.data) return; this.eng.vis = { ...this.eng.vis, [id]: on }; this.#applyEngVis(); }
+  soloEngLayer(id) { if (!this.eng?.data) return; this.eng.vis = soloVisibility(this.eng.data, id); this.#applyEngVis(); }
+  showAllEngLayers() { if (!this.eng?.data) return; this.eng.vis = Object.fromEntries(this.eng.data.layers.map((l) => [l.id, true])); this.#applyEngVis(); }
+  engPick(id) { if (!this.eng) return; this.eng.sel = id; this.scene?.engSelect(id); this.#mountEng(); }
+
+  #applyEngVis() {
+    const sel = this.eng.sel && this.eng.data.layers.find((l) => l.features.some((f) => f.id === this.eng.sel));
+    if (sel && this.eng.vis[sel.id] === false) { this.eng.sel = null; this.scene?.engSelect(null); }
+    this.scene?.setEngVisibility(this.eng.vis);
+    this.#mountEng();
+  }
+
+  /** วางแผงแบบวิศวกรรม (Sidebar) ป้ายเตือน และแปลน 2D ในพื้นที่โมเดล — เรียกซ้ำได้ (หลังวาดหน้าใหม่) */
+  #mountEng() {
+    const e = this.eng;
+    if (!e?.on || !this.viewport?.isConnected) {
+      this.engPanel?.el.remove(); this.engBanner?.remove(); this.eng2d?.remove(); this.stageBody?.classList.remove('eng-on');
+      return;
+    }
+    this.stageBody?.classList.add('eng-on');
+    this.engBanner ??= h('div.eng-banner', { 'data-testid': 'eng-banner', role: 'note' }, ENG_DISCLAIMER);
+    if (this.engBanner.parentElement !== this.viewport) this.viewport.appendChild(this.engBanner);
+    if (!e.data) return;
+    const floor = this.index.floors.get(e.floorId);
+    this.engPanel ??= new EngPanel({
+      onView: (v) => this.setEngView(v), onToggle: (id, on) => this.setEngLayer(id, on), onSolo: (id) => this.soloEngLayer(id),
+      onAll: () => this.showAllEngLayers(), onClose: () => this.toggleEngineering(false), onPick: (id) => this.engPick(id),
+    });
+    this.engPanel.update({ data: e.data, view: e.view, vis: e.vis, selectedId: e.sel, floorName: floor?.name ?? e.floorId, onFloor: this.state.isolated && this.state.floorId === e.floorId });
+    if (this.engPanel.el.parentElement !== this.sideEl) this.sideEl?.prepend(this.engPanel.el);
+    if (e.view === '2d') {
+      this.eng2d ??= h('div.eng-2d', { 'data-testid': 'eng-2d' });
+      const z = e.zoom ?? 1;
+      const svg = renderEngPlan({ floor, data: e.data, vis: e.vis, selectedId: e.sel, onPick: (id) => this.engPick(id) });
+      svg.style.width = `${z * 100}%`;
+      const prevScroll = this.eng2d.querySelector('.eng-2d-scroll')?.scrollLeft ?? 0;
+      const scroller = h('div.eng-2d-scroll', svg);
+      replaceChildren(this.eng2d, scroller,
+        h('div.eng-2d-bar', h('span', `แปลน 2D · ${floor?.name ?? ''} · ${ENG_DISCLAIMER}`),
+          h('div.seg', { role: 'group', 'aria-label': 'ขยายแปลน' }, [1, 2, 3].map((k) => h('button', { type: 'button', class: `btn small ${z === k ? 'active' : ''}`, 'data-testid': `eng-zoom-${k}`,
+            onclick: () => { e.zoom = k; this.#mountEng(); } }, `${k}×`)))));
+      requestAnimationFrame(() => { scroller.scrollLeft = prevScroll; });
+      if (this.eng2d.parentElement !== this.viewport) this.viewport.appendChild(this.eng2d);
+    } else this.eng2d?.remove();
   }
 
   /** ขยายโมเดล: ซ่อน Sidebar ชั่วคราว (โมเดลเต็มความกว้าง) — กดอีกครั้งเพื่อแสดงแผงข้าง */
@@ -742,6 +825,8 @@ export class App {
         }, `ขยาย ${z}×`))) : null,
         is3d ? h('div.seg', { role: 'group', 'aria-label': 'มุมกล้อง' },
           presets.filter((p) => p !== 'all' && p !== 'fit' && p !== 'floor').map((p) => h('button', { type: 'button', class: 'btn small ghost', 'data-focus-key': `preset-${p}`, onclick: () => this.scene.preset(p) }, PRESET[p]))) : null,
+        is3d ? h('button', { type: 'button', class: `btn small eng-btn ${this.eng?.on ? 'active' : ''}`, 'aria-pressed': String(!!this.eng?.on), 'data-testid': 'eng-toggle',
+          title: 'ซ้อนแบบวิศวกรรมจำลอง (โครงสร้าง ไฟฟ้า ประปา) บนชั้น G', onclick: () => this.toggleEngineering() }, '📐 แบบวิศวกรรม') : null,
         is3d ? h('div.bstyle', { role: 'group', 'aria-label': 'รูปแบบอาคาร' }, h('span.tb-label', 'รูปแบบอาคาร'),
           h('div.seg.bstyle-seg', [['solid', 'ทึบ'], ['transparent', 'โปร่งใส'], ['wire', 'โครงอาคาร']].map(([k, t]) => h('button', { type: 'button', class: `btn small ${st.buildingStyle === k ? 'active' : ''}`, 'aria-pressed': String(st.buildingStyle === k),
             'data-testid': `bstyle-${k}`, onclick: () => this.setBuildingStyle(k) }, t))),
@@ -771,6 +856,7 @@ export class App {
       this.floorBannerEl = h('div.floor-banner.outside', { 'aria-live': 'polite' });
       this.refNoteEl = h('p.ref-note', note);
       this.viewport.replaceChildren(this.sceneHost);
+      queueMicrotask(() => this.#mountEng());
       this.stageBody.before(this.floorBannerEl);
       this.stageBody.after(this.refNoteEl);
       if (!this.scene) {
@@ -783,6 +869,7 @@ export class App {
             onElevator: (status) => this.#onElevator(status),
             onRoom: (info) => this.#showRoom(info),
             onFloorPick: (id) => this.isolateFloor(id),
+            onEngPick: (id) => this.engPick(id),
           });
           this.scene.setConfig(this.config);
           this.scene.setFloor(st.floorId);

@@ -7,6 +7,7 @@ import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
 import { ElevatorSim, ELEVATOR_DEMO_CONFIG } from '../domain/elevatorSim.js';
 import { LayerManager } from './layers.js';
+import { EngineeringOverlay } from './engineering3d.js';
 import { ElevatorRig } from './elevator3d.js';
 import { prepareDetail } from './detailModel.js';
 import { pickRoom } from '../domain/rooms.js';
@@ -43,7 +44,7 @@ const COLORS = {
 };
 
 /** รูปแบบอาคาร: a = ความทึบของวัสดุอาคาร (คูณค่าเดิม), l = ความเข้มของเส้นโครง */
-const BUILDING_STYLES = { solid: { a: 1, l: 0 }, transparent: { a: 0.22, l: 0 }, wire: { a: 0, l: 1 } };
+const BUILDING_STYLES = { solid: { a: 1, l: 0 }, transparent: { a: 0.22, l: 0 }, wire: { a: 0, l: 1 }, engineering: { a: 0.15, l: 0 } }; // engineering = อาคารจางเหลือ 15% ขณะดูแบบวิศวกรรม
 
 export class MallScene {
   /**
@@ -57,6 +58,7 @@ export class MallScene {
     this.onElevator = opts.onElevator ?? (() => {});
     this.onRoom = opts.onRoom ?? (() => {});
     this.onFloorPick = opts.onFloorPick ?? (() => {});
+    this.onEngPick = opts.onEngPick ?? (() => {});
     this.roomSel = null; // { floorId, room, mesh }
     this.liftView = false; // มุมมองเปิดปล่อง: ซ่อนผนัง/กระจกแบบง่ายของห้าง ให้เห็นห้องลิฟต์ในปล่อง
     this.detailCache = new Map(); // src → Promise<THREE.Object3D> (โหลดครั้งเดียว ใช้ซ้ำ)
@@ -388,6 +390,7 @@ export class MallScene {
   renderNow() {
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(performance.now());
+    if (this.engFade) this.#engFadeFrame(performance.now());
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.#projectMarkers();
@@ -756,6 +759,11 @@ export class MallScene {
     const targets = [...this.markerObjs.values()].filter((o) => o.visible).map((o) => o.sphere);
     const hit = this.raycaster.intersectObjects(targets, false)[0];
     if (hit) { this.onSelect(hit.object.userData.pointId); return { point: hit.object.userData.pointId }; }
+    // แบบวิศวกรรม: คลิกเส้น/อุปกรณ์ → แสดงรายละเอียด
+    if (this.eng && this.sceneLayers.isVisible('engineering') && this.eng.group.parent?.visible !== false) {
+      const eh = this.raycaster.intersectObjects(this.eng.visiblePickables(), false)[0];
+      if (eh) { this.engSelect(eh.object.userData.engId); this.onEngPick(eh.object.userData.engId); return { eng: eh.object.userData.engId }; }
+    }
     // ป้ายชื่อชั้นในโมเดล (ชั้น G–5, ชั้น 11–32) กดได้ = แสดงเฉพาะชั้นนั้น เหมือนปุ่มเลือกชั้น
     const labels = [...this.floorGroups.values()].filter((g) => g.group.visible && g.label.visible).map((g) => g.label);
     const lh = this.raycaster.intersectObjects(labels, false)[0];
@@ -810,6 +818,52 @@ export class MallScene {
 
   setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.#placeMarkers(); return ok; }
   layerList() { return this.sceneLayers.list(); }
+
+  // ---------------------------------------------------------------- แบบวิศวกรรม (ซ้อนบนโมเดล)
+  /**
+   * แสดงแบบวิศวกรรมของชั้น (ข้อมูลจาก parseEngineering) ซ้อนบนโมเดล — null = ปิด
+   * ไม่แก้โมเดล/วัสดุเดิม: เป็นกลุ่มวัตถุใหม่ในกลุ่มชั้น (เลเยอร์ engineering) ค่อย ๆ ปรากฏ ~400 ms
+   */
+  setEngineering(data, visibility = {}) {
+    if (this.eng && this.eng.data === data) { this.setEngVisibility(visibility); return; }
+    if (this.eng) { this.sceneLayers.release(this.eng.group); this.eng.dispose(); this.eng = null; }
+    this.engFade = null;
+    if (!data) return;
+    const fg = this.floorGroups.get(data.floorId);
+    if (!fg) return;
+    this.eng = new EngineeringOverlay(data, fg.floor, fg.slabT, fg.floor.model.height ?? 0.8);
+    this.eng.group.userData.keepOpaque = true; // ไม่จางตามรูปแบบอาคาร
+    fg.group.add(this.eng.group);
+    this.sceneLayers.assign(this.eng.group, 'engineering');
+    this.setEngVisibility(visibility);
+    this.eng.setFade(0);
+    this.engFade = { start: performance.now(), dur: 400 };
+  }
+
+  setEngVisibility(vis) { this.eng?.setVisibility(vis); }
+  engSelect(id) { this.eng?.select(id); }
+  engProbe() {
+    if (!this.eng) return null;
+    const vis = {}; for (const [id, l] of this.eng.layers) vis[id] = l.group.visible;
+    let meshes = 0; this.eng.group.traverse((o) => { if (o.isMesh || o.isLine) meshes++; });
+    return { floorId: this.eng.data.floorId, vis, meshes, pickables: this.eng.visiblePickables().length, selected: this.eng.selected ? [...this.eng.byId].find(([, v]) => v === this.eng.selected)?.[0] : null, parentVisible: !!this.eng.group.parent?.visible };
+  }
+
+  /** ตำแหน่งบนจอของชิ้นแบบวิศวกรรม (ใช้ทดสอบการคลิก) */
+  engScreenPoint(id) {
+    const e = this.eng?.byId.get(id);
+    if (!e) return null;
+    const box = new THREE.Box3().setFromObject(e.group);
+    const v = box.getCenter(new THREE.Vector3()).project(this.camera);
+    const r = this.renderer.domElement.getBoundingClientRect();
+    return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+  }
+
+  #engFadeFrame(nowMs) {
+    const k = Math.min(1, (nowMs - this.engFade.start) / this.engFade.dur);
+    this.eng?.setFade(k);
+    if (k >= 1) this.engFade = null;
+  }
 
   // ---------------------------------------------------------------- รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร)
   /**
@@ -1234,6 +1288,7 @@ export class MallScene {
     if (moving) this.#placeMarkers();
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(nowMs);
+    if (this.engFade) this.#engFadeFrame(nowMs);
     // ป้ายในฉาก: ซ่อนเมื่อกล้องไกลมาก (ระดับซูม = ระยะมาตรฐาน 22 / ระยะจริง) ไม่ให้ป้ายบังโมเดล
     this.sceneLayers.updateZoom(22 / Math.max(1, this.camera.position.distanceTo(this.controls.target)));
     if (this.towerCenter && !this.isolatedId) {
