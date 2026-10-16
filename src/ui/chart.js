@@ -1,7 +1,10 @@
 import { h, s, fmtNum } from './dom.js';
 import { fmtClock, fmtDateTime, fmtShortDT } from '../domain/time.js';
 
-const VW = 640; const VH = 190;
+const DEF_W = 640; const DEF_H = 190;
+// ขนาดพื้นที่วาดของกราฟที่กำลังสร้าง — ค่าเริ่มต้น 640×190 (หน้าอื่นใช้เหมือนเดิม)
+// การ์ดแนวโน้มส่งขนาดจริงเป็นพิกเซล (size) ให้ตัวอักษร แกน และ Tooltip มีขนาดจริง ไม่ถูกย่อ/ขยายตามความกว้างจอ
+let VW = DEF_W; let VH = DEF_H;
 const M = { l: 50, r: 14, t: 14, b: 26 };
 
 function ticksTime(from, to) {
@@ -65,7 +68,12 @@ export function segments(samples, staleMs) {
   return segs;
 }
 
-export function renderMetricChart({ metric, samples, rules = [], from, to, title }) {
+export function renderMetricChart({ metric, samples, rules = [], from, to, title, size = null }) {
+  VW = Math.max(240, Math.round(size?.w ?? DEF_W)); VH = Math.max(120, Math.round(size?.h ?? DEF_H));
+  try { return buildChart({ metric, samples, rules, from, to, title }); } finally { VW = DEF_W; VH = DEF_H; }
+}
+
+function buildChart({ metric, samples, rules, from, to, title }) {
   const staleMs = metric.staleAfterSec * 1000;
   const inRange = samples.filter((x) => x.observedAt >= from && x.observedAt <= to);
   const fig = h('figure.chart');
@@ -83,14 +91,17 @@ export function renderMetricChart({ metric, samples, rules = [], from, to, title
   return fig;
 }
 
-function xScale(from, to) { return (t) => M.l + ((t - from) / (to - from || 1)) * (VW - M.l - M.r); }
+function xScale(from, to) { const w = VW; return (t) => M.l + ((t - from) / (to - from || 1)) * (w - M.l - M.r); } // คงความกว้างของกราฟนี้ (ใช้ตอนชี้เมาส์ภายหลัง)
 
 function timeAxis(g, from, to, x) {
   const { ticks, long } = ticksTime(from, to);
-  for (const t of ticks) {
+  // กราฟแคบ (มือถือ): แสดงป้ายเวลาเว้นช่องไม่ให้ทับกัน — เส้นกริดยังครบทุกเส้น ข้อมูลไม่เปลี่ยน
+  const gap = ticks.length > 1 ? Math.abs(x(ticks[1]) - x(ticks[0])) : Infinity;
+  const stride = Math.max(1, Math.ceil((long ? 70 : 38) / gap));
+  ticks.forEach((t, i) => {
     g.appendChild(s('line', { x1: x(t), x2: x(t), y1: M.t, y2: VH - M.b, class: 'grid' }));
-    g.appendChild(s('text', { x: x(t), y: VH - 8, 'text-anchor': 'middle', class: 'axis', text: long ? fmtShortDT(t) : fmtClock(t).slice(0, 5) }));
-  }
+    if (i % stride === 0) g.appendChild(s('text', { x: x(t), y: VH - 8, 'text-anchor': 'middle', class: 'axis', text: long ? fmtShortDT(t) : fmtClock(t).slice(0, 5) }));
+  });
 }
 
 function gapRects(g, samples, staleMs, from, to, x) {
@@ -107,7 +118,8 @@ function numericSvg(metric, data, th, from, to, staleMs) {
   const pad = (hi - lo || Math.abs(hi) || 1) * 0.1;
   lo -= pad; hi += pad;
   const x = xScale(from, to);
-  const y = (v) => VH - M.b - ((v - lo) / (hi - lo)) * (VH - M.t - M.b);
+  const vh = VH;
+  const y = (v) => vh - M.b - ((v - lo) / (hi - lo)) * (vh - M.t - M.b);
   const svg = s('svg', { viewBox: `0 0 ${VW} ${VH}`, class: 'chart-svg', role: 'img', tabindex: 0,
     'aria-label': `กราฟ ${metric.name} หน่วย ${metric.unit} จำนวน ${data.length} ค่า ใช้ลูกศรซ้าย/ขวาเพื่ออ่านค่า` });
   const g = s('g');
@@ -164,8 +176,9 @@ function discreteSvg(metric, data, rules, from, to, staleMs) {
 
 /** เคอร์เซอร์อ่านค่า: เมาส์ชี้ หรือแป้นลูกศรเมื่อ focus ที่กราฟ */
 function attachCursor(svg, data, x, yOf, text, height = VH) {
+  const vw = VW; const vh = VH; // ขนาดของกราฟนี้ (คงค่าไว้ใช้ตอนชี้เมาส์ภายหลัง)
   const cur = s('g', { class: 'cursor', visibility: 'hidden' });
-  const line = s('line', { y1: M.t, y2: height - (height === VH ? M.b : 14) });
+  const line = s('line', { y1: M.t, y2: height - (height === vh ? M.b : 14) });
   const dot = s('circle', { r: 4 });
   const bg = s('rect', { rx: 4, height: 34 });
   const t1 = s('text', { class: 'tip' });
@@ -182,7 +195,7 @@ function attachCursor(svg, data, x, yOf, text, height = VH) {
     t1.textContent = text(d);
     t2.textContent = fmtDateTime(d.observedAt);
     const w = 168;
-    const bx = px + w + 12 > VW ? px - w - 8 : px + 8;
+    const bx = px + w + 12 > vw ? px - w - 8 : px + 8;
     bg.setAttribute('x', bx); bg.setAttribute('y', 6); bg.setAttribute('width', w);
     t1.setAttribute('x', bx + 8); t1.setAttribute('y', 20);
     t2.setAttribute('x', bx + 8); t2.setAttribute('y', 34);
@@ -190,7 +203,7 @@ function attachCursor(svg, data, x, yOf, text, height = VH) {
   };
   const near = (clientX) => {
     const r = svg.getBoundingClientRect();
-    const vx = ((clientX - r.left) / r.width) * VW;
+    const vx = ((clientX - r.left) / r.width) * vw;
     let best = 0; let bd = Infinity;
     for (let i = 0; i < data.length; i++) { const dd = Math.abs(x(data[i].observedAt) - vx); if (dd < bd) { bd = dd; best = i; } }
     return best;

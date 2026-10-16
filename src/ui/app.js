@@ -1130,6 +1130,18 @@ export class App {
   }
 
   // ------------------------------------------------------------------ แนวโน้ม
+  /**
+   * ขนาดพื้นที่วาดกราฟแนวโน้ม (พิกเซลจริง): กว้างเต็มการ์ด · สูง 256 px บน Desktop / 160 px บนมือถือ
+   * ไม่เปลี่ยนข้อมูลหรือช่วงเวลา — เป็นเพียงขนาดการแสดงผล
+   */
+  #trendChartSize(n) {
+    const el = this.trendsEl;
+    const small = matchMedia('(max-width: 760px)').matches;
+    const inner = (el?.clientWidth || 640) - (small ? 22 : 26) - 14; // padding การ์ด + กรอบ/padding ของกราฟ
+    const cols = n > 1 && inner > 900 ? 2 : 1; // หลายหน่วยวัด: วางสองคอลัมน์บนจอกว้าง (เหมือนเดิม)
+    return { w: Math.floor((inner - (cols - 1) * 10) / cols), h: small ? 160 : 256 };
+  }
+
   async #renderTrends() {
     const el = this.trendsEl;
     if (!el?.isConnected || !this.engine) return;
@@ -1143,6 +1155,12 @@ export class App {
     const structural = `${p?.id}|${this.state.trendRange}|${this.ctl.mode}|${this.config.rules.length}`;
     if (this.trendStruct === structural && Date.now() - (this.trendAt ?? 0) < 5000) return;
     if (el.querySelector('details.chart-table[open]') && this.trendStruct === structural && Date.now() - (this.trendAt ?? 0) < 30000) return;
+    if (!this.trendRO && typeof ResizeObserver === 'function') {
+      let lastW = 0; let tmr = 0;
+      this.trendRO = new ResizeObserver(() => { const w = this.trendsEl?.clientWidth ?? 0; if (Math.abs(w - lastW) < 8) return; lastW = w;
+        clearTimeout(tmr); tmr = setTimeout(() => { this.trendSig = ''; this.trendAt = 0; this.#renderTrends(); }, 250); });
+    }
+    if (this.trendRO && this.trendObserved !== el) { this.trendRO.disconnect(); this.trendRO.observe(el); this.trendObserved = el; }
     this.trendStruct = structural;
     this.trendAt = Date.now();
     this.trendSig = sig;
@@ -1156,7 +1174,7 @@ export class App {
     const engine = this.engine;
     const charts = await Promise.all(p.metrics.map(async (m) => {
       const data = await this.ctl.repo.getSeries(this.ctl.mode, p.id, m.id, from, now);
-      return renderMetricChart({ metric: m, samples: data, rules: this.config.rules.filter((r) => r.pointId === p.id && r.metricId === m.id), from, to: now });
+      return renderMetricChart({ metric: m, samples: data, rules: this.config.rules.filter((r) => r.pointId === p.id && r.metricId === m.id), from, to: now, size: this.#trendChartSize(p.metrics.length) });
     }));
     if (engine !== this.engine || this.trendSig !== sig) return;
     replaceChildren(el, head,

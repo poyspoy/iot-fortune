@@ -731,3 +731,25 @@ body.presenting .toasts { bottom: 92px; }
 .bstyle { display: inline-flex; align-items: center; gap: 6px; }
 .bstyle-sel { display: none; font-size: 0.85rem; padding: 4px 6px; border-radius: 8px; }
 @media (max-width: 760px) { .bstyle-seg { display: none; } .bstyle-sel { display: inline-block; } }
+
+/* การ์ดแนวโน้ม (ภาพรวม): กระชับ — กราฟกว้างเต็มการ์ด สูง ~256 px (Desktop) / ~160 px (มือถือ) */
+.trends { padding: 10px 12px; }
+.trends .card-head { margin-bottom: 2px; gap: 4px 10px; flex-wrap: nowrap; }
+.trends .card-head h2 { font-size: 1rem; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trends .card-head .seg { flex: none; flex-wrap: nowrap; }
+.trends .card-head .seg .btn { padding: 2px 8px; font-size: 0.78rem; min-height: 26px; white-space: nowrap; }
+.trends > p.muted.small { margin: 0 0 4px; font-size: 0.74rem; line-height: 1.35; }
+.trends .chart-grid { gap: 8px; }
+.trends .chart { padding: 4px 6px; }
+.trends .chart-title { font-size: 0.82rem; }
+.trends .chart-svg { height: auto; }
+.trends .chart-table summary { margin-top: 2px; font-size: 0.78rem; }
+@media (max-width: 760px) {
+  .trends { padding: 8px 10px; }
+  /* มือถือ: หัวข้อเต็มบรรทัด (ไม่ตัดข้อความ) ปุ่มช่วงเวลาอยู่บรรทัดเดียวด้านล่าง */
+  .trends .card-head { flex-wrap: wrap; }
+  .trends .card-head h2 { font-size: 0.9rem; white-space: normal; overflow: visible; flex-basis: 100%; }
+  .trends .card-head .seg .btn { padding: 2px 8px; font-size: 0.74rem; min-height: 24px; }
+  .trends > p.muted.small { font-size: 0.7rem; line-height: 1.3; }
+  .trends .chart-title { font-size: 0.78rem; }
+}
