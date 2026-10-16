@@ -51,6 +51,7 @@ export class MallScene {
     this.onDetail = opts.onDetail ?? (() => {});
     this.onElevator = opts.onElevator ?? (() => {});
     this.onRoom = opts.onRoom ?? (() => {});
+    this.onFloorPick = opts.onFloorPick ?? (() => {});
     this.roomSel = null; // { floorId, room, mesh }
     this.liftView = false; // มุมมองเปิดปล่อง: ซ่อนผนัง/กระจกแบบง่ายของห้าง ให้เห็นห้องลิฟต์ในปล่อง
     this.detailCache = new Map(); // src → Promise<THREE.Object3D> (โหลดครั้งเดียว ใช้ซ้ำ)
@@ -669,6 +670,20 @@ export class MallScene {
     return this.#handleClick(new THREE.Vector2((px / r.width) * 2 - 1, -(py / r.height) * 2 + 1));
   }
 
+  /** ทดสอบ: ตำแหน่งบนจอของป้ายชื่อชั้น */
+  labelScreenPos(floorId) {
+    const fg = this.floorGroups.get(floorId);
+    if (!fg?.label.visible) return null;
+    const c = fg.label.center; const sc = fg.label.scale;
+    const w = fg.label.getWorldPosition(new THREE.Vector3());
+    // กลางป้าย (center ของ sprite อาจไม่ใช่กึ่งกลาง)
+    const camRight = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
+    w.add(camRight.multiplyScalar((0.5 - c.x) * sc.x));
+    const v = w.project(this.camera);
+    const r = this.renderer.domElement.getBoundingClientRect();
+    return { x: (v.x * 0.5 + 0.5) * r.width, y: (-v.y * 0.5 + 0.5) * r.height };
+  }
+
   /** ทดสอบ: ตำแหน่งบนจอของจุดกลางห้อง (พิกเซลในพื้นที่แสดงผล) */
   roomScreenPos(floorId, roomId) {
     const fg = this.floorGroups.get(floorId);
@@ -687,6 +702,10 @@ export class MallScene {
     const targets = [...this.markerObjs.values()].filter((o) => o.visible).map((o) => o.sphere);
     const hit = this.raycaster.intersectObjects(targets, false)[0];
     if (hit) { this.onSelect(hit.object.userData.pointId); return { point: hit.object.userData.pointId }; }
+    // ป้ายชื่อชั้นในโมเดล (ชั้น G–5, ชั้น 11–32) กดได้ = แสดงเฉพาะชั้นนั้น เหมือนปุ่มเลือกชั้น
+    const labels = [...this.floorGroups.values()].filter((g) => g.group.visible && g.label.visible).map((g) => g.label);
+    const lh = this.raycaster.intersectObjects(labels, false)[0];
+    if (lh) { const id = [...this.floorGroups.values()].find((g) => g.label === lh.object)?.floor.id; if (id) { this.onFloorPick(id); return { floor: id }; } }
     const r = this.#roomAtNdc(ndc);
     if (r) { this.selectRoom(r.floorId, r.room.id); this.onRoom({ floorId: r.floorId, room: r.room, meta: this.floorGroups.get(r.floorId).roomsMeta }); return { room: r.room.id, floorId: r.floorId }; }
     this.selectRoom(null); this.onRoom(null);
@@ -919,6 +938,7 @@ export class MallScene {
   }
 
   preset(name, { instant = false } = {}) {
+    this.autoFit = name === 'fit' || name === 'all'; // มุมมาตรฐานปรับตามขนาดจอ; มุมอื่นหรือผู้ใช้หมุนเองไม่ปรับ
     const floors = this.config.building.floors;
     const sel = floors.find((f) => f.id === this.floorId) ?? floors[0];
     const fg = this.floorGroups.get(sel.id);
@@ -1010,7 +1030,7 @@ export class MallScene {
     const prevAspect = this.camera.aspect;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    if (this.isolatedId && this.autoFit && w > 10 && h > 10 && Math.abs(prevAspect - this.camera.aspect) > 1e-3) this.preset('fit', { instant: !this.tween });
+    if (this.autoFit && w > 10 && h > 10 && Math.abs(prevAspect - this.camera.aspect) > 1e-3) this.preset(this.isolatedId ? 'fit' : 'all', { instant: !this.tween }); // ขนาดพื้นที่เปลี่ยน → จัดกล้องใหม่จนกว่าผู้ใช้จะหมุน/ซูมเอง
   }
 
   // ---------------------------------------------------------------- ลูปวาด

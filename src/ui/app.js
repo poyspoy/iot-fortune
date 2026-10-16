@@ -607,6 +607,7 @@ export class App {
             onDetail: (id) => { if (id === this.state.floorId || !this.state.isolated) this.#renderFloorBanner(); this.#renderLoading(); },
             onElevator: (status) => this.#onElevator(status),
             onRoom: (info) => this.#showRoom(info),
+            onFloorPick: (id) => this.isolateFloor(id),
           });
           this.scene.setConfig(this.config);
           this.scene.setFloor(st.floorId);
