@@ -43,6 +43,7 @@ export class App {
       filters: { search: '', floor: '', area: '', system: '', severity: '', quality: '', attention: false, ...(ui.filters ?? {}) },
       detailsOpen: false, // เปิดเว็บ: แผงรายละเอียดจุดพับไว้ก่อน ให้โมเดลเด่นที่สุด (กดหมุด/จุดจึงขยาย)
       buildingStyle: ['solid', 'transparent', 'wire'].includes(ui.buildingStyle) ? ui.buildingStyle : 'solid', // รูปแบบอาคาร
+      mobility: ['off', 'low', 'medium', 'high'].includes(ui.mobility) ? ui.mobility : 'medium', // คนและยานพาหนะจำลอง
       sceneOpen: ui.sceneOpen ?? true, // เว็บไซต์ 3 มิติ: เปิดโมเดลทุกขนาดจอ
       trendRange: ui.trendRange ?? '1h',
       planZoom: 1,
@@ -92,7 +93,7 @@ export class App {
   setState(patch, { render = true } = {}) {
     Object.assign(this.state, patch);
     const st = this.state;
-    this.ctl.saveUi({ view: st.view, selectedId: st.selectedId, floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, sceneMode: st.sceneMode, layers: st.layers, filters: st.filters, detailsOpen: st.detailsOpen, sceneOpen: st.sceneOpen, buildingStyle: st.buildingStyle, trendRange: st.trendRange });
+    this.ctl.saveUi({ view: st.view, selectedId: st.selectedId, floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, sceneMode: st.sceneMode, layers: st.layers, filters: st.filters, detailsOpen: st.detailsOpen, sceneOpen: st.sceneOpen, buildingStyle: st.buildingStyle, mobility: st.mobility, trendRange: st.trendRange });
     if (render) this.render();
   }
 
@@ -691,6 +692,21 @@ export class App {
     this.setBuildingStyle(prev);
   }
 
+  /** ระดับคนและยานพาหนะจำลอง: ปิด / ต่ำ / ปานกลาง / สูง (มือถือลดจำนวนอัตโนมัติ) — สถานะการจำลองไม่ถูกรีเซ็ต */
+  setMobility(level) {
+    this.setState({ mobility: level }, { render: false });
+    this.scene?.setMobilityLevel(level);
+    this.#mountMobilityChip();
+  }
+
+  #mountMobilityChip() {
+    if (!this.viewport?.isConnected) return;
+    const on = this.state.mobility !== 'off' && this.scene?.mobilityProbe();
+    this.mobChip ??= h('div.mob-chip', { 'data-testid': 'mobility-chip', role: 'note' }, 'คนจำลอง · ไม่ใช่ข้อมูลติดตามบุคคลจริง');
+    if (on && this.mobChip.parentElement !== this.viewport) this.viewport.appendChild(this.mobChip);
+    if (!on) this.mobChip.remove();
+  }
+
   /** ขยายโมเดล: ซ่อน Sidebar ชั่วคราว (โมเดลเต็มความกว้าง) — กดอีกครั้งเพื่อแสดงแผงข้าง */
   toggleSide(on = !this.sideHidden) {
     this.sideHidden = !!on;
@@ -742,6 +758,8 @@ export class App {
         }, `ขยาย ${z}×`))) : null,
         is3d ? h('div.seg', { role: 'group', 'aria-label': 'มุมกล้อง' },
           presets.filter((p) => p !== 'all' && p !== 'fit' && p !== 'floor').map((p) => h('button', { type: 'button', class: 'btn small ghost', 'data-focus-key': `preset-${p}`, onclick: () => this.scene.preset(p) }, PRESET[p]))) : null,
+        is3d ? h('label.inline.mob-sel', h('span.tb-label', 'คนและยานพาหนะ'), select([['off', 'ปิด'], ['low', 'ต่ำ'], ['medium', 'ปานกลาง'], ['high', 'สูง']], st.mobility, { 'data-testid': 'mobility-level', 'aria-label': 'คนและยานพาหนะจำลอง',
+          onchange: (e) => this.setMobility(e.target.value) })) : null,
         is3d ? h('div.bstyle', { role: 'group', 'aria-label': 'รูปแบบอาคาร' }, h('span.tb-label', 'รูปแบบอาคาร'),
           h('div.seg.bstyle-seg', [['solid', 'ทึบ'], ['transparent', 'โปร่งใส'], ['wire', 'โครงอาคาร']].map(([k, t]) => h('button', { type: 'button', class: `btn small ${st.buildingStyle === k ? 'active' : ''}`, 'aria-pressed': String(st.buildingStyle === k),
             'data-testid': `bstyle-${k}`, onclick: () => this.setBuildingStyle(k) }, t))),
@@ -771,6 +789,7 @@ export class App {
       this.floorBannerEl = h('div.floor-banner.outside', { 'aria-live': 'polite' });
       this.refNoteEl = h('p.ref-note', note);
       this.viewport.replaceChildren(this.sceneHost);
+      queueMicrotask(() => this.#mountMobilityChip());
       this.stageBody.before(this.floorBannerEl);
       this.stageBody.after(this.refNoteEl);
       if (!this.scene) {
@@ -789,6 +808,8 @@ export class App {
           this.scene.setMode(st.sceneMode);
           this.scene.setLayers(st.layers);
           this.scene.setBuildingStyle(st.buildingStyle, { instant: true });
+          // คนและยานพาหนะจำลอง (ชั้น G + ลานหน้าอาคาร) — ข้อมูลเส้นทางแยกไฟล์ public/mobility/
+          fetch('mobility/floor-G.json').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && this.scene) { this.scene.setMobility(d, this.state.mobility); this.#mountMobilityChip(); } }).catch(() => {});
           if (st.isolated) this.scene.isolate(st.floorId, { instant: true });
           else this.scene.preset('all', { instant: true });
           this.#renderToolbar();

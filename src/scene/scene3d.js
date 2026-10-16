@@ -7,6 +7,12 @@ import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
 import { ElevatorSim, ELEVATOR_DEMO_CONFIG } from '../domain/elevatorSim.js';
 import { LayerManager } from './layers.js';
+import { MobilitySim } from '../domain/mobilitySim.js';
+import { MobilityView } from './mobility3d.js';
+import { VehicleSim } from '../domain/vehicleSim.js';
+import { VehicleRig } from './vehicle3d.js';
+import { PersonAgent } from '../domain/personSim.js';
+import { PersonRig, LOOKS } from './person3d.js';
 import { ElevatorRig } from './elevator3d.js';
 import { prepareDetail } from './detailModel.js';
 import { pickRoom } from '../domain/rooms.js';
@@ -386,6 +392,7 @@ export class MallScene {
 
   /** วาดหนึ่งเฟรมทันที (ใช้กับนาฬิกาที่ตั้งเอง) — อ่านภาพจาก canvas ได้ในงานเดียวกันหลังเรียก */
   renderNow() {
+    if (this.#advanceFloors(performance.now())) this.#placeMarkers();
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(performance.now());
     this.controls.update();
@@ -811,6 +818,102 @@ export class MallScene {
   setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.#placeMarkers(); return ok; }
   layerList() { return this.sceneLayers.list(); }
 
+  // ---------------------------------------------------------------- คนและยานพาหนะจำลอง (ชั้น G + ลานหน้าอาคาร)
+  /**
+   * เริ่มตัวจำลองคน/รถจากข้อมูลเส้นทาง — ภาพเป็น InstancedMesh ในเลเยอร์ "people"
+   * ดูชั้นอื่น: ซ่อนคนชั้น G (กลุ่มชั้นถูกซ่อน) และรถด้านนอก แต่ตัวจำลองเดินต่อ ไม่ลบสถานะ
+   */
+  setMobility(data, level = 'medium') {
+    if (this.mob) { this.mob.car?.rig.dispose(); this.mob.person?.rig.dispose(); this.mob.view.dispose(); this.sceneLayers.release(this.mob.view.indoor); this.sceneLayers.release(this.mob.view.outdoorGroup); this.mob = null; }
+    if (!data) return;
+    const fg = this.floorGroups.get(data.floorId);
+    if (!fg) return;
+    const small = typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
+    const toLocal = ([x, y]) => { const p = planTo3D(fg.floor, { x, y }, 0); return [p.x, p.z]; };
+    const sim = new MobilitySim(data, toLocal, { level, small, seed: (Date.now() & 0xffff) || 11, cars: false }); // รถใช้โมเดล 3 มิติแยก (VehicleSim)
+    for (let i = 0; i < 8; i++) sim.step(5); // เริ่มแบบกระจายตัว (ไม่เริ่มจากศูนย์ทุกตัวพร้อมกัน)
+    const view = new MobilityView(sim, { floorGroup: fg.group, floorY: fg.slabT, outdoor: this.root, small, vehicles: data.vehicles });
+    view.indoor.userData.keepOpaque = true; // ไม่จางตามรูปแบบอาคาร
+    this.sceneLayers.assign(view.indoor, 'people');
+    this.sceneLayers.assign(view.outdoorGroup, 'people');
+    this.mob = { sim, view, data };
+    this.#applyMobilityVis();
+    // รถยนต์ 3 มิติ 1 คัน (รอบแรก): ทางเข้า → ช่องจอด → ถอยออก → ทางออก
+    const token = (this.mobToken = (this.mobToken ?? 0) + 1);
+    new GLTFLoader().load('models/vehicles/sedan.glb', (g) => {
+      if (token !== this.mobToken || !this.mob || this.disposed) return;
+      const rig = new VehicleRig(g.scene);
+      const vsim = new VehicleSim(data.vehicles, { wheelbase: rig.wheelbase, wheelRadius: rig.wheelRadius }, { stallId: 'P05' });
+      view.outdoorGroup.add(rig.root);
+      this.sceneLayers.assign(rig.root, 'people');
+      this.mob.car = { sim: vsim, rig };
+      rig.update(vsim.pose(), vsim.brake, vsim.visible);
+    });
+    // คน 3 มิติแบบ Rigged 1 คน (รอบแรก): ทางเข้ากลาง → หน้าร้าน (หยุดดู) → หน้าลิฟต์ L1 (ยืนรอ) → บันไดเลื่อน → ออกทางเข้าเดิม
+    new GLTFLoader().load('models/people/person.glb', (g) => {
+      if (token !== this.mobToken || !this.mob || this.disposed) return;
+      const poi = new Map(data.people.poi.map((p) => [p.id, p]));
+      const pathOf = (a, b) => { const k = data.people.paths[`${a}>${b}`]; return k ?? [...data.people.paths[`${b}>${a}`]].reverse(); };
+      const plan = ['ent-center', 'shop-2', 'lift-L1', 'esc-2', 'ent-center'];
+      const legs = [];
+      for (let i = 0; i < plan.length - 1; i++) {
+        const to = poi.get(plan[i + 1]);
+        legs.push({ points: pathOf(plan[i], plan[i + 1]).map(toLocal), stop: { kind: to.kind, face: to.faceTo ? toLocal(to.faceTo) : null } });
+      }
+      const agent = new PersonAgent(legs);
+      const rig = new PersonRig(g, LOOKS[1]);
+      this.personGltf = g;
+      view.indoor.add(rig.root);
+      this.sceneLayers.assign(rig.root, 'people');
+      view.people.visible = false; if (view.peopleBlob) view.peopleBlob.visible = false; // ซ่อนรูปทรงแทนคนแบบเดิม
+      this.mob.person = { agent, rig };
+      rig.update(agent.pose(), 0);
+    });
+  }
+
+  setMobilityLevel(level) { if (!this.mob) return; this.mob.sim.setLevel(level); this.mob.view.update(); this.#applyMobilityVis(); }
+  stepMobility(ms) { if (this.mob) this.#stepMob(ms / 1000); }
+  #stepMob(dt) {
+    const m = this.mob;
+    m.sim.step(dt); m.view.update();
+    if (m.car) { m.car.sim.step(dt); m.car.rig.update(m.car.sim.pose(), m.car.sim.brake, m.car.sim.visible); }
+    if (m.person) { m.person.agent.step(dt); m.person.rig.update(m.person.agent.pose(), dt); }
+  }
+  carProbe() { return this.mob?.car ? { ...this.mob.car.sim.status(), wheels: Object.keys(this.mob.car.rig.wheels), visible: this.mob.car.rig.root.visible } : null; }
+  /** ตัวอย่างรูปลักษณ์ (ภาพนิ่งสำหรับตรวจ): วางคนยืน 4 แบบเรียงกันใกล้ตำแหน่งที่กำหนด — ปิดได้ */
+  showLookLineup(on, at = null) {
+    for (const r of this.lineup ?? []) r.dispose();
+    this.lineup = [];
+    if (!on || !this.personGltf || !this.mob) return;
+    const p = at ?? { x: this.mob.person.agent.x, z: this.mob.person.agent.z };
+    LOOKS.slice(0, 4).forEach((look, i) => {
+      const r = new PersonRig(this.personGltf, look);
+      r.update({ x: p.x + (i - 1.5) * 0.09, z: p.z, h: 0.25, v: 0, state: 'idle', turnRate: 0 }, 0.5 + i * 0.37);
+      this.mob.view.indoor.add(r.root); this.sceneLayers.assign(r.root, 'people'); this.lineup.push(r);
+    });
+  }
+
+  personProbe() {
+    const p = this.mob?.person; if (!p) return null;
+    const a = p.agent; const w = p.rig.w;
+    return { state: a.state, leg: a.leg, v: +a.v.toFixed(4), h: +a.heading.toFixed(3), x: +a.x.toFixed(3), z: +a.z.toFixed(3), walkScale: +p.rig.actions.Walk.getEffectiveTimeScale().toFixed(2),
+      w: { Idle: +w.Idle.toFixed(2), Walk: +w.Walk.toFixed(2), Turn: +w.Turn.toFixed(2) }, log: a.log.slice(-6) };
+  }
+  carWorld() { const r = this.mob?.car?.rig.root; if (!r) return null; const v = new THREE.Vector3(); r.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z, h: r.rotation.y }; }
+  mobilityProbe() {
+    if (!this.mob) return null;
+    const v = this.mob.view;
+    let shown = 0; const m = new THREE.Matrix4(); const sc = new THREE.Vector3();
+    for (let i = 0; i < v.people.count; i++) { v.people.getMatrixAt(i, m); sc.setFromMatrixScale(m); if (sc.x > 0) shown++; }
+    return { ...this.mob.sim.stats(), drawnPeople: shown, indoorVisible: v.indoor.visible && !!v.indoor.parent?.visible, outdoorVisible: v.outdoorGroup.visible, small: v.small };
+  }
+
+  #applyMobilityVis() {
+    if (!this.mob) return;
+    const on = this.mob.sim.level !== 'off';
+    this.mob.view.setVisible({ indoor: on, outdoor: on && !this.isolatedId });
+  }
+
   // ---------------------------------------------------------------- รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร)
   /**
    * เปลี่ยนรูปแบบการแสดงตัวอาคารโดยใช้โมเดลเดิม — วัสดุต้นฉบับเก็บไว้ที่ userData.styleOrig และสลับกลับได้เหมือนเดิมทุกประการ
@@ -1017,6 +1120,7 @@ export class MallScene {
       fg.isoLabel.visible = false; // ไม่แสดงป้ายชื่อชั้นลอยข้างโมเดล (ชื่อชั้นอยู่ที่ "กำลังดู" และปุ่มชั้น)
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
+    this.#applyMobilityVis();
     this.#applyLabels();
     if (this.lift) { if (!iso) this.lift.rig.group.visible = true; this.#stepLift(); } // ชั้นเดียว: แสดงรถลิฟต์เมื่อมาถึงชั้นนั้น
     if (this.roomSel && (iso ? this.roomSel.floorId !== iso : !this.floorGroups.get(this.roomSel.floorId)?.group.visible)) { this.selectRoom(null); this.onRoom(null); }
@@ -1207,14 +1311,9 @@ export class MallScene {
     if (this.autoFit && w > 10 && h > 10 && Math.abs(prevAspect - this.camera.aspect) > 1e-3) this.preset(this.isolatedId ? 'fit' : 'all', { instant: !this.tween }); // ขนาดพื้นที่เปลี่ยน → จัดกล้องใหม่จนกว่าผู้ใช้จะหมุน/ซูมเอง
   }
 
-  // ---------------------------------------------------------------- ลูปวาด
-  #frame() {
-    if (this.disposed) return;
-    this.raf = requestAnimationFrame(this.loopFn);
-    const dt = Math.min(this.clock.getDelta(), 0.1);
-    if (this.paused || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
+  /** เลื่อน/จางชั้นตามเวลา (ใช้ร่วมกันระหว่างลูปวาดและการวาดทีละเฟรมตอนบันทึกคลิป) */
+  #advanceFloors(nowMs) {
     let moving = false;
-    const nowMs = performance.now();
     for (const fg of this.floorGroups.values()) {
       if (!fg.anim) continue;
       const k = Math.min(1, (nowMs - fg.anim.start) / fg.anim.dur);
@@ -1231,9 +1330,21 @@ export class MallScene {
       for (const [m, o] of fd.mats) m.opacity = o.opacity * a;
       if (k >= 1) this.#endFade(fg);
     }
+    return moving;
+  }
+
+  // ---------------------------------------------------------------- ลูปวาด
+  #frame() {
+    if (this.disposed) return;
+    this.raf = requestAnimationFrame(this.loopFn);
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    if (this.paused || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
+    const nowMs = performance.now();
+    const moving = this.#advanceFloors(nowMs);
     if (moving) this.#placeMarkers();
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(nowMs);
+    if (this.mob && this.mob.sim.level !== 'off') this.#stepMob(dt); // คน/รถจำลอง: ลูปเดียวทุกตัว ตามเวลาที่ผ่านไป
     // ป้ายในฉาก: ซ่อนเมื่อกล้องไกลมาก (ระดับซูม = ระยะมาตรฐาน 22 / ระยะจริง) ไม่ให้ป้ายบังโมเดล
     this.sceneLayers.updateZoom(22 / Math.max(1, this.camera.position.distanceTo(this.controls.target)));
     if (this.towerCenter && !this.isolatedId) {
