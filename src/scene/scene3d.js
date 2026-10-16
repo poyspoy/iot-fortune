@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { timberTexture, slateFloorTexture, textSprite } from './textures.js';
+import { textSprite } from './textures.js';
 import { planTo3D, isolatedOffset, assembledOffset, markerPosition, detailTransform } from '../domain/geometry.js';
 import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1, createElevator, requestFloor, stepElevator, elevatorStatus } from '../domain/elevator.js';
@@ -84,9 +84,7 @@ export class MallScene {
     container.appendChild(this.overlay);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#1f282c');
-    this.scene.fog = new THREE.Fog('#1f282c', 40, 75);
-    this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+        this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
     this.camera.position.set(4, 15, 22);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -113,69 +111,52 @@ export class MallScene {
 
   // ---------------------------------------------------------------- ห้อง/โต๊ะ
   #buildRoom() {
+    // ฉากแบบ Digital Twin: พื้นหลังเรียบโทนเข้ม ฐานอาคารสีเทาเข้มขอบเขียว Nexza แสงนุ่ม เงาเบา
     const s = this.scene;
-    s.add(new THREE.HemisphereLight('#f1efe4', '#39444a', 0.95));
-    const key = new THREE.DirectionalLight('#fff3df', 1.5);
-    key.position.set(-10, 22, 12);
+    s.background = new THREE.Color('#141b1f');
+    s.fog = new THREE.Fog('#141b1f', 45, 90);
+    s.add(new THREE.HemisphereLight('#eef4f2', '#2a3438', 1.05));
+    const key = new THREE.DirectionalLight('#ffffff', 1.25);
+    key.position.set(-12, 24, 14);
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.mapSize.set(2048, 2048);
     const sc = key.shadow.camera;
-    sc.left = -18; sc.right = 18; sc.top = 12; sc.bottom = -12; sc.near = 1; sc.far = 60;
-    key.shadow.bias = -0.0008;
+    sc.left = -18; sc.right = 18; sc.top = 12; sc.bottom = -12; sc.near = 1; sc.far = 70;
+    key.shadow.bias = -0.0006;
+    key.shadow.radius = 4;
     s.add(key);
-    const fill = new THREE.DirectionalLight('#cfe6e3', 0.35);
-    fill.position.set(12, 8, -10);
+    const fill = new THREE.DirectionalLight('#cfe9e5', 0.45);
+    fill.position.set(14, 10, -12);
     s.add(fill);
 
-    const floorTex = slateFloorTexture();
-    floorTex.repeat.set(16, 16);
-    const roomFloor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.95 }));
-    roomFloor.rotation.x = -Math.PI / 2;
-    roomFloor.position.y = -4.2;
-    roomFloor.receiveShadow = true;
-    s.add(roomFloor);
-    const wallMat = new THREE.MeshStandardMaterial({ color: '#34424a', roughness: 1 });
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(120, 30), wallMat);
-    back.position.set(0, 10, -26);
-    s.add(back);
+    // พื้นฉาก (ไกล) + เส้นกริดจาง ๆ
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: '#182125', roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.62;
+    ground.receiveShadow = true;
+    s.add(ground);
+    const grid = new THREE.GridHelper(120, 60, '#24343a', '#1e2a2f');
+    grid.position.y = -0.6;
+    s.add(grid);
 
-    // โต๊ะไม้
-    const wood = timberTexture();
-    wood.repeat.set(3, 1.6);
-    const woodMat = new THREE.MeshStandardMaterial({ map: wood, roughness: 0.62, metalness: 0.02 });
-    const top = new THREE.Mesh(new THREE.BoxGeometry(30, 0.5, 15), woodMat);
-    top.position.set(0, -0.25, -1.5);
+    // ฐานอาคาร: แท่นสีเทาเข้ม ผิวบนเรียบ ขอบเรืองแสงสีเขียว Nexza
+    const W = 25.2; const D = 13.8; const cx = -0.3; const cz = -2.1;
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(W, 0.6, D), new THREE.MeshStandardMaterial({ color: '#2b3539', roughness: 0.85, metalness: 0.05 }));
+    plinth.position.set(cx, -0.3, cz);
+    plinth.receiveShadow = true;
+    s.add(plinth);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(W - 0.4, BASE_Y, D - 0.4), new THREE.MeshStandardMaterial({ color: '#3a464b', roughness: 0.9 }));
+    top.position.set(cx, BASE_Y / 2, cz);
     top.receiveShadow = true;
     s.add(top);
-    const legMat = new THREE.MeshStandardMaterial({ color: '#5b3d22', roughness: 0.8 });
-    for (const [x, z] of [[-14, 5.4], [14, 5.4], [-14, -8.4], [14, -8.4]]) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.7, 0.6), legMat);
-      leg.position.set(x, -2.35, z);
-      s.add(leg);
-    }
-    // ฐานโมเดลพร้อมกรอบ
-    const baseMat = new THREE.MeshStandardMaterial({ color: '#e7ece4', roughness: 0.9 });
-    const frameMat = new THREE.MeshStandardMaterial({ color: '#3b2a1c', roughness: 0.7 });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(24.4, BASE_Y, 13.2), baseMat);
-    base.position.set(-0.3, BASE_Y / 2, -2.1);
-    base.receiveShadow = true;
-    s.add(base);
-    const fw = 0.22;
-    for (const [w, d, x, z] of [[24.8, fw, -0.3, 4.5], [24.8, fw, -0.3, -8.7], [fw, 13.4, -12.6, -2.1], [fw, 13.4, 12.0, -2.1]]) {
-      const f = new THREE.Mesh(new THREE.BoxGeometry(w, BASE_Y + 0.08, d), frameMat);
-      f.position.set(x, (BASE_Y + 0.08) / 2, z);
-      f.castShadow = true;
-      s.add(f);
-    }
-    // อุปกรณ์ห้องทดลองแบบแผนภาพ (ประกอบฉากเท่านั้น)
-    const instMat = new THREE.MeshStandardMaterial({ color: '#56656c', roughness: 0.6, metalness: 0.3 });
-    const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 1.2), instMat);
-    box.position.set(12.6, 0.55, -7.2);
-    box.castShadow = true;
-    s.add(box);
-    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.6), new THREE.MeshBasicMaterial({ color: '#2fa39a' }));
-    screen.position.set(12.6, 0.62, -6.59);
-    s.add(screen);
+    const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(W - 0.4, BASE_Y, D - 0.4)), new THREE.LineBasicMaterial({ color: '#2fa39a', transparent: true, opacity: 0.85 }));
+    edge.position.copy(top.position);
+    s.add(edge);
+    const baseGrid = new THREE.GridHelper(24, 24, '#4a585d', '#435055');
+    baseGrid.scale.set((W - 0.4) / 24, 1, (D - 0.4) / 24);
+    baseGrid.position.set(cx, BASE_Y + 0.002, cz);
+    baseGrid.material.transparent = true; baseGrid.material.opacity = 0.35;
+    s.add(baseGrid);
   }
 
   // ---------------------------------------------------------------- อาคาร
@@ -766,30 +747,30 @@ export class MallScene {
    */
   isolate(id, { instant = false } = {}) {
     if (!this.floorGroups.has(id)) return;
-    const prev = this.isolatedId;
     this.isolatedId = id;
     this.floorId = id;
-    // ชั้นที่เพิ่งถูกแสดง เริ่มจากตำแหน่งในอาคารเพื่อให้เห็นการเคลื่อนย้ายมากลาง
-    if (prev !== id) {
-      const fg = this.floorGroups.get(id);
-      if (!fg.group.visible || prev) { const a = assembledOffset(fg.floor, this.mode); fg.group.position.set(a.x, a.y, a.z); }
-    }
+    // เปลี่ยนฉากเป็นโมเดลของชั้นนั้นชั้นเดียวทันที (ไม่ดึงชั้นออกจากอาคาร): วางกลางฉากที่ระดับพื้นปกติ ซ่อนอาคารรวมและชั้นอื่นทั้งหมด
     this.#ensureDetail(id);
+    const fg = this.floorGroups.get(id);
+    const t = isolatedOffset(fg.floor, ISO_CENTER);
+    fg.group.position.set(t.x, t.y, t.z); // วางกลางฉากทันที (ไม่เลื่อนออกจากอาคาร)
+    if (fg.fade) this.#endFade(fg, true);
+    fg.group.visible = false; // ค่อย ๆ ปรากฏ ขณะชั้นเดิมค่อย ๆ จาง
     this.#applyMode(instant);
     this.autoFit = true; // ปรับกล้องให้พอดีชั้นอีกครั้งเมื่อขนาดพื้นที่แสดงผลเปลี่ยน จนกว่าผู้ใช้จะหมุน/ซูมเอง
     this.preset('fit', { instant });
   }
 
-  /** กลับไปดูทั้งอาคาร: ประกอบชั้นกลับตำแหน่งเดิม */
+  /** กลับไปดูทั้งอาคาร: แสดงอาคารรวมครบทุกชั้นที่ตำแหน่งเดิมทันที */
   assemble({ instant = false } = {}) {
     if (!this.isolatedId) return;
-    const id = this.isolatedId;
     this.isolatedId = null;
     if (this.roomSel) { this.selectRoom(null); this.onRoom(null); } // กลับทั้งอาคาร: ล้างห้อง/ไฮไลต์ที่เลือกจากชั้นก่อนหน้า
     for (const fg of this.floorGroups.values()) {
-      if (fg.floor.id === id) continue;
       const a = assembledOffset(fg.floor, this.mode);
-      fg.group.position.set(a.x, a.y, a.z); // ชั้นอื่นปรากฏที่ตำแหน่งเดิมทันที ชั้นที่แยกเลื่อนกลับ
+      fg.group.position.set(a.x, a.y, a.z); // ทุกชั้นอยู่ตำแหน่งในอาคารทันที แล้วค่อย ๆ ปรากฏพร้อมกัน
+      if (fg.fade) this.#endFade(fg, true);
+      fg.group.visible = false;
     }
     this.#applyMode(instant);
     this.preset('all', { instant });
@@ -883,7 +864,7 @@ export class MallScene {
     for (const fg of this.floorGroups.values()) {
       const f = fg.floor;
       // ทั้งอาคาร: ทุกชั้นเด่นเท่ากัน ไม่มีชั้นที่ถูกเลือก (ไฮไลต์เฉพาะตอนแยกดูชั้น ด้วยป้ายใหญ่ของชั้นนั้น)
-      fg.label.visible = !iso && fg.group.visible && (f.kind !== 'tower' || this.towerNear);
+      fg.label.visible = false; // ไม่แสดงป้ายชื่อชั้นลอยข้างอาคาร (เลือกชั้นด้วยปุ่มด้านบน)
       fg.hlLabel.visible = false;
     }
   }
@@ -993,8 +974,8 @@ export class MallScene {
         default: {
           // ทั้งอาคาร: ให้เห็นทั้งห้าง ทาวเวอร์ และป้ายชื่อชั้นด้านซ้ายพอดีกรอบ (ปรับตามสัดส่วนพื้นที่แสดงผล)
           target = new THREE.Vector3(-1.2, 2.2, -1.8);
-          const dir = new THREE.Vector3(4.5, 12.8, 21.8).normalize();
-          const dist = Math.max(25.4, this.#fitDistance(26, 12, 36));
+          const dir = new THREE.Vector3(5, 15.5, 19).normalize(); // มุมเฉียงด้านบน ~38°
+          const dist = this.#fitDistance(25, 13, 40);
           pos = target.clone().add(dir.multiplyScalar(dist));
         }
       }

@@ -355,14 +355,14 @@ tr.archived td { color: var(--muted); }
   .kpi-n { font-size: 1.3rem; }
   .overview, .overview.details-closed {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "below" "stage" "details";
+    grid-template-areas: "stage" "details" "below";
   }
   .points-layout, .points-layout.details-closed {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "table" "details";
   }
-  .below { order: 1; }
-  .stage { order: 2; }
+  .stage { order: 0; } /* โทรศัพท์: โมเดล 3 มิติอยู่บนสุด */
+  .below { order: 2; }
   .scene-toggle > summary { display: block; }
   .viewport { height: max(380px, 64vh); }
   .plan-wrap.wide .plan-svg { min-width: 640px; }
@@ -463,8 +463,7 @@ tr.archived td { color: var(--muted); }
 
 /* การ์ดข้อมูลห้อง/พื้นที่ */
 .room-card {
-  position: absolute; left: 8px; bottom: 40px; z-index: 5; width: min(340px, calc(100% - 16px)); max-height: calc(100% - 100px); overflow: auto;
-  background: rgba(251,252,249,0.98); border: 1px solid var(--line); border-left: 5px solid #e0a800; border-radius: 10px;
+  background: #fbfcf9; border: 1px solid var(--line); border-left: 5px solid #e0a800; border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.3); padding: 10px 12px; display: grid; gap: 8px; font-size: 0.85rem;
 }
 .rc-head { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
@@ -482,9 +481,7 @@ tr.archived td { color: var(--muted); }
 .rc-notes summary { cursor: pointer; color: var(--muted); }
 .rc-notes ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.78rem; color: #3b4a50; }
 .rc-foot { margin: 0; font-size: 0.72rem; color: var(--muted); }
-@media (max-width: 760px) {
-  .room-card { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh; border-radius: 14px 14px 0 0; border-left: 0; border-top: 5px solid #e0a800; z-index: 40; }
-}
+
 
 /* หน้าจอ Loading ของโมเดล 3 มิติ */
 .model-loading {
@@ -513,3 +510,37 @@ body.has-vp-full { overflow: hidden; }
 .stage-body:not(.has-lift) .lift-side { display: none; }
 .lift-side .lift-panel { box-shadow: none; }
 @media (max-width: 1180px) { .stage-body.has-lift { grid-template-columns: minmax(0, 1fr); } } /* จอแคบ/แท็บเล็ต/โทรศัพท์: แผงลิฟต์อยู่ใต้โมเดล */
+
+/* ---------------- Visual polish (Digital Twin) ---------------- */
+.toolbar { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 10px; }
+.tb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.tb-main .tb-floor select { max-width: 260px; }
+.tb-sub { padding-top: 6px; border-top: 1px solid var(--line); font-size: 0.9rem; }
+.tb-sub .btn.small { padding: 4px 10px; }
+.layers-dd { position: relative; }
+.layers-dd summary { cursor: pointer; list-style: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 0.85rem; font-weight: 600; background: #fff; }
+.layers-dd summary::-webkit-details-marker { display: none; }
+.layers-dd summary::after { content: ' ▾'; color: var(--muted); }
+.layers-dd .dd-panel { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18); padding: 8px 10px; display: grid; gap: 6px; min-width: 210px; }
+.floor-banner.outside { position: static; max-width: none; margin: 0 0 8px; box-shadow: none; }
+.viewport { background: #141b1f; border: 1px solid #263136; }
+.ref-note { margin: 6px 0 0; font-size: 0.74rem; color: var(--muted); }
+.lift-side { display: grid; gap: 10px; align-content: start; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; }
+.lg-title { font-weight: 700; color: #1d2a2e; }
+.lg-item { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #2b3a3f; }
+.lg-item i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,0.15); }
+.lg-normal i { background: #2f8f83; }
+.lg-warning i { background: #d99a1e; }
+.lg-critical i { background: #c8423a; }
+.lg-unknown i { background: #7d8a91; }
+.lg-help { flex-basis: 100%; color: var(--muted); font-size: 0.78rem; }
+@media (max-width: 760px) {
+  .tb-row { gap: 6px; }
+  .tb-main .floor-chips { order: 3; width: 100%; display: flex; }
+  .tb-main .floor-chips .btn { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; }
+  .tb-main .tb-floor { flex: 1 1 160px; }
+  .tb-main .tb-floor select { max-width: none; width: 100%; }
+  .tb-sub { font-size: 0.82rem; }
+}
