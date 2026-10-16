@@ -21,12 +21,22 @@ const PODIUM_W = 22;
 const PODIUM_D = +(PODIUM_W * 950 / 5510).toFixed(3); // อัตราส่วนตามภาพผังที่ครอป
 const FLOOR_H = 0.8;
 
-function mallFloor(id, name, order, plan, footprint, note) {
+// โมเดลรายชั้นที่ผู้ใช้สร้างใน Blender (Fortune_3D_Output/color_symbol_v2/models) แปลงเป็น GLB
+// crop = กรอบที่ครอปจากภาพผังต้นฉบับ (พิกเซล) — ภาพเดียวกับที่ใช้สร้างโมเดล (ตรวจแล้วตรงกันทุกพิกเซล)
+const MALL_SRC = { w: 5966, h: 2009 };
+export const DETAIL_MODEL_NOTE = 'โมเดลรายละเอียดจากไฟล์ Blender ของผู้ใช้ (color_symbol_v2) สี/ป้าย/สัญลักษณ์ตามต้นฉบับ ไม่ได้แก้ไข';
+function detail(id, kind, crop) {
+  return { src: `models/floors/floor-${id}.glb`, frame: kind, crop, source: kind === 'office' ? { w: 1523, h: 1076 } : MALL_SRC };
+}
+
+function mallFloor(id, name, order, plan, footprint, note, crop = [250, 380, 5760, 1330]) {
+  const depth = +(PODIUM_W * (crop[3] - crop[1]) / (crop[2] - crop[0])).toFixed(4); // คงสัดส่วนภาพผัง
   return {
     id, name, order, kind: 'mall',
     plan: { src: `plans/floor-${id}.webp`, width: plan[0], height: plan[1], note },
     footprint,
-    model: { cx: 0, cz: 0, width: PODIUM_W, depth: PODIUM_D, elevation: order * FLOOR_H, height: FLOOR_H },
+    model: { cx: 0, cz: 0, width: PODIUM_W, depth, elevation: order * FLOOR_H, height: FLOOR_H },
+    detail: detail(id, 'mall', crop),
   };
 }
 
@@ -37,12 +47,13 @@ export function createDefaultConfig() {
     mallFloor('2', 'ชั้น 2', 2, [2400, 414], PODIUM_G3, 'ผังพื้นที่เช่าชั้น 2'),
     mallFloor('3', 'ชั้น 3', 3, [2400, 414], PODIUM_G3, 'ผังพื้นที่เช่าชั้น 3'),
     mallFloor('4', 'ชั้น 4', 4, [2400, 506], PODIUM_4,
-      'ผังชั้น 4 วาดคนละสเกลกับชั้น G–3 ในแบบ 3D จึงยืดให้เข้ากรอบเดียวกันโดยประมาณ'),
+      'ผังชั้น 4 วาดคนละสเกลกับชั้น G–3 ความลึกในแบบ 3D ตามสัดส่วนภาพผัง ตำแหน่งระหว่างชั้นยังไม่ยืนยัน', [250, 440, 4900, 1420]),
     {
       id: '5', name: 'ชั้น 5 (ลานจอด)', order: 5, kind: 'parking',
       plan: { src: 'plans/floor-5.webp', width: 731, height: 701, note: 'ผังย่อลานจอดชั้น 5 ไม่ตามสเกล ตำแหน่งในแนวราบยังไม่ยืนยัน' },
       footprint: circle(0.5, 0.5, 0.42, 28),
-      model: { cx: 6.4, cz: 0.15, width: 2.2, depth: 2.1, elevation: 5 * FLOOR_H, height: FLOOR_H },
+      model: { cx: 6.4, cz: 0.15, width: 2.2, depth: +(2.2 * 701 / 731).toFixed(4), elevation: 5 * FLOOR_H, height: FLOOR_H },
+      detail: detail('5', 'mall', [5071, 582, 5802, 1283]),
     },
     ...towerFloors(),
   ];
@@ -150,7 +161,8 @@ export function createDefaultConfig() {
       name: 'ฟอร์จูนทาวน์',
       referenceStatus: 'plans-supplied',
       referenceNote: 'รูปทรงอาคารลากจากผังพื้นที่เช่าที่ได้รับโดยประมาณ ไม่ใช่แบบก่อสร้าง ตำแหน่งจุด IoT ทั้งหมดเป็นตัวอย่าง รอยืนยันตำแหน่งจริง',
-      towerNote: 'ทาวเวอร์สำนักงานชั้น 11–31 ใช้ผังอ้างอิงร่วม ตำแหน่งทาวเวอร์บนโต๊ะยังไม่ยืนยัน ชั้น 6–10 ไม่มีผัง',
+      modelSrc: 'models/fortune.glb', // สร้างด้วย Blender: scripts/blender/build_model.py
+      towerNote: 'ทาวเวอร์สำนักงานชั้น 11–32 ใช้ผังอ้างอิงร่วม (ผังมาตรฐาน 11–31) ตำแหน่งทาวเวอร์บนโต๊ะยังไม่ยืนยัน ชั้น 6–10 ไม่มีผัง',
       floors, areas,
     },
     points, rules,
@@ -160,7 +172,7 @@ export function createDefaultConfig() {
 // ทาวเวอร์สำนักงาน: แยกชั้น 11–31 รายชั้น ทุกชั้นใช้ "ผังอ้างอิงร่วม" (ผังมาตรฐานชั้น 11–31 ภาพเดียวกัน)
 // แต่จุดตรวจวัด/ข้อมูลเซนเซอร์แยกตามชั้น ไม่คัดลอกจุดตัวอย่างไปทุกชั้น
 export const TOWER_FIRST = 11;
-export const TOWER_LAST = 31;
+export const TOWER_LAST = 32; // สำนักงานชั้น 11–32 (ยืนยันโดยผู้ใช้ 14 ต.ค. 2569)
 export const TOWER_FLOOR_H = 0.27;
 const TOWER_BASE = 0.6; // ฐานจาง ๆ แทนชั้นด้านล่างที่ไม่มีผัง
 const TOWER_W = 5.2;
@@ -171,15 +183,43 @@ export const SHARED_OFFICE_PLAN = {
   note: 'ผังอ้างอิงร่วม: ใช้ผังมาตรฐานสำนักงานชั้น 11–31 ภาพเดียวกันทุกชั้น — จุดตรวจวัดและข้อมูลเซนเซอร์แยกตามชั้น',
 };
 
+/** รูปทรงทาวเวอร์ลากจากผังสำนักงาน (มุมโค้ง ร่องด้านหน้า และส่วนแกนกลางด้านหลัง) พิกัดปกติของภาพผัง */
+export function towerOutline() {
+  const L = 0.004, R = 0.993, T = 0.032, B = 0.982, rx = 0.0625, ry = 0.153;
+  const arc = (cx, cy, a0, a1) => {
+    const out = [];
+    for (let i = 1; i < 6; i++) {
+      const a = a0 + ((a1 - a0) * i) / 6;
+      out.push([+(cx + Math.cos(a) * rx).toFixed(4), +(cy + Math.sin(a) * ry).toFixed(4)]);
+    }
+    return out;
+  };
+  const P = Math.PI;
+  return [
+    [L + rx, T], [0.309, T], [0.309, 0.086], [0.423, 0.086], [0.423, 0.027], [0.570, 0.027], [0.570, 0.086], [0.684, 0.086], [0.684, T],
+    [R - rx, T], ...arc(R - rx, T + ry, -P / 2, 0), [R, T + ry],
+    [R, B - ry], ...arc(R - rx, B - ry, 0, P / 2), [R - rx, B],
+    [0.872, B], [0.842, 0.9], [0.812, B], [0.252, B], [0.222, 0.9], [0.192, B],
+    [L + rx, B], ...arc(L + rx, B - ry, P / 2, P), [L, B - ry],
+    [L, T + ry], ...arc(L + rx, T + ry, P, 1.5 * P),
+  ];
+}
+
 export function towerFloors() {
   const out = [];
   for (let n = TOWER_FIRST; n <= TOWER_LAST; n++) {
     out.push({
       id: String(n), name: `ชั้น ${n} (สำนักงาน)`, order: n, kind: 'tower',
-      plan: { ...SHARED_OFFICE_PLAN },
-      footprint: [[0.004, 0.03], [0.996, 0.03], [0.996, 0.97], [0.004, 0.97]],
+      plan: n <= 31 ? { ...SHARED_OFFICE_PLAN } : {
+        ...SHARED_OFFICE_PLAN,
+        sharedLabel: 'ผังอ้างอิงร่วม (ใช้ผังชั้น 11–31)',
+        note: 'ยังไม่ได้รับผังชั้น 32 — ใช้ผังมาตรฐานชั้น 11–31 เป็นผังอ้างอิงชั่วคราว จุดตรวจวัดของชั้นนี้แยกจากชั้นอื่น',
+      },
+      footprint: towerOutline(),
       // ตำแหน่งทาวเวอร์บนโต๊ะจัดวางแยกจากโพเดียม (ตำแหน่งจริงยังไม่ยืนยัน)
       model: { cx: -5.5, cz: -4.4, width: TOWER_W, depth: TOWER_D, elevation: +(TOWER_BASE + (n - TOWER_FIRST) * TOWER_FLOOR_H).toFixed(3), height: TOWER_FLOOR_H },
+      // ชั้น 11–31 มีโมเดลของผู้ใช้รายชั้น ชั้น 32 ยังไม่มี (ใช้โมเดลแบบง่ายของแอป)
+      ...(n <= 31 ? { detail: detail(String(n), 'office', [95, 180, 1455, 735]) } : {}),
     });
   }
   return out;

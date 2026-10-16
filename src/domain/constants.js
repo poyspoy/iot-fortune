@@ -1,6 +1,6 @@
 // ค่าคงที่ของโดเมน — ไม่มีการพึ่ง DOM หรือ WebGL
 
-export const SCHEMA_VERSION = 2; // v2: แยกสำนักงานเป็นชั้น 11–31 รายชั้น
+export const SCHEMA_VERSION = 4; // v2: แยกสำนักงานรายชั้น · v3: สำนักงาน 11–32 · v4: โมเดลรายชั้นจาก Blender ของผู้ใช้
 export const TELEMETRY_SCHEMA_VERSION = 1;
 
 export const SOURCES = /** @type {const} */ (['demo', 'api']);

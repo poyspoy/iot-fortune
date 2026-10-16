@@ -1,0 +1,434 @@
+{
+ "11": {
+  "file": "floor-11.glb",
+  "source_blend": "Fortune_11_v2.blend",
+  "objects": 255,
+  "bytes": 542804,
+  "geometry_hash": "3d81a7c24d31af57",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "12": {
+  "file": "floor-12.glb",
+  "source_blend": "Fortune_12_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "26e06e4900236314",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "13": {
+  "file": "floor-13.glb",
+  "source_blend": "Fortune_13_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "31d1c796876b2460",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "14": {
+  "file": "floor-14.glb",
+  "source_blend": "Fortune_14_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "86cd4b0cfaca2f24",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "15": {
+  "file": "floor-15.glb",
+  "source_blend": "Fortune_15_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "363ba91fcb03749c",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "16": {
+  "file": "floor-16.glb",
+  "source_blend": "Fortune_16_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "4a3aeacaa8c6b422",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "17": {
+  "file": "floor-17.glb",
+  "source_blend": "Fortune_17_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "71ab82941d6de2b2",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "18": {
+  "file": "floor-18.glb",
+  "source_blend": "Fortune_18_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "58b50a28aeb8d2ec",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "19": {
+  "file": "floor-19.glb",
+  "source_blend": "Fortune_19_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "bbac48580f0d7d9e",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "1": {
+  "file": "floor-1.glb",
+  "source_blend": "Fortune_1_v2.blend",
+  "objects": 360,
+  "bytes": 1956736,
+  "geometry_hash": "6347d5ad31a63c35",
+  "bbox": [
+   -90.6,
+   91.7,
+   -11.55,
+   20.45,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-1.jpg"
+ },
+ "20": {
+  "file": "floor-20.glb",
+  "source_blend": "Fortune_20_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "c78d53e5c7a79c18",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "21": {
+  "file": "floor-21.glb",
+  "source_blend": "Fortune_21_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "b7c7c088d0bea1db",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "22": {
+  "file": "floor-22.glb",
+  "source_blend": "Fortune_22_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "12247110c91824b0",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "23": {
+  "file": "floor-23.glb",
+  "source_blend": "Fortune_23_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "410a08d941dbb3c6",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "24": {
+  "file": "floor-24.glb",
+  "source_blend": "Fortune_24_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "9d4cbb54648a0ea1",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "25": {
+  "file": "floor-25.glb",
+  "source_blend": "Fortune_25_v2.blend",
+  "objects": 255,
+  "bytes": 544336,
+  "geometry_hash": "0a99a2654c7ae83d",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "26": {
+  "file": "floor-26.glb",
+  "source_blend": "Fortune_26_v2.blend",
+  "objects": 255,
+  "bytes": 544388,
+  "geometry_hash": "9472c6006a50d6c4",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "27": {
+  "file": "floor-27.glb",
+  "source_blend": "Fortune_27_v2.blend",
+  "objects": 255,
+  "bytes": 544396,
+  "geometry_hash": "9ff5be272933b68e",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "28": {
+  "file": "floor-28.glb",
+  "source_blend": "Fortune_28_v2.blend",
+  "objects": 255,
+  "bytes": 544396,
+  "geometry_hash": "430025c437f8a4b4",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "29": {
+  "file": "floor-29.glb",
+  "source_blend": "Fortune_29_v2.blend",
+  "objects": 255,
+  "bytes": 544436,
+  "geometry_hash": "3d1172ccdca783c7",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "2": {
+  "file": "floor-2.glb",
+  "source_blend": "Fortune_2_v2.blend",
+  "objects": 571,
+  "bytes": 2451972,
+  "geometry_hash": "f12798609030cf74",
+  "bbox": [
+   -90.6,
+   92.4,
+   -6.55,
+   22.35,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-2.jpg"
+ },
+ "30": {
+  "file": "floor-30.glb",
+  "source_blend": "Fortune_30_v2.blend",
+  "objects": 255,
+  "bytes": 544448,
+  "geometry_hash": "ac8e1214052d0427",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "31": {
+  "file": "floor-31.glb",
+  "source_blend": "Fortune_31_v2.blend",
+  "objects": 255,
+  "bytes": 544448,
+  "geometry_hash": "2b78341e07729dbb",
+  "bbox": [
+   -33.25,
+   33.4,
+   -12.8,
+   12.9,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-plan 11-31 Office Zone.jpg"
+ },
+ "3": {
+  "file": "floor-3.glb",
+  "source_blend": "Fortune_3_v2.blend",
+  "objects": 915,
+  "bytes": 3504048,
+  "geometry_hash": "8a716283b88d97ca",
+  "bbox": [
+   -90.6,
+   93.4,
+   -11.55,
+   20.55,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-3.jpg"
+ },
+ "4": {
+  "file": "floor-4.glb",
+  "source_blend": "Fortune_4_v2.blend",
+  "objects": 782,
+  "bytes": 2681348,
+  "geometry_hash": "9232fed8e531748b",
+  "bbox": [
+   -90.9,
+   63.4,
+   -13.25,
+   17.95,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-5.jpg"
+ },
+ "5": {
+  "file": "floor-5.glb",
+  "source_blend": "Fortune_5_v2.blend",
+  "objects": 49,
+  "bytes": 604976,
+  "geometry_hash": "655636c6e1d5644c",
+  "bbox": [
+   72.2,
+   92.5,
+   -7.35,
+   12.25,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-5.jpg"
+ },
+ "G": {
+  "file": "floor-G.glb",
+  "source_blend": "Fortune_G_v2.blend",
+  "objects": 583,
+  "bytes": 1959884,
+  "geometry_hash": "0aabfb2bbf693634",
+  "bbox": [
+   -90.7,
+   92.2,
+   -10.25,
+   19.95,
+   -0.35,
+   3.12
+  ],
+  "source": "floor-g.jpg"
+ }
+}

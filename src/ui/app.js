@@ -12,6 +12,8 @@ import { renderHistoryView } from './historyView.js';
 import { renderSettingsView } from './settingsView.js';
 import { Sound } from './sound.js';
 import { viewingFloorId, normalizeViewState } from '../domain/viewState.js';
+import { ElevatorPanel } from './elevatorPanel.js';
+import { ELEVATOR_L1 } from '../domain/elevator.js';
 
 const VIEWS = [
   ['overview', 'ภาพรวม'],
@@ -114,6 +116,7 @@ export class App {
         if (st.isolated) { if (this.scene.isolated !== st.floorId) this.scene.isolate(st.floorId); }
         else { this.scene.setFloor(st.floorId); if (this.scene.isolated) this.scene.assemble(); }
         this.scene.setSelected(st.selectedId);
+        this.liftPanel?.setIsolated(!!st.isolated);
       }
       this.detailsEl?.parentElement?.classList.toggle('details-closed', !st.detailsOpen);
       if (floorChanged) {
@@ -176,6 +179,41 @@ export class App {
     requestAnimationFrame(() => this.viewport?.scrollIntoView?.({ block: 'nearest' }));
   }
 
+  // ---------------------------------------------------------------- ลิฟต์จำลอง
+  /** แผงลิฟต์ (สร้างครั้งเดียว ใช้ซ้ำทุกครั้งที่วาดพื้นที่ 3D ใหม่) */
+  #mountLiftPanel() {
+    const floors = this.scene?.elevatorFloors() ?? [];
+    if (!floors.length) { this.liftPanel?.el.remove(); return; }
+    if (!this.liftPanel || this.liftPanel.opts.floors.join() !== floors.join()) {
+      this.liftPanel = new ElevatorPanel({
+        floors, name: ELEVATOR_L1.name, note: ELEVATOR_L1.note,
+        onRequest: (id) => {
+          const r = this.scene?.requestElevator(id);
+          if (r === 'same-floor') this.liftPanel.flash(`ลิฟต์อยู่ที่ชั้น ${id} แล้ว`);
+        },
+        onCamera: () => this.scene?.preset('lift'),
+        onLiftView: (on) => { this.scene?.setLiftView(on); if (on) this.scene?.preset('lift'); },
+        onOpenFloor: (id) => this.isolateFloor(id),
+        onShowBuilding: () => { this.showBuilding(); requestAnimationFrame(() => this.scene?.preset('lift')); },
+      });
+      this.scene.setLiftView(false);
+      const s0 = this.scene.elevatorStatus();
+      if (s0) this.liftPanel.update(s0);
+    }
+    this.liftPanel.setIsolated(!!this.state.isolated);
+    this.viewport.appendChild(this.liftPanel.el);
+  }
+
+  /** สถานะลิฟต์จากฉาก (ตำแหน่งเดียวกับที่วาดห้องลิฟต์) → แผง และไฮไลต์ชั้นที่ลิฟต์ถึง */
+  #onElevator(status) {
+    this.liftPanel?.update(status);
+    const st = this.state;
+    if (status.phase === 'open' && status.atFloor && !st.isolated && st.viewMode === '3d' && st.view === 'overview' && st.floorId !== status.atFloor && this.liftPanel?.moved) {
+      this.changeView({ floorId: status.atFloor }); // ชั้นที่เลือก (ขอบเขียว/ป้ายชั้น) = ชั้นที่ลิฟต์ถึง — ไม่แยกชั้นอัตโนมัติ
+    }
+    if (status.phase !== 'open' && this.liftPanel) this.liftPanel.moved = true;
+  }
+
   /** ป้าย "กำลังดู" บนพื้นที่แสดงผล */
   #renderFloorBanner() {
     const el = this.floorBannerEl;
@@ -184,14 +222,22 @@ export class App {
     const is3d = st.viewMode === '3d' && this.scene;
     const f = this.index.floors.get(st.floorId);
     if (is3d && !st.isolated) {
-      replaceChildren(el, h('strong.fb-title', { 'data-testid': 'viewing' }, 'กำลังดู: ทั้งอาคาร'), h('span.fb-meta', 'เลือกชั้นจากรายการเพื่อแยกดูเป็นโมเดลเดี่ยว'));
+      const pr = this.scene.detailProgress();
+      replaceChildren(el, h('strong.fb-title', { 'data-testid': 'viewing' }, 'กำลังดู: ทั้งอาคาร'),
+        pr.total ? h('span', { class: `fb-model fb-model-${pr.ready === pr.total ? 'ready' : 'loading'}`, 'data-testid': 'model-state' },
+          (pr.ready === pr.total ? `โมเดลห้องจาก Blender ครบ ${pr.total} ชั้น` : `กำลังโหลดโมเดลห้องจาก Blender ${pr.ready}/${pr.total} ชั้น…`)
+          + (pr.towerOnDemand ? ' · สำนักงานโหลดเมื่อแยกดูชั้น' : '')) : null,
+        h('span.fb-meta', 'เลือกชั้นจากรายการเพื่อแยกดูเป็นโมเดลเดี่ยว'));
       return;
     }
     const pts = this.activePoints().filter((p) => p.floorId === st.floorId);
+    const ds = is3d ? this.scene.detailState(st.floorId) : null;
+    const modelText = { loading: 'กำลังโหลดโมเดลจาก Blender…', ready: 'โมเดลจาก Blender ของคุณ', error: 'โหลดโมเดล Blender ไม่ได้ — ใช้โมเดลแบบง่าย', none: 'ชั้นนี้ยังไม่มีโมเดล Blender — ใช้โมเดลแบบง่าย' }[ds];
     replaceChildren(el,
       h('strong.fb-title', { 'data-testid': 'viewing' }, `กำลังดู: ${f?.name ?? st.floorId}`),
       f?.plan.shared ? h('span.fb-chip', f.plan.sharedLabel ?? 'ผังอ้างอิงร่วม') : null,
       h('span.fb-meta', pts.length ? `${pts.length} จุดตรวจวัดในชั้นนี้` : 'ยังไม่มีจุดตรวจวัดในชั้นนี้'),
+      modelText ? h('span', { class: `fb-model fb-model-${ds}`, 'data-testid': 'model-state' }, modelText) : null,
       is3d ? h('button.btn.small.primary.fb-back', { type: 'button', 'data-focus-key': 'back-building', onclick: () => this.showBuilding() }, 'กลับไปดูทั้งอาคาร') : null);
   }
 
@@ -441,7 +487,7 @@ export class App {
     const st = this.state;
     const floors = this.config.building.floors;
     const presets = this.scene ? this.scene.availablePresets() : [];
-    const PRESET = { fit: 'พอดีทั้งชั้น', all: 'ทั้งอาคาร', floor: 'แยกชั้นที่เลือก', plant: 'ห้องเครื่อง', roof: 'ดาดฟ้า', underfloor: 'ระบบใต้พื้น', top: 'มุมบน' };
+    const PRESET = { fit: 'พอดีทั้งชั้น', all: 'ทั้งอาคาร', floor: 'แยกชั้นที่เลือก', plant: 'ห้องเครื่อง', roof: 'ดาดฟ้า', underfloor: 'ระบบใต้พื้น', top: 'มุมบน', lift: 'มุมลิฟต์' };
     const is3d = st.viewMode === '3d' && this.scene;
     const floorValue = is3d && !st.isolated ? '' : st.floorId;
     const opt = (f) => h('option', { value: f.id, selected: f.id === floorValue, text: f.plan.shared ? `${f.name} — ${f.plan.sharedLabel ?? 'ผังอ้างอิงร่วม'}` : f.name });
@@ -451,7 +497,10 @@ export class App {
     },
     is3d ? h('option', { value: '', selected: floorValue === '', text: 'ทั้งอาคาร (ประกอบทุกชั้น)' }) : null,
     h('optgroup', { label: 'ห้าง (โพเดียม)' }, floors.filter((f) => f.kind !== 'tower').map(opt)),
-    floors.some((f) => f.kind === 'tower') ? h('optgroup', { label: 'สำนักงาน ชั้น 11–31 (ผังอ้างอิงร่วม ข้อมูลแยกรายชั้น)' }, floors.filter((f) => f.kind === 'tower').map(opt)) : null);
+    (() => {
+      const tw = floors.filter((f) => f.kind === 'tower');
+      return tw.length ? h('optgroup', { label: `สำนักงาน ชั้น ${tw[0].id}–${tw.at(-1).id} (ผังอ้างอิงร่วม ข้อมูลแยกรายชั้น)` }, tw.map(opt)) : null;
+    })());
     replaceChildren(this.stageToolbar,
       h('div.seg', { role: 'group', 'aria-label': 'ชนิดมุมมอง' },
         ['3d', '2d'].map((m) => h('button', { type: 'button', class: `btn small ${st.viewMode === m ? 'active' : ''}`, 'aria-pressed': String(st.viewMode === m), 'data-focus-key': `vm-${m}`,
@@ -487,7 +536,11 @@ export class App {
         try {
           const { MallScene, webglAvailable } = this.sceneModule;
           if (!webglAvailable()) throw new Error('เบราว์เซอร์/อุปกรณ์นี้ไม่รองรับ WebGL');
-          this.scene = new MallScene(this.sceneHost, { onSelect: (id) => this.select(id, { focus: false }) });
+          this.scene = new MallScene(this.sceneHost, {
+            onSelect: (id) => this.select(id, { focus: false }),
+            onDetail: (id) => { if (id === this.state.floorId || !this.state.isolated) this.#renderFloorBanner(); },
+            onElevator: (status) => this.#onElevator(status),
+          });
           this.scene.setConfig(this.config);
           this.scene.setFloor(st.floorId);
           this.scene.setMode(st.sceneMode);
@@ -510,6 +563,7 @@ export class App {
         this.#renderToolbar();
       }
       this.sceneConfig = this.config;
+      this.#mountLiftPanel();
     } else {
       this.planHost = h('div.plan-host');
       this.sigs?.delete('plan');

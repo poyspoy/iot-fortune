@@ -7,11 +7,12 @@ import { validateBackup, makeBackup } from '../src/domain/backup.js';
 import { isolatedOffset, assembledOffset, markerPosition, threeDToPlan, planTo3D } from '../src/domain/geometry.js';
 import { sampleId } from '../src/domain/normalize.js';
 
-test('สำนักงานแยกเป็นชั้น 11–31 รายชั้น ใช้ผังอ้างอิงร่วม', () => {
+test('สำนักงานแยกเป็นชั้น 11–32 รายชั้น ใช้ผังอ้างอิงร่วม', () => {
   const c = createDefaultConfig();
   const tower = c.building.floors.filter((f) => f.kind === 'tower');
   assert.equal(tower.length, TOWER_LAST - TOWER_FIRST + 1);
-  assert.deepEqual(tower.map((f) => f.id), Array.from({ length: 21 }, (_, i) => String(11 + i)));
+  assert.deepEqual(tower.map((f) => f.id), Array.from({ length: 22 }, (_, i) => String(11 + i)));
+  assert.match(tower.at(-1).plan.note, /ยังไม่ได้รับผังชั้น 32/);
   assert.ok(tower.every((f) => f.plan.shared && f.plan.src === tower[0].plan.src), 'ทุกชั้นใช้ภาพผังเดียวกันและระบุว่าเป็นผังอ้างอิงร่วม');
   const elev = tower.map((f) => f.model.elevation);
   assert.ok(elev.every((e, i) => i === 0 || e > elev[i - 1]), 'ชั้นสูงขึ้นตามลำดับ');
@@ -45,7 +46,7 @@ function v1Config() {
 test('ย้ายการตั้งค่ารุ่น 1 (ชั้น OF เดียว) เป็นชั้นแยก', () => {
   const old = v1Config();
   const m = migrateConfig(old);
-  assert.equal(m.schemaVersion, 2);
+  assert.equal(m.schemaVersion, 4);
   assert.deepEqual(validateConfig(m).errors, []);
   const byId = Object.fromEntries(m.points.map((p) => [p.id, p]));
   assert.equal(byId['P-004'].floorId, '11');
@@ -63,7 +64,7 @@ test('ไฟล์สำรองรุ่น 1 นำเข้าได้ ค�
   const v = validateBackup(JSON.parse(JSON.stringify(b)));
   assert.equal(v.ok, true, v.errors.join('\n'));
   assert.equal(v.summary.migratedFrom, 1);
-  assert.equal(v.data.config.schemaVersion, 2);
+  assert.equal(v.data.config.schemaVersion, 4);
 });
 
 test('มุมมองชั้นเดี่ยว: หมุดคงตำแหน่งเดิมเมื่อเทียบกับผังทุกชั้น', () => {
@@ -85,5 +86,53 @@ test('มุมมองชั้นเดี่ยว: หมุดคงตำ
       const mid = planTo3D(f, { x: 0.5, y: 0.5 });
       assert.ok(Math.abs(mid.x + iso.x - center.x) < 1e-9 && Math.abs(mid.z + iso.z - center.z) < 1e-9);
     }
+  }
+});
+
+test('ย้ายการตั้งค่ารุ่น 2 (ชั้น 11–31) → เพิ่มชั้น 32 และรูปทรงทาวเวอร์ โดยคงจุดและการแก้ไขเดิม', () => {
+  const c = createDefaultConfig();
+  c.schemaVersion = 2;
+  c.building.floors = c.building.floors.filter((f) => f.id !== '32').map((f) => (f.kind === 'tower' ? { ...f, footprint: [[0.004, 0.03], [0.996, 0.03], [0.996, 0.97], [0.004, 0.97]] } : f));
+  c.building.areas = c.building.areas.filter((a) => a.floorId !== '32');
+  c.points.find((p) => p.id === 'P-007').name = 'ชื่อที่ผู้ใช้แก้';
+  const m = migrateConfig(c);
+  assert.deepEqual(validateConfig(m).errors, []);
+  assert.ok(m.building.floors.some((f) => f.id === '32'));
+  assert.equal(m.building.floors.at(-1).id, '32');
+  assert.ok(m.building.floors.find((f) => f.id === '20').footprint.length > 10, 'รูปทรงมุมโค้งตามผัง');
+  assert.equal(m.points.find((p) => p.id === 'P-007').name, 'ชื่อที่ผู้ใช้แก้');
+  assert.equal(m.points.length, 8);
+});
+
+import { detailFrame, detailTransform, planToBlender } from '../src/domain/geometry.js';
+
+test('โมเดล Blender ของผู้ใช้: สูตรพิกัดตรงกับสคริปต์ต้นฉบับ (ห้างและสำนักงาน)', () => {
+  const c = createDefaultConfig();
+  const G = c.building.floors.find((f) => f.id === 'G');
+  // จุดภาพต้นฉบับ (sx, sy) = (1000·5966/2000, 336.5·2009/673) ต้องได้ X = Y = 0 ตาม coord() ของ build_floors.py
+  const u = (1000 * 5966 / 2000 - 250) / 5510; const v = (336.5 * 2009 / 673 - 380) / 950;
+  const b = planToBlender(G.detail, { x: u, y: v });
+  assert.ok(Math.abs(b.X) < 1e-9 && Math.abs(b.Y) < 1e-9);
+  const O = c.building.floors.find((f) => f.id === '11');
+  // op(770, 460) → X = Y = 0 ตาม build_office.py
+  const bo = planToBlender(O.detail, { x: (770 - 95) / 1360, y: (460 - 180) / 555 });
+  assert.ok(Math.abs(bo.X) < 1e-9 && Math.abs(bo.Y) < 1e-9);
+});
+
+test('โมเดล Blender ทุกชั้นวางตรงกับผังของแอป (ทุกจุด u,v) และไม่ยืดผิดสัดส่วน', () => {
+  const c = createDefaultConfig();
+  const withDetail = c.building.floors.filter((f) => f.detail);
+  assert.deepEqual(withDetail.map((f) => f.id), ['G', '1', '2', '3', '4', '5', ...Array.from({ length: 21 }, (_, i) => String(11 + i))]);
+  assert.equal(c.building.floors.find((f) => f.id === '32').detail, undefined, 'ชั้น 32 ยังไม่มีโมเดลของผู้ใช้');
+  for (const f of withDetail) {
+    const t = detailTransform(f);
+    const fr = detailFrame(f.detail);
+    for (const p of [{ x: 0, y: 0 }, { x: 0.37, y: 0.81 }, { x: 1, y: 1 }]) {
+      const x = (fr.ax * p.x + fr.bx) * t.scale.x + t.position.x;
+      const z = (fr.az * p.y + fr.bz) * t.scale.z + t.position.z;
+      const app = planTo3D(f, p);
+      assert.ok(Math.abs(x - app.x) < 1e-9 && Math.abs(z - app.z) < 1e-9, `ชั้น ${f.id}`);
+    }
+    assert.ok(Math.abs(t.scale.x / t.scale.z - 1) < 0.005, `ชั้น ${f.id} สเกล x/z ${t.scale.x / t.scale.z}`);
   }
 });

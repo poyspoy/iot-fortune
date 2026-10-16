@@ -126,7 +126,7 @@ with sync_playwright() as p:
     floors = page.evaluate('() => window.__iotFortune.ctl.config.building.floors.map(f => ({ id: f.id, name: f.name, shared: !!f.plan.shared }))')
     pts = page.evaluate('() => window.__iotFortune.ctl.config.points.filter(p => p.status === "active").map(p => ({ id: p.id, floor: p.floorId }))')
     check('9a มุมมองทั้งอาคารแสดงทุกชั้น', building['iso'] is None and building['groups'] == len(floors), f"groups={building['groups']}/{len(floors)}")
-    check('9b ตัวเลือกชั้นสำนักงานแยก 11 … 31 รายชั้น', [f['id'] for f in floors if f['shared']] == [str(n) for n in range(11, 32)])
+    check('9b ตัวเลือกชั้นสำนักงานแยก 11 … 32 รายชั้น', [f['id'] for f in floors if f['shared']] == [str(n) for n in range(11, 33)])
     bad = []
     for f in floors:
         page.locator('select[data-focus-key="floor"]').select_option(f['id'])
@@ -219,7 +219,7 @@ with sync_playwright() as p:
     page.wait_for_selector('.episode .open-floor')
     page.locator('.episode', has_text='P-008').first.locator('.open-floor').click()
     page.wait_for_selector('.floor-banner')
-    page.wait_for_timeout(1800)
+    settle(page, 60000)  # รอการเคลื่อนกล้อง/ชั้นจบ (เครื่องทดสอบไม่มี GPU วาดเฟรมช้า)
     st = page.evaluate('''() => { const a = window.__iotFortune.app, sc = a.scene, fg = sc.floorGroups.get('2'), V = fg.slab.position.constructor;
       fg.slab.geometry.computeBoundingBox(); const b = fg.slab.geometry.boundingBox; fg.slab.updateMatrixWorld(true);
       let fit = true, minx = 9, maxx = -9;
@@ -361,11 +361,11 @@ with sync_playwright() as p:
         mp.wait_for_selector('.points-table tbody tr')
         mp.wait_for_timeout(1500)
         check(f'7e มือถือ {w}px ไม่ล้นแนวนอน', no_overflow(mp))
-        mp.screenshot(path=f'{SHOTS}/08-mobile-{w}.png', full_page=False)
+        mp.screenshot(path=f'{SHOTS}/08-mobile-{w}.png', full_page=False, timeout=180000)
         mp.locator('tr[data-focus-key="row-P-001"]').click()
         mp.wait_for_selector('.details.open')
         check(f'7f มือถือ {w}px แตะรายการแล้วเปิดลิ้นชักรายละเอียด', mp.locator('.details.open').is_visible())
-        mp.screenshot(path=f'{SHOTS}/09-mobile-{w}-drawer.png')
+        mp.screenshot(path=f'{SHOTS}/09-mobile-{w}-drawer.png', timeout=180000)
         check(f'7g มือถือ {w}px ไม่มี console error', not mlogs, '; '.join(mlogs[:3]))
         m.close()
 

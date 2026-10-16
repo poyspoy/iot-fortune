@@ -1,7 +1,7 @@
 // การแปลงพิกัดผัง 2D (ปกติ 0–1) ↔ พิกัดโมเดล 3D — เป็นการจับคู่เชิงแผนภาพ
 // ไม่ใช่การแปลงพิกัดสำรวจจริง (no survey transformation)
 
-export const MARKER_LIFT = 0.28;
+export const MARKER_LIFT = 0.4; // หมุดลอยเหนือผนังตัดของโมเดล
 
 /** พิกัดปกติบนผังของชั้น → ตำแหน่ง 3D ภายในกรอบโมเดลของชั้นนั้น */
 export function planTo3D(floor, plan, elevationOverride) {
@@ -94,4 +94,39 @@ export function assembledOffset(floor, mode = 'exterior') {
 export function markerPosition(point, floor, offset) {
   const pos = pointPosition(point, floor, 'exterior'); // พิกัดอาคาร ณ ระดับชั้นจริง
   return { x: pos.x + offset.x, y: pos.y - floor.model.elevation + offset.y, z: pos.z + offset.z };
+}
+
+/**
+ * กรอบพิกัดของโมเดลรายละเอียด (GLB จาก Blender ของผู้ใช้) เทียบกับพิกัดผังปกติ (u, v)
+ * ใช้สูตรเดียวกับสคริปต์ที่สร้างโมเดล (build_floors.py / build_office.py):
+ *   ห้าง:      X = (sx·2000/W − 1000)·0.1,  Y = (336.5 − sy·673/H)·0.1
+ *   สำนักงาน:  X = (sx − 770)·0.05,          Y = (460 − sy)·0.05
+ * GLB เป็น Y-up → three.x = X, three.z = −Y, sx/sy = พิกเซลภาพต้นฉบับ = crop + (u, v)·ขนาดครอป
+ * คืน { ax, bx, az, bz }: x_model = ax·u + bx, z_model = az·v + bz
+ */
+export function detailFrame(detail) {
+  const [x0, y0, x1, y1] = detail.crop;
+  const cw = x1 - x0; const ch = y1 - y0;
+  if (detail.frame === 'office') {
+    return { ax: cw * 0.05, bx: (x0 - 770) * 0.05, az: ch * 0.05, bz: (y0 - 460) * 0.05 };
+  }
+  const kx = 2000 / detail.source.w; const ky = 673 / detail.source.h;
+  return { ax: cw * kx * 0.1, bx: (x0 * kx - 1000) * 0.1, az: ch * ky * 0.1, bz: (y0 * ky - 336.5) * 0.1 };
+}
+
+/** ตำแหน่ง/สเกลของโมเดลรายละเอียดภายในกลุ่มชั้น ให้พิกัดผังตรงกับ planTo3D ของแอปทุกจุด */
+export function detailTransform(floor) {
+  const f = detailFrame(floor.detail);
+  const m = floor.model;
+  const sx = m.width / f.ax; const sz = m.depth / f.az;
+  return {
+    scale: { x: sx, y: (sx + sz) / 2, z: sz },
+    position: { x: m.cx - m.width / 2 - f.bx * sx, y: 0, z: m.cz - m.depth / 2 - f.bz * sz },
+  };
+}
+
+/** แปลงพิกัดผังปกติ → พิกัดในโมเดล Blender ของผู้ใช้ (X, Y แบบ Blender Z-up) ใช้วางหมุดบนภาพเรนเดอร์ */
+export function planToBlender(detail, plan) {
+  const f = detailFrame(detail);
+  return { X: f.ax * plan.x + f.bx, Y: -(f.az * plan.y + f.bz) };
 }
