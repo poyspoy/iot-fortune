@@ -818,7 +818,7 @@ export class MallScene {
       for (const eq of [this.tank, this.pump]) if (eq && eq.floorId === f.id) eq.group.visible = !showDetail;
       fg.edges.material.color.set(isSel ? '#0f6f69' : '#8fa79f');
       fg.edges.material.opacity = isSel ? 0.95 : (f.kind === 'tower' ? 0.3 : 0.5);
-      fg.isoLabel.visible = iso === f.id; // มุมมองเดี่ยวใช้ป้ายตัวใหญ่แทนป้ายข้างแผ่นชั้น
+      fg.isoLabel.visible = false; // ไม่แสดงป้ายชื่อชั้นลอยข้างโมเดล (ชื่อชั้นอยู่ที่ "กำลังดู" และปุ่มชั้น)
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
     this.#applyLabels();

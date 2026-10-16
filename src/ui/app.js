@@ -118,6 +118,7 @@ export class App {
         else { this.scene.setFloor(st.floorId); if (this.scene.isolated) this.scene.assemble(); }
         this.scene.setSelected(st.selectedId);
         this.liftPanel?.setIsolated(!!st.isolated);
+        this.#syncBuildingBtn();
         this.#renderLoading();
       }
       this.detailsEl?.parentElement?.classList.toggle('details-closed', !st.detailsOpen);
@@ -209,18 +210,28 @@ export class App {
     this.loadingBar.style.width = `${Math.round((pr.ready / Math.max(1, pr.total)) * 100)}%`;
   }
 
-  /** ปุ่มดูโมเดลเต็มจอ */
+  /** ปุ่มดูโมเดลเต็มจอ — เต็มจอทั้งโมเดลและแผงข้าง (ลิฟต์/ข้อมูลห้อง) ใช้งานได้ครบ + ปุ่ม "ทั้งอาคาร" บนโมเดล */
   #mountFullButton() {
     if (!this.fullBtn) {
-      this.fullBtn = h('button.vp-full-btn', { type: 'button', 'data-testid': 'vp-full', onclick: () => this.#setFull(!this.viewport.classList.contains('vp-full')) });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.viewport?.classList.contains('vp-full')) this.#setFull(false); });
+      this.fullBtn = h('button.vp-full-btn', { type: 'button', 'data-testid': 'vp-full', onclick: () => this.#setFull(!this.stageBody.classList.contains('sb-full')) });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.stageBody?.classList.contains('sb-full')) this.#setFull(false); });
     }
-    this.#setFull(this.viewport.classList.contains('vp-full'));
-    this.viewport.appendChild(this.fullBtn);
+    if (!this.vpBuildingBtn) {
+      this.vpBuildingBtn = h('button.vp-building-btn', { type: 'button', 'data-testid': 'vp-building', onclick: () => this.showBuilding() }, '🏢 ทั้งอาคาร');
+    }
+    this.#setFull(!!this.fullOn);
+    this.viewport.append(this.fullBtn, this.vpBuildingBtn);
+    this.#syncBuildingBtn();
+  }
+
+  /** ปุ่ม "ทั้งอาคาร" บนโมเดล: แสดงเมื่อกำลังดูชั้นเดียว */
+  #syncBuildingBtn() {
+    if (this.vpBuildingBtn) this.vpBuildingBtn.hidden = !this.state.isolated;
   }
 
   #setFull(on) {
-    this.viewport.classList.toggle('vp-full', on);
+    this.fullOn = on;
+    this.stageBody?.classList.toggle('sb-full', on);
     document.body.classList.toggle('has-vp-full', on);
     this.fullBtn.textContent = on ? '✕ ออกจากเต็มจอ' : '⛶ เต็มจอ';
     this.fullBtn.setAttribute('aria-pressed', String(on));
@@ -647,7 +658,7 @@ export class App {
       this.#renderLoading();
       if (this.roomCardEl) this.liftSide.prepend(this.roomCardEl);
     } else {
-      this.viewport.classList.remove('vp-full'); document.body.classList.remove('has-vp-full');
+      this.fullOn = false; this.stageBody?.classList.remove('sb-full'); document.body.classList.remove('has-vp-full');
       this.liftPanel?.el.remove(); this.stageBody?.classList.remove('has-lift');
       this.planHost = h('div.plan-host');
       this.sigs?.delete('plan');
