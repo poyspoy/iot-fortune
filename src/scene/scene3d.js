@@ -628,7 +628,7 @@ export class MallScene {
   #roomAtNdc(ndc) {
     this.raycaster.setFromCamera(ndc, this.camera);
     const objs = [];
-    for (const fg of this.floorGroups.values()) if (fg.group.visible && fg.detailObj?.visible && fg.rooms) objs.push(fg.detailObj);
+    for (const fg of this.floorGroups.values()) if (fg.group.visible && !(fg.fade && fg.fade.to === 0) && (!this.isolatedId || fg.floor.id === this.isolatedId) && fg.detailObj?.visible && fg.rooms) objs.push(fg.detailObj);
     const hits = this.raycaster.intersectObjects(objs, true);
     for (const h of hits) {
       if (this.liftView && !this.isolatedId && this.clipPlane && this.clipPlane.distanceToPoint(h.point) < 0) continue; // ส่วนที่ถูกตัดออก
@@ -766,6 +766,7 @@ export class MallScene {
     if (!this.isolatedId) return;
     const id = this.isolatedId;
     this.isolatedId = null;
+    if (this.roomSel) { this.selectRoom(null); this.onRoom(null); } // กลับทั้งอาคาร: ล้างห้อง/ไฮไลต์ที่เลือกจากชั้นก่อนหน้า
     for (const fg of this.floorGroups.values()) {
       if (fg.floor.id === id) continue;
       const a = assembledOffset(fg.floor, this.mode);
@@ -791,7 +792,8 @@ export class MallScene {
       let visible = true;
       if (iso) visible = f.id === iso;
       else if (this.mode === 'cutaway' && sel && sel.kind !== 'tower' && f.kind !== 'tower') visible = f.order <= sel.order;
-      fg.group.visible = visible;
+      // ซ่อน/แสดงชั้นแบบค่อย ๆ จาง (0.45 วินาที) — ระหว่างจางชั้นนั้นกดเลือกห้องไม่ได้ และไม่แสดงหมุด/ป้าย
+      this.#fadeFloor(fg, visible, instant);
       if (iso) {
         fg.shellMat.opacity = 0.1;
       } else {
@@ -821,7 +823,35 @@ export class MallScene {
     if (this.towerDeco) this.towerDeco.visible = !iso;
     this.#applyLabels();
     if (this.lift) this.lift.rig.group.visible = !iso; // มุมมองชั้นเดี่ยวใช้สัญลักษณ์ลิฟต์ในโมเดลของผู้ใช้
-    if (this.roomSel && !this.floorGroups.get(this.roomSel.floorId)?.group.visible) { this.selectRoom(null); this.onRoom(null); }
+    if (this.roomSel && (iso ? this.roomSel.floorId !== iso : !this.floorGroups.get(this.roomSel.floorId)?.group.visible)) { this.selectRoom(null); this.onRoom(null); }
+    this.#placeMarkers();
+  }
+
+  /** ตั้งการแสดงชั้น: instant = ทันที, ไม่เช่นนั้นค่อย ๆ จางออก/เข้า */
+  #fadeFloor(fg, visible, instant) {
+    const shown = fg.group.visible && (!fg.fade || fg.fade.to === 1);
+    if (instant || this.disposed) { if (fg.fade) this.#endFade(fg, true); fg.group.visible = visible; return; }
+    if (visible === shown) { if (!visible) fg.group.visible = false; return; }
+    if (fg.fade) this.#endFade(fg, true);
+    const mats = new Map();
+    fg.group.traverse((o) => {
+      if (!o.visible || o.isSprite) return;
+      for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+        if (!mats.has(m)) mats.set(m, { opacity: m.opacity, transparent: m.transparent, depthWrite: m.depthWrite });
+      }
+    });
+    for (const m of mats.keys()) { if (!m.transparent) { m.transparent = true; m.needsUpdate = true; } }
+    fg.group.visible = true;
+    fg.fade = { from: visible ? 0 : 1, to: visible ? 1 : 0, start: performance.now(), dur: 450, mats };
+    for (const [m, o] of mats) m.opacity = o.opacity * fg.fade.from;
+  }
+
+  #endFade(fg, abort = false) {
+    const fd = fg.fade;
+    fg.fade = null;
+    for (const [m, o] of fd.mats) { m.opacity = o.opacity; if (m.transparent !== o.transparent) { m.transparent = o.transparent; m.needsUpdate = true; } }
+    if (!abort && fd.to === 0) fg.group.visible = false;
+    this.#applyLabels();
     this.#placeMarkers();
   }
 
@@ -998,6 +1028,14 @@ export class MallScene {
       fg.group.position.lerpVectors(fg.anim.from, fg.target, e);
       if (k >= 1) { fg.group.position.copy(fg.target); fg.anim = null; }
       moving = true;
+    }
+    for (const fg of this.floorGroups.values()) {
+      const fd = fg.fade;
+      if (!fd) continue;
+      const k = Math.min(1, (nowMs - fd.start) / fd.dur);
+      const a = fd.from + (fd.to - fd.from) * k;
+      for (const [m, o] of fd.mats) m.opacity = o.opacity * a;
+      if (k >= 1) this.#endFade(fg);
     }
     if (moving) this.#placeMarkers();
     this.#stepLift();
