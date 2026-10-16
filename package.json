@@ -1,6 +1,6 @@
 {
   "name": "iot-fortune",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "IoT ฟอร์จูน — ติดตามระบบอาคารตามจุด (frontend prototype)",
   "type": "module",
@@ -12,7 +12,8 @@
     "build": "vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "test": "node scripts/run-tests.mjs",
-    "fixture": "node scripts/fixture-server.mjs"
+    "fixture": "node scripts/fixture-server.mjs",
+    "deploy": "node scripts/deploy-pages.mjs"
   },
   "dependencies": {
     "fake-indexeddb": "6.2.5",

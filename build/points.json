@@ -1,0 +1,513 @@
+{
+ "floors": {
+  "1": {
+   "src": "models/floors/floor-1.glb",
+   "frame": "mall",
+   "crop": [
+    250,
+    380,
+    5760,
+    1330
+   ],
+   "source": {
+    "w": 5966,
+    "h": 2009
+   }
+  },
+  "2": {
+   "src": "models/floors/floor-2.glb",
+   "frame": "mall",
+   "crop": [
+    250,
+    380,
+    5760,
+    1330
+   ],
+   "source": {
+    "w": 5966,
+    "h": 2009
+   }
+  },
+  "3": {
+   "src": "models/floors/floor-3.glb",
+   "frame": "mall",
+   "crop": [
+    250,
+    380,
+    5760,
+    1330
+   ],
+   "source": {
+    "w": 5966,
+    "h": 2009
+   }
+  },
+  "4": {
+   "src": "models/floors/floor-4.glb",
+   "frame": "mall",
+   "crop": [
+    250,
+    440,
+    4900,
+    1420
+   ],
+   "source": {
+    "w": 5966,
+    "h": 2009
+   }
+  },
+  "5": {
+   "src": "models/floors/floor-5.glb",
+   "frame": "mall",
+   "crop": [
+    5071,
+    582,
+    5802,
+    1283
+   ],
+   "source": {
+    "w": 5966,
+    "h": 2009
+   }
+  },
+  "11": {
+   "src": "models/floors/floor-11.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "12": {
+   "src": "models/floors/floor-12.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "13": {
+   "src": "models/floors/floor-13.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "14": {
+   "src": "models/floors/floor-14.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "15": {
+   "src": "models/floors/floor-15.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "16": {
+   "src": "models/floors/floor-16.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "17": {
+   "src": "models/floors/floor-17.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "18": {
+   "src": "models/floors/floor-18.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "19": {
+   "src": "models/floors/floor-19.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "20": {
+   "src": "models/floors/floor-20.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "21": {
+   "src": "models/floors/floor-21.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "22": {
+   "src": "models/floors/floor-22.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "23": {
+   "src": "models/floors/floor-23.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "24": {
+   "src": "models/floors/floor-24.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "25": {
+   "src": "models/floors/floor-25.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "26": {
+   "src": "models/floors/floor-26.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "27": {
+   "src": "models/floors/floor-27.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "28": {
+   "src": "models/floors/floor-28.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "29": {
+   "src": "models/floors/floor-29.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "30": {
+   "src": "models/floors/floor-30.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "31": {
+   "src": "models/floors/floor-31.glb",
+   "frame": "office",
+   "crop": [
+    95,
+    180,
+    1455,
+    735
+   ],
+   "source": {
+    "w": 1523,
+    "h": 1076
+   }
+  },
+  "32": null,
+  "G": {
+   "src": "models/floors/floor-G.glb",
+   "frame": "mall",
+   "crop": [
+    250,
+    380,
+    5760,
+    1330
+   ],
+   "source": {
+    "w": 5966,
+    "h": 2009
+   }
+  }
+ },
+ "points": [
+  {
+   "number": 1,
+   "id": "P-001",
+   "name": "บ่อสูบน้ำ (ตัวอย่าง)",
+   "floorId": "G",
+   "floorName": "ชั้น G",
+   "plan": {
+    "x": 0.88,
+    "y": 0.86
+   },
+   "example": true,
+   "blender": {
+    "X": 70.92859537378479,
+    "Y": -6.4486062717770025
+   }
+  },
+  {
+   "number": 2,
+   "id": "P-002",
+   "name": "ถังเก็บน้ำ (ตัวอย่าง)",
+   "floorId": "4",
+   "floorName": "ชั้น 4",
+   "plan": {
+    "x": 0.88,
+    "y": 0.4
+   },
+   "example": true,
+   "blender": {
+    "X": 45.55816292323166,
+    "Y": 5.778621204579393
+   }
+  },
+  {
+   "number": 3,
+   "id": "P-003",
+   "name": "ปั๊มน้ำ (ตัวอย่าง)",
+   "floorId": "G",
+   "floorName": "ชั้น G",
+   "plan": {
+    "x": 0.82,
+    "y": 0.78
+   },
+   "example": true,
+   "blender": {
+    "X": 59.845792826014076,
+    "Y": -3.902663016426086
+   }
+  },
+  {
+   "number": 4,
+   "id": "P-004",
+   "name": "ห้อง AHU — น้ำเย็น (ตัวอย่าง)",
+   "floorId": "11",
+   "floorName": "ชั้น 11 (สำนักงาน)",
+   "plan": {
+    "x": 0.349,
+    "y": 0.16
+   },
+   "example": true,
+   "blender": {
+    "X": -10.018,
+    "Y": 9.559999999999999
+   }
+  },
+  {
+   "number": 5,
+   "id": "P-005",
+   "name": "โซนพื้นที่ขายชั้น 3 (ตัวอย่าง)",
+   "floorId": "3",
+   "floorName": "ชั้น 3",
+   "plan": {
+    "x": 0.58,
+    "y": 0.58
+   },
+   "example": true,
+   "blender": {
+    "X": 15.514582634931273,
+    "Y": 2.462195121951222
+   }
+  },
+  {
+   "number": 6,
+   "id": "P-006",
+   "name": "ตู้ไฟหลัก (ตัวอย่าง)",
+   "floorId": "1",
+   "floorName": "ชั้น 1",
+   "plan": {
+    "x": 0.42,
+    "y": 0.42
+   },
+   "example": true,
+   "blender": {
+    "X": -14.039557492457263,
+    "Y": 7.554081632653062
+   }
+  },
+  {
+   "number": 7,
+   "id": "P-007",
+   "name": "ห้องไฟฟ้า ELEC. RM. (ตัวอย่าง)",
+   "floorId": "12",
+   "floorName": "ชั้น 12 (สำนักงาน)",
+   "plan": {
+    "x": 0.585,
+    "y": 0.24
+   },
+   "example": true,
+   "blender": {
+    "X": 6.030000000000001,
+    "Y": 7.34
+   }
+  },
+  {
+   "number": 8,
+   "id": "P-008",
+   "name": "จุดเสี่ยงน้ำรั่ว (ตัวอย่าง)",
+   "floorId": "2",
+   "floorName": "ชั้น 2",
+   "plan": {
+    "x": 0.2,
+    "y": 0.62
+   },
+   "example": true,
+   "blender": {
+    "X": -54.6765001676165,
+    "Y": 1.1892234942757582
+   }
+  }
+ ]
+}

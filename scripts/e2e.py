@@ -227,7 +227,7 @@ with sync_playwright() as p:
       return { view: a.state.view, iso: sc.isolated, sel: a.state.selectedId, shown: !document.querySelector(".marker-layer .marker.selected")?.hidden,
                fit, span: +(maxx - minx).toFixed(2), zoomT: +sc.controls.target.distanceTo(sc.root.localToWorld(sc.markerObjs.get('P-008').sphere.position.clone())).toFixed(3), presets: [...document.querySelectorAll('[data-focus-key^="preset-"]')].map(b => b.dataset.focusKey) } }''')
     check('2e คลิกแจ้งเตือนแล้วเปิดโมเดลเดี่ยวชั้นที่เกิดเหตุทันที และซูมที่จุด', st['view'] == 'overview' and st['iso'] == '2' and st['sel'] == 'P-008' and st['shown']
-          and st['zoomT'] < 0.05 and st['presets'] == ['preset-fit', 'preset-top']
+          and st['zoomT'] < 0.05 and st['presets'] == ['preset-top'] and page.locator('[data-testid=reset-cam]').count() == 1
           and 'กำลังดู: ชั้น 2' in page.locator('.floor-banner').inner_text(), json.dumps(st))
     page.screenshot(path=f'{SHOTS}/14-alert-opens-floor-2.png')
 

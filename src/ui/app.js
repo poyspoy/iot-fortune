@@ -13,6 +13,7 @@ import { renderSettingsView } from './settingsView.js';
 import { Sound } from './sound.js';
 import { viewingFloorId, normalizeViewState } from '../domain/viewState.js';
 import { ElevatorPanel } from './elevatorPanel.js';
+import { roomCard } from './roomCard.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
 
 const VIEWS = [
@@ -117,6 +118,7 @@ export class App {
         else { this.scene.setFloor(st.floorId); if (this.scene.isolated) this.scene.assemble(); }
         this.scene.setSelected(st.selectedId);
         this.liftPanel?.setIsolated(!!st.isolated);
+        this.#renderLoading();
       }
       this.detailsEl?.parentElement?.classList.toggle('details-closed', !st.detailsOpen);
       if (floorChanged) {
@@ -181,6 +183,65 @@ export class App {
 
   // ---------------------------------------------------------------- ลิฟต์จำลอง
   /** แผงลิฟต์ (สร้างครั้งเดียว ใช้ซ้ำทุกครั้งที่วาดพื้นที่ 3D ใหม่) */
+  /**
+   * หน้าจอ Loading บนพื้นที่ 3 มิติ: แสดงจนกว่าโมเดลห้องที่ต้องใช้ในมุมมองนี้พร้อม
+   * (ทั้งอาคาร = ชั้นที่ลิฟต์จอด, ชั้นเดี่ยว = ชั้นนั้น) ชั้นที่เหลือโหลดต่อเบื้องหลัง
+   */
+  #renderLoading() {
+    if (!this.scene || !this.viewport?.isConnected || this.state.viewMode !== '3d') { this.loadingEl?.remove(); return; }
+    const need = this.state.isolated ? [this.state.floorId] : this.scene.elevatorFloors();
+    const states = need.map((id) => this.scene.detailState(id));
+    const waiting = states.filter((x) => x === 'loading' || x === 'idle').length;
+    const pr = this.scene.detailProgress();
+    if (!waiting) {
+      if (this.loadingEl) { const el = this.loadingEl; this.loadingEl = null; el.classList.add('done'); setTimeout(() => el.remove(), 450); }
+      return;
+    }
+    if (!this.loadingEl) {
+      this.loadingBar = h('div.ld-bar-in');
+      this.loadingText = h('p.ld-text', '');
+      this.loadingEl = h('div.model-loading', { 'data-testid': 'model-loading', role: 'status', 'aria-live': 'polite' },
+        h('div.ld-box', h('div.ld-spin', { 'aria-hidden': 'true' }), h('strong', 'กำลังโหลดโมเดล 3 มิติ'), this.loadingText, h('div.ld-bar', this.loadingBar)));
+    }
+    if (!this.loadingEl.isConnected) this.viewport.appendChild(this.loadingEl);
+    const done = need.length - waiting;
+    this.loadingText.textContent = `${this.state.isolated ? 'ชั้นที่เลือก' : 'ชั้นที่ลิฟต์จอด'} ${done}/${need.length} · ทั้งอาคาร ${pr.ready}/${pr.total} ชั้น`;
+    this.loadingBar.style.width = `${Math.round((pr.ready / Math.max(1, pr.total)) * 100)}%`;
+  }
+
+  /** ปุ่มดูโมเดลเต็มจอ */
+  #mountFullButton() {
+    if (!this.fullBtn) {
+      this.fullBtn = h('button.vp-full-btn', { type: 'button', 'data-testid': 'vp-full', onclick: () => this.#setFull(!this.viewport.classList.contains('vp-full')) });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.viewport?.classList.contains('vp-full')) this.#setFull(false); });
+    }
+    this.#setFull(this.viewport.classList.contains('vp-full'));
+    this.viewport.appendChild(this.fullBtn);
+  }
+
+  #setFull(on) {
+    this.viewport.classList.toggle('vp-full', on);
+    document.body.classList.toggle('has-vp-full', on);
+    this.fullBtn.textContent = on ? '✕ ออกจากเต็มจอ' : '⛶ เต็มจอ';
+    this.fullBtn.setAttribute('aria-pressed', String(on));
+  }
+
+  /** การ์ดข้อมูลห้อง/พื้นที่ที่กดในโมเดล */
+  #showRoom(info) {
+    this.roomCardEl?.remove();
+    this.roomCardEl = null;
+    if (!info || !this.viewport?.isConnected) return;
+    const floor = this.index.floors.get(info.floorId);
+    if (!floor) return;
+    this.roomCardEl = roomCard({
+      floor, room: info.room, meta: info.meta, points: this.config.points,
+      onClose: () => { this.scene?.selectRoom(null); this.#showRoom(null); },
+      onIsolate: this.state.isolated ? null : () => this.isolateFloor(info.floorId),
+      onPoint: (id) => this.select(id, { zoom: true }),
+    });
+    this.viewport.appendChild(this.roomCardEl);
+  }
+
   #mountLiftPanel() {
     const floors = this.scene?.elevatorFloors() ?? [];
     if (!floors.length) { this.liftPanel?.el.remove(); return; }
@@ -507,13 +568,18 @@ export class App {
           disabled: m === '3d' && this.sceneError ? true : null,
           onclick: () => this.setViewMode(m) }, m === '3d' ? 'โมเดล 3D' : 'ผัง 2D'))),
       h('label.inline', h('span', 'ชั้น'), floorSel),
-      is3d && st.isolated ? h('button.btn.small', { type: 'button', 'data-focus-key': 'back-building-tb', onclick: () => this.showBuilding() }, 'กลับไปดูทั้งอาคาร') : null,
+      is3d ? h('div.seg.floor-chips', { role: 'group', 'aria-label': 'เลือกดูชั้นห้าง' },
+        h('button', { type: 'button', class: `btn small ${!st.isolated ? 'active' : ''}`, 'aria-pressed': String(!st.isolated), 'data-focus-key': 'fc-all', onclick: () => this.showBuilding() }, 'ทั้งอาคาร'),
+        floors.filter((f) => f.kind !== 'tower').map((f) => h('button', { type: 'button', class: `btn small ${st.isolated && st.floorId === f.id ? 'active' : ''}`,
+          'aria-pressed': String(st.isolated && st.floorId === f.id), 'data-focus-key': `fc-${f.id}`, title: f.name, onclick: () => this.isolateFloor(f.id) }, f.id))) : null,
+      is3d ? h('button.btn.small', { type: 'button', 'data-focus-key': 'reset-cam', 'data-testid': 'reset-cam', title: 'กลับมุมกล้องเริ่มต้นของมุมมองนี้',
+        onclick: () => this.scene.preset(st.isolated ? 'fit' : 'all') }, '⟲ รีเซ็ตมุมกล้อง') : null,
       st.viewMode === '2d' ? h('div.seg', { role: 'group', 'aria-label': 'ขยายผัง' }, [1, 2, 3].map((z) => h('button', {
         type: 'button', class: `btn small ${st.planZoom === z ? 'active' : ''}`, 'aria-pressed': String(st.planZoom === z), 'data-focus-key': `zoom-${z}`,
         onclick: () => { this.state.planZoom = z; this.#renderToolbar(); this.sigs?.delete('plan'); this.#updateSpatial(); },
       }, `ขยาย ${z}×`))) : null,
       st.viewMode === '3d' && this.scene ? h('div.seg', { role: 'group', 'aria-label': 'มุมกล้อง' },
-        presets.map((p) => h('button', { type: 'button', class: 'btn small ghost', 'data-focus-key': `preset-${p}`, onclick: () => (p === 'floor' ? this.isolateFloor(st.floorId) : this.scene.preset(p)) }, PRESET[p]))) : null,
+        presets.filter((p) => p !== 'all' && p !== 'fit').map((p) => h('button', { type: 'button', class: 'btn small ghost', 'data-focus-key': `preset-${p}`, onclick: () => (p === 'floor' ? this.isolateFloor(st.floorId) : this.scene.preset(p)) }, PRESET[p]))) : null,
       st.viewMode === '3d' && this.scene && !st.isolated ? h('label.inline', h('span', 'การแสดงผล'), select([['exterior', 'ภายนอก'], ['cutaway', 'ตัดชั้นบน'], ['exploded', 'แยกชั้น']], st.sceneMode, {
         'data-focus-key': 'scenemode', onchange: (e) => { this.setState({ sceneMode: e.target.value }, { render: false }); this.scene.setMode(e.target.value); },
       })) : null,
@@ -538,8 +604,9 @@ export class App {
           if (!webglAvailable()) throw new Error('เบราว์เซอร์/อุปกรณ์นี้ไม่รองรับ WebGL');
           this.scene = new MallScene(this.sceneHost, {
             onSelect: (id) => this.select(id, { focus: false }),
-            onDetail: (id) => { if (id === this.state.floorId || !this.state.isolated) this.#renderFloorBanner(); },
+            onDetail: (id) => { if (id === this.state.floorId || !this.state.isolated) this.#renderFloorBanner(); this.#renderLoading(); },
             onElevator: (status) => this.#onElevator(status),
+            onRoom: (info) => this.#showRoom(info),
           });
           this.scene.setConfig(this.config);
           this.scene.setFloor(st.floorId);
@@ -564,7 +631,11 @@ export class App {
       }
       this.sceneConfig = this.config;
       this.#mountLiftPanel();
+      this.#mountFullButton();
+      this.#renderLoading();
+      if (this.roomCardEl) this.viewport.appendChild(this.roomCardEl);
     } else {
+      this.viewport.classList.remove('vp-full'); document.body.classList.remove('has-vp-full');
       this.planHost = h('div.plan-host');
       this.sigs?.delete('plan');
       this.floorBannerEl = h('div.floor-banner.static', { 'aria-live': 'polite' });

@@ -7,6 +7,7 @@ import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1, createElevator, requestFloor, stepElevator, elevatorStatus } from '../domain/elevator.js';
 import { ElevatorRig } from './elevator3d.js';
 import { prepareDetail } from './detailModel.js';
+import { pickRoom } from '../domain/rooms.js';
 
 // โมเดลห้างจำลองบนโต๊ะไม้ในห้องทดลอง — เรขาคณิตสร้างด้วยโค้ดทั้งหมด
 // รูปทรงลากจากผังพื้นที่เช่าโดยประมาณ ไม่ใช่แบบก่อสร้าง
@@ -49,6 +50,8 @@ export class MallScene {
     this.onSelect = opts.onSelect;
     this.onDetail = opts.onDetail ?? (() => {});
     this.onElevator = opts.onElevator ?? (() => {});
+    this.onRoom = opts.onRoom ?? (() => {});
+    this.roomSel = null; // { floorId, room, mesh }
     this.liftView = false; // มุมมองเปิดปล่อง: ซ่อนผนัง/กระจกแบบง่ายของห้าง ให้เห็นห้องลิฟต์ในปล่อง
     this.detailCache = new Map(); // src → Promise<THREE.Object3D> (โหลดครั้งเดียว ใช้ซ้ำ)
     this.mode = 'exterior';
@@ -573,6 +576,7 @@ export class MallScene {
       fg.detailObj = obj;
       fg.group.add(obj);
       fg.detailState = 'ready';
+      this.#loadRooms(fg);
       this.#applyMode();
       this.onDetail(id, 'ready');
     }, () => {
@@ -583,6 +587,89 @@ export class MallScene {
       this.onDetail(id, 'error');
     });
     return fg.detailPromise;
+  }
+
+  // ---------------------------------------------------------------- ห้อง/พื้นที่ (กดเพื่อดูข้อมูล)
+  /** ข้อมูลห้องของชั้น (rooms-<ชั้น>.json คู่กับไฟล์โมเดล) */
+  #loadRooms(fg) {
+    if (fg.rooms || fg.roomsPromise) return;
+    const src = fg.floor.detail.src.replace(/floor-([^/]+)\.glb$/, 'rooms-$1.json');
+    this.roomCache ??= new Map();
+    let p = this.roomCache.get(src);
+    if (!p) { p = fetch(src).then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); this.roomCache.set(src, p); }
+    fg.roomsPromise = p.then((d) => { fg.rooms = d.rooms; fg.roomsMeta = { source: d.source, scale: d.scale_status, alignment: d.alignment }; },
+      () => { fg.rooms = []; this.roomCache.delete(src); });
+  }
+
+  roomsOf(id) { return this.floorGroups.get(id)?.rooms ?? null; }
+
+  /** หาห้องที่ตำแหน่งบนจอ (พิกัด NDC) — ใช้ผิวโมเดลจริงที่มองเห็น แล้วเทียบกับพื้นที่ห้องในโมเดล */
+  #roomAtNdc(ndc) {
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const objs = [];
+    for (const fg of this.floorGroups.values()) if (fg.group.visible && fg.detailObj?.visible && fg.rooms) objs.push(fg.detailObj);
+    const hits = this.raycaster.intersectObjects(objs, true);
+    for (const h of hits) {
+      if (this.liftView && !this.isolatedId && this.clipPlane && this.clipPlane.distanceToPoint(h.point) < 0) continue; // ส่วนที่ถูกตัดออก
+      let o = h.object; while (o && !o.name.startsWith('detail-')) o = o.parent;
+      if (!o) continue;
+      const fg = this.floorGroups.get(o.name.slice(7));
+      const local = o.worldToLocal(h.point.clone());
+      const room = pickRoom(fg.rooms, local.x, -local.z);
+      if (room) return { floorId: fg.floor.id, room };
+    }
+    return null;
+  }
+
+  /** เลือกห้อง (ไฮไลต์บนโมเดล) — null = ยกเลิก */
+  selectRoom(floorId, roomId) {
+    if (this.roomSel?.mesh) { this.roomSel.mesh.parent?.remove(this.roomSel.mesh); this.roomSel.mesh.geometry.dispose(); }
+    this.roomSel = null;
+    const fg = floorId && this.floorGroups.get(floorId);
+    const room = fg?.rooms?.find((r) => r.id === roomId);
+    if (!room || !fg.detailObj) return null;
+    const t = room.tris; const pos = new Float32Array((t.length / 2) * 3);
+    const y = room.top_z + 0.08;
+    for (let i = 0, j = 0; i < t.length; i += 2, j += 3) { pos[j] = t[i]; pos[j + 1] = y; pos[j + 2] = -t[i + 1]; }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.roomHlMat ??= new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    const mesh = new THREE.Mesh(geo, this.roomHlMat);
+    mesh.renderOrder = 6;
+    mesh.name = 'room-highlight';
+    fg.detailObj.add(mesh);
+    this.roomSel = { floorId, room, mesh };
+    return room;
+  }
+
+  /** ทดสอบ: กดที่ตำแหน่งบนจอ (พิกเซลในพื้นที่แสดงผล) */
+  clickAt(px, py) {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    return this.#handleClick(new THREE.Vector2((px / r.width) * 2 - 1, -(py / r.height) * 2 + 1));
+  }
+
+  /** ทดสอบ: ตำแหน่งบนจอของจุดกลางห้อง (พิกเซลในพื้นที่แสดงผล) */
+  roomScreenPos(floorId, roomId) {
+    const fg = this.floorGroups.get(floorId);
+    const room = fg?.rooms?.find((r) => r.id === roomId);
+    if (!room || !fg.detailObj) return null;
+    const t = room.tris;
+    const cx = (t[0] + t[2] + t[4]) / 3; const cy = (t[1] + t[3] + t[5]) / 3; // จุดกลางสามเหลี่ยมแรก (อยู่ในห้องเสมอ)
+    fg.detailObj.updateWorldMatrix(true, false);
+    const w = fg.detailObj.localToWorld(new THREE.Vector3(cx, room.top_z, -cy)).project(this.camera);
+    const r = this.renderer.domElement.getBoundingClientRect();
+    return { x: (w.x * 0.5 + 0.5) * r.width, y: (-w.y * 0.5 + 0.5) * r.height };
+  }
+
+  #handleClick(ndc) {
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const targets = [...this.markerObjs.values()].filter((o) => o.visible).map((o) => o.sphere);
+    const hit = this.raycaster.intersectObjects(targets, false)[0];
+    if (hit) { this.onSelect(hit.object.userData.pointId); return { point: hit.object.userData.pointId }; }
+    const r = this.#roomAtNdc(ndc);
+    if (r) { this.selectRoom(r.floorId, r.room.id); this.onRoom({ floorId: r.floorId, room: r.room, meta: this.floorGroups.get(r.floorId).roomsMeta }); return { room: r.room.id, floorId: r.floorId }; }
+    this.selectRoom(null); this.onRoom(null);
+    return null;
   }
 
   /** มุมมองทั้งอาคาร: โหลดโมเดลห้องของทุกชั้นทีละ 2 ไฟล์ — ชั้นที่ลิฟต์จอดก่อน ตามด้วยห้างและสำนักงาน */
@@ -712,6 +799,7 @@ export class MallScene {
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
     if (this.lift) this.lift.rig.group.visible = !iso; // มุมมองชั้นเดี่ยวใช้สัญลักษณ์ลิฟต์ในโมเดลของผู้ใช้
+    if (this.roomSel && !this.floorGroups.get(this.roomSel.floorId)?.group.visible) { this.selectRoom(null); this.onRoom(null); }
     this.#placeMarkers();
   }
 
@@ -839,10 +927,7 @@ export class MallScene {
       if (moved > CLICK_PX) return; // เป็นการลากหมุนกล้อง ไม่ใช่คลิก
       const r = el.getBoundingClientRect();
       const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-      this.raycaster.setFromCamera(ndc, this.camera);
-      const targets = [...this.markerObjs.values()].filter((o) => o.visible).map((o) => o.sphere);
-      const hit = this.raycaster.intersectObjects(targets, false)[0];
-      if (hit) this.onSelect(hit.object.userData.pointId);
+      this.#handleClick(ndc); // หมุด IoT ก่อน แล้วจึงห้อง/พื้นที่ในโมเดล
     });
   }
 

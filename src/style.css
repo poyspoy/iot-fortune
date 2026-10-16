@@ -190,7 +190,7 @@ h3 { font-size: 1rem; margin-bottom: 6px; }
 .layers { display: flex; flex-wrap: wrap; gap: 2px 10px; border: 1px solid var(--line); border-radius: 8px; padding: 0 8px 2px; margin: 0; }
 .layers legend { font-size: 0.75rem; color: var(--muted); padding: 0 4px; }
 .scene-toggle > summary { cursor: pointer; font-weight: 600; color: var(--teal-2); padding: 4px 0; display: none; }
-.viewport { position: relative; height: 520px; border-radius: 8px; overflow: hidden; background: var(--slate); }
+.viewport { position: relative; height: clamp(460px, 74vh, 820px); border-radius: 8px; overflow: hidden; background: var(--slate); }
 .scene-host { position: absolute; inset: 0; }
 .scene-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .marker-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -364,7 +364,7 @@ tr.archived td { color: var(--muted); }
   .below { order: 1; }
   .stage { order: 2; }
   .scene-toggle > summary { display: block; }
-  .viewport { height: 320px; }
+  .viewport { height: max(380px, 64vh); }
   .plan-wrap.wide .plan-svg { min-width: 640px; }
   .hide-sm { display: none; }
   .two-col { grid-template-columns: minmax(0, 1fr); }
@@ -460,3 +460,52 @@ tr.archived td { color: var(--muted); }
   .lift-btn { min-width: 36px; min-height: 36px; }
 }
 @media (min-width: 761px) { .viewport:has(.lift-panel) .floor-banner { right: 300px; } }
+
+/* เลือกชั้นแบบปุ่ม */
+.floor-chips .btn { min-width: 36px; }
+
+/* การ์ดข้อมูลห้อง/พื้นที่ */
+.room-card {
+  position: absolute; left: 8px; bottom: 40px; z-index: 5; width: min(340px, calc(100% - 16px)); max-height: calc(100% - 100px); overflow: auto;
+  background: rgba(251,252,249,0.98); border: 1px solid var(--line); border-left: 5px solid #e0a800; border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3); padding: 10px 12px; display: grid; gap: 8px; font-size: 0.85rem;
+}
+.rc-head { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
+.rc-title { font-size: 1.02rem; color: #1d2a2e; display: block; }
+.rc-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.rc-chip { font-size: 0.74rem; font-weight: 700; border-radius: 99px; padding: 1px 8px; background: #e6efe9; color: var(--teal-2); border: 1px solid #b9d3cc; }
+.rc-chip.kind { background: #fff2c2; color: #7a5b00; border-color: #e3c766; }
+.rc-close { border: 0; background: transparent; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); min-width: 32px; min-height: 32px; }
+.room-thumb { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: #f2f5ef; }
+.rc-dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; margin: 0; }
+.rc-dl dt { color: var(--muted); }
+.rc-dl dd { margin: 0; overflow-wrap: anywhere; }
+.rc-dl small { color: var(--muted); }
+.rc-points { display: flex; flex-wrap: wrap; gap: 4px; }
+.rc-notes summary { cursor: pointer; color: var(--muted); }
+.rc-notes ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.78rem; color: #3b4a50; }
+.rc-foot { margin: 0; font-size: 0.72rem; color: var(--muted); }
+@media (max-width: 760px) {
+  .room-card { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh; border-radius: 14px 14px 0 0; border-left: 0; border-top: 5px solid #e0a800; z-index: 40; }
+}
+
+/* หน้าจอ Loading ของโมเดล 3 มิติ */
+.model-loading {
+  position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: rgba(23,31,34,0.72);
+  backdrop-filter: blur(2px); transition: opacity 0.4s ease;
+}
+.model-loading.done { opacity: 0; pointer-events: none; }
+.ld-box { background: #fbfcf9; border-radius: 12px; padding: 18px 22px; display: grid; gap: 8px; justify-items: center; width: min(340px, calc(100% - 32px)); box-shadow: 0 8px 30px rgba(0,0,0,0.35); text-align: center; }
+.ld-text { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.ld-bar { width: 100%; height: 8px; border-radius: 99px; background: #e2e8e3; overflow: hidden; }
+.ld-bar-in { height: 100%; width: 0; background: var(--teal); transition: width 0.3s ease; }
+.ld-spin { width: 34px; height: 34px; border-radius: 50%; border: 4px solid #cfe0da; border-top-color: var(--teal); animation: ld-rot 0.9s linear infinite; }
+@keyframes ld-rot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ld-spin { animation: none; } }
+
+/* ดูโมเดลเต็มจอ (ใช้ได้ทุกอุปกรณ์ รวมถึงมือถือที่ไม่รองรับ Fullscreen API) */
+.vp-full-btn { position: absolute; right: 8px; bottom: 8px; z-index: 5; min-width: 40px; min-height: 40px; border-radius: 8px; border: 1px solid var(--line);
+  background: rgba(251,252,249,0.95); font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0 10px; }
+.viewport.vp-full { position: fixed; inset: 0; height: 100vh; height: 100dvh; z-index: 30; border-radius: 0; }
+body.has-vp-full { overflow: hidden; }
+@media (max-width: 760px) { .viewport:not(.vp-full) .lift-panel { bottom: 54px; } }

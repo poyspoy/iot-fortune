@@ -1,0 +1,242 @@
+{
+ "11": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "12": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "13": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "14": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "15": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "16": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "17": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "18": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "19": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "1": {
+  "floor": 3,
+  "shop": 48,
+  "walkway": 1,
+  "elevator": 8,
+  "escalator": 4,
+  "toilet": 2
+ },
+ "20": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "21": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "22": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "23": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "24": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "25": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "26": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "27": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "28": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "29": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "2": {
+  "floor": 4,
+  "shop": 78,
+  "walkway": 1,
+  "elevator": 3,
+  "escalator": 5,
+  "toilet": 2,
+  "exit": 2
+ },
+ "30": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "31": {
+  "floor": 5,
+  "shop": 4,
+  "door": 19,
+  "walkway": 1,
+  "elevator": 7,
+  "stair": 2,
+  "toilet": 2
+ },
+ "3": {
+  "floor": 3,
+  "shop": 137,
+  "walkway": 1,
+  "elevator": 3,
+  "escalator": 6,
+  "toilet": 4,
+  "exit": 4
+ },
+ "4": {
+  "floor": 2,
+  "shop": 117,
+  "walkway": 1,
+  "elevator": 3,
+  "escalator": 4,
+  "toilet": 3,
+  "exit": 4
+ },
+ "5": {
+  "floor": 1,
+  "shop": 6,
+  "walkway": 1,
+  "elevator": 1,
+  "escalator": 1
+ },
+ "G": {
+  "floor": 4,
+  "shop": 83,
+  "walkway": 1,
+  "elevator": 3,
+  "escalator": 4,
+  "toilet": 6,
+  "exit": 2
+ }
+}
