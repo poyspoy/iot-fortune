@@ -4,7 +4,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 // คน 3 มิติแบบ Rigged (GLB จาก Blender: โครงกระดูก 16 ชิ้น + Idle / Walk / Turn)
 // ผสมแอนิเมชันตามสถานะ: เดิน (อัตราเล่น = ความเร็วจริง / ความเร็วของแอนิเมชัน → เท้าไม่ไถล) · ยืน (Idle) · หมุนตัว (Turn)
 export const PERSON_SCALE = 0.118;      // เมตร → หน่วยฉาก (สเกลเดียวกับรถ)
-export const WALK_SPEED_M = 0.9166667;  // ม./วิ ของแอนิเมชัน Walk ที่อัตราเล่น 1 (จาก tools/blender/make_person.py)
+export const WALK_SPEED_M = 0.9032258;  // ม./วิ ของแอนิเมชัน Walk ที่อัตราเล่น 1 (ค่าเริ่มต้น — อ่านจาก extras.walkSpeed ใน GLB ถ้ามี)
 
 // รูปลักษณ์ — สีสุภาพ โทนเดียวกับ NEXZA ไม่มีรายละเอียดใบหน้า (ชิ้นเสริม: ผมยาว กระเป๋าสะพาย ป้ายพนักงาน ถุงช้อปปิ้ง)
 export const LOOKS = [
@@ -42,7 +42,8 @@ export class PersonRig {
     this.actions = Object.fromEntries(['Idle', 'Walk', 'Turn'].map((n) => { const a = this.mixer.clipAction(clip(n)); a.play(); a.setEffectiveWeight(0); return [n, a]; }));
     this.actions.Walk.time = Math.random() * 0.9;
     this.w = { Idle: 1, Walk: 0, Turn: 0 };
-    this.walkSpeedScene = WALK_SPEED_M * PERSON_SCALE;
+    let ws = WALK_SPEED_M; gltf.scene.traverse((o) => { if (typeof o.userData?.walkSpeed === 'number') ws = o.userData.walkSpeed; });
+    this.walkSpeedScene = ws * PERSON_SCALE;
     // เงานุ่มใต้เท้า (จาง)
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);

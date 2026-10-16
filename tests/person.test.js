@@ -10,7 +10,7 @@ const floor = createDefaultConfig().building.floors.find((f) => f.id === 'G');
 const toLocal = ([x, y]) => { const p = planTo3D(floor, { x, y }, 0); return [p.x, p.z]; };
 const poi = new Map(data.people.poi.map((p) => [p.id, p]));
 const pathOf = (a, b) => data.people.paths[`${a}>${b}`] ?? [...data.people.paths[`${b}>${a}`]].reverse();
-const plan = ['ent-center', 'shop-2', 'lift-L1', 'esc-2', 'ent-center'];
+const plan = ['ent-center', 'lift-L1', 'shop-2', 'esc-2', 'ent-center'];
 const legs = () => plan.slice(0, -1).map((a, i) => { const to = poi.get(plan[i + 1]); return { points: pathOf(a, plan[i + 1]).map(toLocal), stop: { kind: to.kind, face: to.faceTo ? toLocal(to.faceTo) : null } }; });
 
 test('ลำดับพฤติกรรม: เดิน → หันเข้าร้าน → ยืนดู → เดินต่อ (มีหมุนตัวอยู่กับที่)', () => {

@@ -854,7 +854,7 @@ export class MallScene {
       if (token !== this.mobToken || !this.mob || this.disposed) return;
       const poi = new Map(data.people.poi.map((p) => [p.id, p]));
       const pathOf = (a, b) => { const k = data.people.paths[`${a}>${b}`]; return k ?? [...data.people.paths[`${b}>${a}`]].reverse(); };
-      const plan = ['ent-center', 'shop-2', 'lift-L1', 'esc-2', 'ent-center'];
+      const plan = ['ent-center', 'lift-L1', 'shop-2', 'esc-2', 'ent-center']; // เข้า → รอลิฟต์ → ดูร้าน → บันไดเลื่อน → ออก
       const legs = [];
       for (let i = 0; i < plan.length - 1; i++) {
         const to = poi.get(plan[i + 1]);

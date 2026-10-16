@@ -6,7 +6,7 @@
 import { Route } from './mobilitySim.js';
 
 export const PERSON_CONFIG = Object.freeze({
-  vmax: 0.135,        // หน่วยฉาก/วินาที (≈ 1.15 ม./วิ) เดินในห้าง
+  vmax: 0.115,        // หน่วยฉาก/วินาที (≈ 0.97 ม./วิ) เดินเล่นในห้าง — อัตราเล่นท่าเดิน ≈ 1.07 เท่า
   accel: 0.16, decel: 0.2,
   turnRateWalk: 2.2,  // เรเดียน/วินาที ขณะเดิน (หันตามทางโค้ง)
   turnRateStand: 1.7, // หมุนตัวอยู่กับที่

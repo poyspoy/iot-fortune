@@ -12,8 +12,8 @@ from mathutils import Vector, Matrix, Euler
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'public', 'models', 'people', 'person.glb')
 FPS = 30
 WALK_FRAMES = 30            # 1 รอบเดิน = 1.0 วินาที (2 ก้าว)
-STRIDE = 0.55               # ระยะที่เท้าเลื่อนช่วงแตะพื้น (เมตร) — เดินเล่นในห้าง ~0.9 ม./วิ
-STANCE = 0.6                # สัดส่วนเวลาที่เท้าแตะพื้นต่อรอบ
+STRIDE = 0.56               # ระยะที่จุดสัมผัสพื้นเลื่อนช่วงแตะพื้น (เมตร)
+STANCE = 0.62               # สัดส่วนเวลาที่เท้าแตะพื้นต่อรอบ (เดินปกติ ~60–62%)
 WALK_SPEED = STRIDE / (STANCE * WALK_FRAMES / FPS)   # ≈ 1.083 ม./วิ
 FOOT_Z = 0.08               # ระดับข้อเท้าเมื่อเท้าวางราบ (พื้นรองเท้าที่ z = 0)
 
@@ -233,7 +233,7 @@ def walk_pose(f):
     for sd, off in (('L', 0.0), ('R', 0.5)):
         y, z, p = foot_walk((t + off) % 1.0); set_foot(sd, y, z, p)
     c1 = math.cos(2 * math.pi * t); c2 = math.cos(4 * math.pi * t)
-    loc('hips', 0, 0.012 * -c2 - 0.045, 0)              # เข่างอเล็กน้อยตลอดการเดิน + สะโพกขึ้น–ลง 2 ครั้งต่อรอบ (แกน Y ของกระดูก = แนวตั้ง)
+    loc('hips', 0, 0.01 * -c2 - 0.025, 0)               # เข่างอเล็กน้อย (~14° กลางช่วงแตะพื้น) + สะโพกขึ้น–ลง 2 ครั้งต่อรอบ (แกน Y ของกระดูก = แนวตั้ง)
     # ท่าตั้งตรง: สะโพกและอกเอนไปด้านหน้าเล็กน้อย (บวก = เอนไปข้างหน้า) · สะโพกบิดตามขาข้างที่ก้าวหน้า
     rot('hips', 0.04, -0.08 * c1, 0.03 * math.sin(2 * math.pi * t))
     rot('spine', 0.03, 0.03 * c1, 0)
@@ -289,6 +289,15 @@ for f in range(1, int(WALK_FRAMES * STANCE) + 1):
     pts = [M @ (pb.bone.matrix_local.inverted() @ (arm_data.bones['foot.L'].head_local + Vector((0.095 * 0, dy, -FOOT_Z + 0.0)))) for dy in (0.085, -0.13)]
     low = min(pts, key=lambda q: q.z); contact.append((round(low.y, 4), round(low.z, 4)))
 print('CONTACT', contact)
+lean = []; knee = []
+for f in range(1, WALK_FRAMES + 1):
+    scene.frame_set(f)
+    h = arm.matrix_world @ arm.pose.bones['hips'].head; n = arm.matrix_world @ arm.pose.bones['neck'].head
+    lean.append(math.degrees(math.atan2(-(n.y - h.y), n.z - h.z)))   # บวก = เอนไปข้างหน้า
+    th = arm.pose.bones['thigh.L']; sh = arm.pose.bones['shin.L']
+    a1 = (th.tail - th.head).normalized(); a2 = (sh.tail - sh.head).normalized()
+    knee.append(math.degrees(a1.angle(a2)))
+print('POSTURE', json.dumps({'leanMin': round(min(lean), 1), 'leanMax': round(max(lean), 1), 'kneeStanceMin': round(min(knee[:18]), 1), 'kneeStanceMax': round(max(knee[:18]), 1), 'kneeMax': round(max(knee), 1)}))
 ys = []; zs = []
 for f in range(1, int(WALK_FRAMES * STANCE) + 1):
     scene.frame_set(f); p = arm.matrix_world @ arm.pose.bones['foot.L'].head; ys.append(p.y); zs.append(p.z)
