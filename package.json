@@ -1,6 +1,6 @@
 {
   "name": "iot-fortune",
-  "version": "1.8.0-demo",
+  "version": "1.8.1-demo",
   "private": true,
   "description": "IoT ฟอร์จูน — ติดตามระบบอาคารตามจุด (frontend prototype)",
   "type": "module",
