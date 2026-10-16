@@ -19,7 +19,7 @@ async function newEngine(repo, source = 'api', clock = new ManualClock(T0), conf
 }
 
 const P = (samples) => ({ schemaVersion: 1, samples });
-const lvl = (v, at, seq) => ({ pointId: 'P-001', metricId: 'level', value: v, unit: 'cm', observedAt: iso(at), quality: 'good', sequence: seq });
+const lvl = (v, at, seq) => ({ pointId: 'WL-001', metricId: 'level', value: v, unit: 'cm', observedAt: iso(at), quality: 'good', sequence: seq });
 
 test('IndexedDB: บันทึกจริงและอ่านคืนหลังเปิดฐานข้อมูลใหม่ (จำลองการรีโหลด)', async () => {
   const factory = new IDBFactory();
@@ -34,11 +34,11 @@ test('IndexedDB: บันทึกจริงและอ่านคืนห
 
   const b = await new IdbRepo({ indexedDB: factory, IDBKeyRange, name: 'persist' }).open();
   const e2 = await newEngine(b, 'api', clock);
-  assert.equal(e2.entry('P-001', 'level').lastValid.value, 132);
+  assert.equal(e2.entry('WL-001', 'level').lastValid.value, 132);
   const ep2 = e2.episodes()[0];
   assert.equal(ep2.acks[0].note, 'กำลังตรวจ');
   assert.ok(isEpisodeActive(ep2));
-  assert.equal((await b.getSeries('api', 'P-001', 'level')).length, 3);
+  assert.equal((await b.getSeries('api', 'WL-001', 'level')).length, 3);
   assert.ok(await b.getKV('config'));
 });
 
@@ -47,11 +47,11 @@ test('แยกแหล่งข้อมูล: ประวัติเดโ
   const demo = await newEngine(repo, 'demo');
   await demo.ingest(P([lvl(99, T0, 1)]), { receivedAt: T0 });
   const api = await newEngine(repo, 'api');
-  assert.equal(api.entry('P-001', 'level'), null);
-  assert.equal(api.quality('P-001', 'level'), 'nodata');
-  assert.equal((await repo.getSeries('api', 'P-001', 'level')).length, 0);
+  assert.equal(api.entry('WL-001', 'level'), null);
+  assert.equal(api.quality('WL-001', 'level'), 'nodata');
+  assert.equal((await repo.getSeries('api', 'WL-001', 'level')).length, 0);
   await repo.clearSource('demo');
-  assert.equal((await repo.getSeries('demo', 'P-001', 'level')).length, 0);
+  assert.equal((await repo.getSeries('demo', 'WL-001', 'level')).length, 0);
 });
 
 test('ข้อมูลเก่าไม่ทำให้การแจ้งเตือนกลับสู่ปกติ และไม่แสดงเป็นค่าปกติ', async () => {
@@ -63,7 +63,7 @@ test('ข้อมูลเก่าไม่ทำให้การแจ้�
   assert.equal(e.episodes().length, 1);
   clock.advance(10 * 60_000); // ไม่มีข้อมูลใหม่ 10 นาที
   e.tick();
-  assert.equal(e.quality('P-001', 'level'), 'stale');
+  assert.equal(e.quality('WL-001', 'level'), 'stale');
   assert.ok(isEpisodeActive(e.episodes()[0]), 'การแจ้งเตือนยังคงเกิดอยู่');
   const st = e.pointStatus(e.config.points[0]);
   assert.equal(st.severity, 'warning');
@@ -71,7 +71,7 @@ test('ข้อมูลเก่าไม่ทำให้การแจ้�
   assert.equal(st.attention, true);
   // poll สำเร็จแต่ได้ค่าเดิมซ้ำ → ยังเก่าอยู่
   await e.ingest(P([lvl(132, T0, 3)]), { receivedAt: clock.now() });
-  assert.equal(e.quality('P-001', 'level'), 'stale');
+  assert.equal(e.quality('WL-001', 'level'), 'stale');
 });
 
 test('ค่าที่ไม่ถูกต้องไม่เขียนทับค่าที่ถูกต้อง และคุณภาพแสดง "ไม่ถูกต้อง"', async () => {
@@ -81,8 +81,8 @@ test('ค่าที่ไม่ถูกต้องไม่เขียน�
   await e.ingest(P([lvl(50, T0, 1)]), { receivedAt: T0 });
   clock.advance(10_000);
   await e.ingest(P([{ ...lvl(51, T0 + 10_000, 2), value: 'x' }]), { receivedAt: clock.now() });
-  assert.equal(e.entry('P-001', 'level').lastValid.value, 50);
-  assert.equal(e.quality('P-001', 'level'), 'invalid');
+  assert.equal(e.entry('WL-001', 'level').lastValid.value, 50);
+  assert.equal(e.quality('WL-001', 'level'), 'invalid');
   assert.equal(e.diag.byReason['invalid-value'], 1);
 });
 
@@ -113,12 +113,12 @@ test('เปลี่ยนขีดจำกัด: ประเมินค่
 
 test('นโยบายเก็บข้อมูล: ลบตามอายุ แล้วตามจำนวน', async () => {
   const repo = await newRepo();
-  const mk = (i, at) => ({ id: `api:P-001:level:${at}`, source: 'api', pointId: 'P-001', metricId: 'level', value: i, unit: 'cm', observedAt: at, receivedAt: at, quality: 'good', sequence: i });
+  const mk = (i, at) => ({ id: `api:WL-001:level:${at}`, source: 'api', pointId: 'WL-001', metricId: 'level', value: i, unit: 'cm', observedAt: at, receivedAt: at, quality: 'good', sequence: i });
   const day = 86_400_000;
   await repo.addSamples([mk(1, T0 - 10 * day), mk(2, T0 - 8 * day), ...Array.from({ length: 10 }, (_, i) => mk(10 + i, T0 - i * 1000))]);
   const deleted = await repo.enforceRetention(T0, { maxDays: 7, maxSamples: 6 });
   assert.equal(deleted, 6);
-  const left = await repo.getSeries('api', 'P-001', 'level');
+  const left = await repo.getSeries('api', 'WL-001', 'level');
   assert.equal(left.length, 6);
   assert.equal(Math.min(...left.map((s) => s.observedAt)), T0 - 5000, 'เหลือค่าที่ใหม่ที่สุด');
 });
@@ -135,20 +135,20 @@ test('สำรองและกู้คืนในฐานข้อมู�
 
   const dst = await newRepo('dst');
   await dst.putKV('config', { marker: 'old' });
-  await dst.addSamples([{ id: 'demo:P-002:level:1', source: 'demo', pointId: 'P-002', metricId: 'level', value: 1, unit: '%', observedAt: 1, receivedAt: 1, quality: 'good', sequence: null }]);
+  await dst.addSamples([{ id: 'demo:WL-002:level:1', source: 'demo', pointId: 'WL-002', metricId: 'level', value: 1, unit: '%', observedAt: 1, receivedAt: 1, quality: 'good', sequence: null }]);
 
   // นำเข้าที่ล้มเหลวกลาง transaction (คีย์เสีย) → ข้อมูลเดิมต้องอยู่ครบ
   const broken = structuredClone(backup);
   broken.samples.push({ bad: 'no id' });
   await assert.rejects(dst.replaceAll(broken));
   assert.deepEqual(await dst.getKV('config'), { marker: 'old' });
-  assert.equal((await dst.getSeries('demo', 'P-002', 'level')).length, 1);
+  assert.equal((await dst.getSeries('demo', 'WL-002', 'level')).length, 1);
 
   await dst.replaceAll(backup);
   const restored = await newEngine(dst, 'api', clock);
-  assert.equal(restored.entry('P-001', 'level').lastValid.observedAt, T0 - 3 * 3600_000);
-  assert.equal(restored.quality('P-001', 'level'), 'stale', 'คำนวณความสดใหม่ใหม่ ไม่ทำให้ค่าเก่ากลายเป็นสด');
-  assert.equal((await dst.getSeries('demo', 'P-002', 'level')).length, 0, 'แทนที่ทั้งหมด');
+  assert.equal(restored.entry('WL-001', 'level').lastValid.observedAt, T0 - 3 * 3600_000);
+  assert.equal(restored.quality('WL-001', 'level'), 'stale', 'คำนวณความสดใหม่ใหม่ ไม่ทำให้ค่าเก่ากลายเป็นสด');
+  assert.equal((await dst.getSeries('demo', 'WL-002', 'level')).length, 0, 'แทนที่ทั้งหมด');
 });
 
 test('เดโม deterministic: seed และสถานการณ์เดียวกันให้ค่าเดิม ไม่ขึ้นกับการแบ่งช่วง', () => {
@@ -159,7 +159,7 @@ test('เดโม deterministic: seed และสถานการณ์เ�
     ...demoPayloadBetween(T0 + 3 * DEMO_STEP_MS, T0 + 10 * DEMO_STEP_MS, params).samples,
   ];
   assert.deepEqual(parts, whole);
-  const lv = (t) => demoValuesAt(t, params).find((x) => x[0] === 'P-001')[2];
+  const lv = (t) => demoValuesAt(t, params).find((x) => x[0] === 'WL-001')[2];
   assert.ok(lv(T0 + 20 * 60_000) > lv(T0) + 100);
   const lost = demoValuesAt(T0 + 60_000, { ...params, scenario: 'device-loss' });
   assert.equal(lost.filter((x) => x[0] === 'P-005').length, 0);
@@ -173,7 +173,7 @@ test('เดโมทั้งระบบ: สถานการณ์บ่อ
   const e = await newEngine(repo, 'demo', clock);
   const params = { seed: 1, scenario: 'sump-rising', scenarioStartedAt: T0, lossPointId: 'P-005' };
   await e.ingest(demoPayloadBetween(T0 - 60_000, T0 + 20 * 60_000, params), { receivedAt: clock.now() });
-  const ep = e.episodes().find((x) => x.pointId === 'P-001');
+  const ep = e.episodes().find((x) => x.pointId === 'WL-001');
   assert.equal(ep.severity, 'critical');
   const params2 = { ...params, scenario: 'normal' };
   clock.advance(2 * 60_000);

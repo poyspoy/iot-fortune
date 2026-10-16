@@ -21,7 +21,7 @@ function run(state, floorId, t0) {
       assert.ok(Number.isInteger(s.pos));
     }
     if (s.pos !== s.to) assert.ok(s.door === 0 || s.phase === 'closing', 'ห้ามเปิดประตูขณะยังไม่ตรงชั้น');
-    if (s.phase === 'closing') assert.equal(s.pos, s.from, 'ไม่ออกตัวก่อนประตูปิดสนิท');
+    if (s.phase === 'closing') { assert.equal(s.pos, s.from, 'ไม่ออกตัวก่อนประตูปิดสนิท'); assert.equal(st.direction, null, 'ลูกศรแสดงหลังประตูปิด'); }
     maxStep = Math.max(maxStep, Math.abs(s.pos - prevPos));
     prevPos = s.pos;
     assert.equal(st.buttonsEnabled, s.phase === 'open');
@@ -32,10 +32,10 @@ function run(state, floorId, t0) {
 
 test('ลิฟต์ L1 จอดเฉพาะชั้นที่มีในอาคารจริง และอยู่ภายในกรอบชั้นเหล่านั้น', () => {
   const cfg = createDefaultConfig();
-  for (const id of ELEVATOR_L1.floors) {
-    const f = cfg.building.floors.find((x) => x.id === id);
-    assert.ok(f, `ไม่พบชั้น ${id}`);
-    const m = f.model;
+  for (const id of ELEVATOR_L1.floors) assert.ok(cfg.building.floors.find((x) => x.id === id), `ไม่พบชั้น ${id}`);
+  // ชั้นที่ยืนยันจากผัง: ปล่องอยู่ในกรอบชั้นนั้น
+  for (const id of ELEVATOR_L1.verifiedFloors) {
+    const m = cfg.building.floors.find((x) => x.id === id).model;
     assert.ok(Math.abs(ELEVATOR_L1.x - m.cx) < m.width / 2 && Math.abs(ELEVATOR_L1.z - m.cz) < m.depth / 2);
   }
   // ตำแหน่งปล่องห่างจากสัญลักษณ์ลิฟต์ทุกชั้นไม่เกินครึ่งความกว้างปล่อง + ระยะคลาดของผัง
@@ -58,7 +58,7 @@ test('ขึ้นจากชั้นล่างสุดไปชั้น�
   assert.equal(r.s.pos, 3); assert.equal(r.s.door, 1);
   assert.equal(elevatorStatus(r.s).headline, 'ถึงชั้น 3');
   assert.equal(elevatorStatus(r.s).doorText, 'ประตูเปิด');
-  assert.ok(r.log.some((x) => x.st.direction === 'up' && x.st.headline === '▲ ขึ้นไปชั้น 3'));
+  assert.ok(r.log.some((x) => x.st.direction === 'up' && x.st.headline === '▲ กำลังขึ้นไปชั้น 3'));
   // ลำดับเฟส
   const phases = r.log.map((x) => x.phase).filter((p, i, a) => p !== a[i - 1]);
   assert.deepEqual(phases, ['closing', 'moving', 'opening', 'open']);
@@ -100,5 +100,20 @@ test('กระโดดเวลาไกล (แท็บถูกพัก) �
   const end = stepElevator(r.state, 999999);
   assert.equal(end.phase, 'open'); assert.equal(end.pos, 3); assert.equal(end.door, 1);
   assert.equal(travelMs(0, 3), 3 * T.perFloorMs);
+  assert.ok(T.doorMs >= 800 && T.doorMs <= 1200, 'ประตูปิด/เปิดประมาณ 1 วินาที');
   assert.equal(travelMs(0, 1), T.minTravelMs);
+});
+
+test('สาธิต: ขึ้น–ลงทุกชั้น และลำดับอัตโนมัติ G → 3 → 1 → 5 → G ประตูเปิดหลังหยุดตรงชั้นทุกครั้ง', () => {
+  let s = createElevator(ELEVATOR_L1);
+  let t = 0;
+  const floors = ELEVATOR_L1.floors;
+  const seq = [...floors.slice(1), ...[...floors].reverse().slice(1), '3', '1', '5', 'G'];
+  for (const f of seq) {
+    const r = run(s, f, t + 1000);
+    assert.equal(floors[r.s.pos], f);
+    assert.equal(r.s.door, 1);
+    s = r.s; t = r.t;
+  }
+  assert.equal(s.trips, seq.length);
 });

@@ -14,6 +14,8 @@ import { Sound } from './sound.js';
 import { viewingFloorId, normalizeViewState } from '../domain/viewState.js';
 import { ElevatorPanel } from './elevatorPanel.js';
 import { roomCard } from './roomCard.js';
+import { WaterPanel } from './waterPanel.js';
+import { Presenter } from './presenter.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
 
 const VIEWS = [
@@ -39,7 +41,7 @@ export class App {
       sceneMode: ui.sceneMode === 'exploded' ? 'exterior' : (ui.sceneMode ?? 'exterior'),
       layers: { electrical: true, hvac: true, water: true, environment: true, ...(ui.layers ?? {}) },
       filters: { search: '', floor: '', area: '', system: '', severity: '', quality: '', attention: false, ...(ui.filters ?? {}) },
-      detailsOpen: matchMedia('(max-width: 760px)').matches ? false : (ui.detailsOpen ?? true),
+      detailsOpen: false, // เปิดเว็บ: แผงรายละเอียดจุดพับไว้ก่อน ให้โมเดลเด่นที่สุด (กดหมุด/จุดจึงขยาย)
       sceneOpen: ui.sceneOpen ?? true, // เว็บไซต์ 3 มิติ: เปิดโมเดลทุกขนาดจอ
       trendRange: ui.trendRange ?? '1h',
       planZoom: 1,
@@ -190,8 +192,9 @@ export class App {
    */
   #renderLoading() {
     if (!this.scene || !this.viewport?.isConnected || this.state.viewMode !== '3d') { this.loadingEl?.remove(); return; }
-    const need = this.state.isolated ? [this.state.floorId] : this.scene.elevatorFloors();
-    const states = need.map((id) => this.scene.detailState(id));
+    // ทั้งอาคาร = โมเดลอาคารแบบเบา (fortune.glb) · ชั้นเดี่ยว = โมเดลรายละเอียดของชั้นนั้นเท่านั้น
+    const need = this.state.isolated ? [this.state.floorId] : ['building'];
+    const states = need.map((id) => (id === 'building' ? (this.scene.modelLoaded || !this.config.building.modelSrc ? 'ready' : 'loading') : this.scene.detailState(id)));
     const waiting = states.filter((x) => x === 'loading' || x === 'idle').length;
     const pr = this.scene.detailProgress();
     if (!waiting) {
@@ -206,8 +209,8 @@ export class App {
     }
     if (!this.loadingEl.isConnected) this.viewport.appendChild(this.loadingEl);
     const done = need.length - waiting;
-    this.loadingText.textContent = `${this.state.isolated ? 'ชั้นที่เลือก' : 'ชั้นที่ลิฟต์จอด'} ${done}/${need.length} · ทั้งอาคาร ${pr.ready}/${pr.total} ชั้น`;
-    this.loadingBar.style.width = `${Math.round((pr.ready / Math.max(1, pr.total)) * 100)}%`;
+    this.loadingText.textContent = this.state.isolated ? 'โมเดลรายละเอียดของชั้นที่เลือก' : 'โมเดลอาคาร (แบบเบา)';
+    this.loadingBar.style.width = `${Math.round((done / Math.max(1, need.length)) * 100)}%`;
   }
 
   /** ปุ่มดูโมเดลเต็มจอ — เต็มจอทั้งโมเดลและแผงข้าง (ลิฟต์/ข้อมูลห้อง) ใช้งานได้ครบ + ปุ่ม "ทั้งอาคาร" บนโมเดล */
@@ -260,11 +263,11 @@ export class App {
     if (!this.liftPanel || this.liftPanel.opts.floors.join() !== floors.join()) {
       this.liftPanel = new ElevatorPanel({
         floors, name: ELEVATOR_L1.name, note: ELEVATOR_L1.note,
-        onRequest: (id) => {
-          const r = this.scene?.requestElevator(id);
-          if (r === 'same-floor') this.liftPanel.flash(`ลิฟต์อยู่ที่ชั้น ${id} แล้ว`);
-        },
-        onCamera: () => this.scene?.preset('lift'),
+        onRequest: (id) => this.liftTo(id),
+        onAuto: (on) => this.scene?.setLiftAuto(on),
+        onPause: (on) => this.scene?.setLiftPaused(on),
+        onReset: () => this.scene?.resetLift(), // กลับชั้น G เปิดประตู แล้วเริ่มวงรอบอัตโนมัติใหม่
+        onCamera: () => this.focusLift(),
         onLiftView: (on) => { this.scene?.setLiftView(on); if (on) this.scene?.preset('lift'); },
         onOpenFloor: (id) => this.isolateFloor(id),
         onShowBuilding: () => { this.showBuilding(); requestAnimationFrame(() => this.scene?.preset('lift')); },
@@ -274,13 +277,105 @@ export class App {
       if (s0) this.liftPanel.update(s0);
     }
     this.liftPanel.setIsolated(!!this.state.isolated);
-    this.liftSide.appendChild(this.liftPanel.el);
+    this.liftSide.appendChild(this.liftPanel.el); // ลิฟต์ก่อน แล้วตามด้วยเซนเซอร์ระดับน้ำ
+    this.#mountWater();
     this.stageBody.classList.add('has-lift');
+  }
+
+  // ---------------------------------------------------------------- สาธิตลิฟต์ / เซนเซอร์น้ำ
+  /**
+   * สั่งลิฟต์จำลองไปชั้น (ในเบราว์เซอร์เท่านั้น — ไม่มีการเชื่อมต่อหรือส่งคำสั่งถึงลิฟต์จริง)
+   * กล้องเปลี่ยนเป็นมุมลิฟต์และเปิดปล่อง เพื่อให้เห็นตัวลิฟต์ตลอดการเดินทาง
+   * @returns {Promise<'arrived'|'same-floor'|'busy'|'none'>}
+   */
+  liftTo(floor) {
+    // คำสั่งลิฟต์แยกจากการเลือกดูชั้น: ไม่เปลี่ยนมุมมองชั้นหรือกล้อง (ลิฟต์วิ่งเบื้องหลังแม้ดูชั้นเดียว)
+    if (!this.scene) return Promise.resolve('none');
+    const r = this.scene.requestElevator(floor);
+    if (r === 'same-floor') { this.liftPanel?.flash(`ลิฟต์อยู่ที่ชั้น ${floor} แล้ว`); return Promise.resolve('same-floor'); }
+    if (r !== 'started') return Promise.resolve(r);
+    return new Promise((res) => { this.liftWaiters = [...(this.liftWaiters ?? []), { floor, res }]; });
+  }
+
+  /** เริ่มสาธิตลิฟต์: กลับมุมทั้งอาคาร เปิดเลเยอร์ลิฟต์ เปิดปล่อง จัดกล้องให้เห็นเส้นทางลิฟต์ และย่อแผงรายละเอียดจุด */
+  focusLift() {
+    if (!this.scene) return;
+    if (this.state.isolated) this.showBuilding();
+    this.scene.setLayerVisible('elevator', true);
+    if (!this.scene.liftView) { this.scene.setLiftView(true); if (this.liftPanel) { this.liftPanel.liftView = true; this.liftPanel.update(this.scene.elevatorStatus()); } }
+    if (this.state.detailsOpen) this.setState({ detailsOpen: false });
+    requestAnimationFrame(() => this.scene?.preset('lift'));
+  }
+
+  /** แผงเกจ (เซนเซอร์ระดับน้ำ ฯลฯ) ในคอลัมน์ข้างโมเดล — สร้างจากการตั้งค่าจุด ไม่ผูกรหัสจุด */
+  #mountWater() {
+    const ids = this.gaugePoints().map((x) => x.point.id);
+    if (!ids.length) { this.waterPanel?.el.remove(); return; }
+    if (!this.waterPanel || this.waterPanel.opts.ids.join() !== ids.join()) {
+      this.waterPanel = new WaterPanel({ ids, onSelect: (id) => this.openFloorFor(id) });
+    }
+    this.liftSide.appendChild(this.waterPanel.el);
+    this.#updateWater();
+  }
+
+  #updateWater() {
+    if (!this.waterPanel?.el.isConnected) return;
+    const ws = this.#waterState();
+    const rows = this.gaugePoints().map(({ point: p, metric: m }) => {
+      const g = m.gauge;
+      const e = this.engine?.entry(p.id, m.id);
+      const v = this.#freshValue(p.id, m.id);
+      const rule = this.config.rules.find((r) => r.pointId === p.id && r.metricId === m.id && r.enabled);
+      const thr = rule ? [['warning', rule.warning], ['critical', rule.critical]].filter(([, x]) => typeof x === 'number').map(([level, x]) => ({ level, frac: (x - g.min) / (g.max - g.min) })) : [];
+      return { id: p.id, name: p.name, floorName: this.floorName(p.floorId), unit: m.unit, decimals: m.decimals ?? 1, value: typeof v === 'number' ? v : null,
+        frac: ws[p.id]?.frac ?? null, severity: ws[p.id]?.severity ?? 'normal', observedAt: e?.lastValid?.observedAt ?? null, thresholds: thr, selected: this.state.selectedId === p.id };
+    });
+    this.waterPanel.update(rows);
+  }
+
+  refreshDemoBar() { this.#renderDemoBar(); }
+
+  /** ระดับความรุนแรงปัจจุบันของจุด (ใช้ในการนำเสนออัตโนมัติ) */
+  severityOf(id) { const p = this.index.points.get(id); return p ? this.status(p).severity : 'normal'; }
+
+  /** แถบสาธิต: สถานการณ์ระดับน้ำ + เริ่ม/หยุดการนำเสนอผู้บริหาร (เฉพาะโหมดข้อมูลจำลอง) */
+  #renderDemoBar() {
+    const el = this.demoBarEl;
+    if (!el) return;
+    const ctl = this.ctl;
+    el.hidden = ctl.mode !== 'demo';
+    if (el.hidden) return;
+    const d = ctl.settings.demo;
+    const sc = (key, label) => h('button', { type: 'button', class: `btn small ${d.scenario === key ? 'active' : ''}`, 'aria-pressed': String(d.scenario === key), 'data-testid': `scn-${key}`,
+      onclick: () => this.setDemoScenario(key) }, label);
+    replaceChildren(el,
+      h('span.db-title', 'โหมดสาธิต'),
+      h('button.btn.small.db-start', { type: 'button', 'data-testid': 'present-start', onclick: () => (this.presenter.running ? this.presenter.stop() : this.presenter.start()) },
+        this.presenter.running ? '⏹ หยุดการนำเสนอ' : '▶ เริ่มสาธิตผู้บริหาร'),
+      h('span.db-sep'),
+      sc('normal', 'ปกติ'), sc('sump-rising', 'ระดับน้ำบ่อสูง'), sc('tank-low', 'ระดับน้ำถังต่ำ'), sc('both', 'จำลองทั้งสองเหตุการณ์'),
+      h('button.btn.small', { type: 'button', 'data-testid': 'scn-reset', onclick: () => this.resetDemoAll() }, '⟲ รีเซ็ต'));
+  }
+
+  /** เลือกสถานการณ์สาธิต: เร่งเวลาจำลอง 60× ให้เห็นการเปลี่ยน เขียว → เหลือง → แดง ภายในไม่กี่วินาที (ค่อย ๆ เปลี่ยน ไม่กระโดด) */
+  async setDemoScenario(key) {
+    await this.ctl.setDemoParams({ scenario: key, speed: 60 });
+  }
+
+  /** รีเซ็ตการสาธิต: ล้างข้อมูล/แจ้งเตือนจำลอง กลับสถานการณ์ปกติ ความเร็ว 1× และลิฟต์กลับชั้น G */
+  async resetDemoAll() {
+    await this.ctl.resetDemo();
+    this.scene?.resetLift();
   }
 
   /** สถานะลิฟต์จากฉาก (ตำแหน่งเดียวกับที่วาดห้องลิฟต์) → แผง และไฮไลต์ชั้นที่ลิฟต์ถึง */
   #onElevator(status) {
     this.liftPanel?.update(status);
+    if (status.phase === 'open' && status.atFloor && this.liftWaiters?.length) {
+      const done = this.liftWaiters.filter((w) => w.floor === status.atFloor);
+      this.liftWaiters = this.liftWaiters.filter((w) => w.floor !== status.atFloor);
+      for (const w of done) w.res('arrived');
+    }
     const st = this.state;
     // ไม่ตั้งชั้นที่เลือกตามลิฟต์ — ในมุมมองทั้งอาคารทุกชั้นเด่นเท่ากัน (ไฮไลต์เฉพาะตอนผู้ใช้แยกดูชั้น)
   }
@@ -295,9 +390,7 @@ export class App {
     if (is3d && !st.isolated) {
       const pr = this.scene.detailProgress();
       replaceChildren(el, h('strong.fb-title', { 'data-testid': 'viewing' }, 'กำลังดู: ทั้งอาคาร'),
-        pr.total ? h('span', { class: `fb-model fb-model-${pr.ready === pr.total ? 'ready' : 'loading'}`, 'data-testid': 'model-state' },
-          (pr.ready === pr.total ? `โมเดลห้องจาก Blender ครบ ${pr.total} ชั้น` : `กำลังโหลดโมเดลห้องจาก Blender ${pr.ready}/${pr.total} ชั้น…`)
-          + (pr.towerOnDemand ? ' · สำนักงานโหลดเมื่อแยกดูชั้น' : '')) : null,
+        h('span', { class: 'fb-model fb-model-ready', 'data-testid': 'model-state' }, 'โมเดลอาคารแบบเบา · เลือกชั้นเพื่อโหลดโมเดลห้องจาก Blender'),
         h('span.fb-meta', 'เลือกชั้นจากรายการเพื่อแยกดูเป็นโมเดลเดี่ยว'));
       return;
     }
@@ -322,10 +415,12 @@ export class App {
     this.viewEl = h('main.view', { id: 'main' });
     this.toastEl = h('div.toasts', { role: 'status', 'aria-live': 'assertive' });
     this.sceneHost = h('div.scene-host');
+    this.simBadge = h('div.sim-badge', { 'data-testid': 'sim-badge', role: 'note' }, 'ข้อมูลจำลอง · ไม่ใช่ข้อมูลจริง');
     this.root.replaceChildren(
       h('a.skip', { href: '#main' }, 'ข้ามไปเนื้อหาหลัก'),
-      this.headerEl, this.modebarEl, this.noticeEl, this.navEl, this.kpiEl, this.viewEl, this.toastEl,
+      this.headerEl, this.modebarEl, this.noticeEl, this.navEl, this.kpiEl, this.viewEl, this.toastEl, this.simBadge,
     );
+    this.presenter = new Presenter(this);
   }
 
   #onCtl(e) {
@@ -359,8 +454,8 @@ export class App {
       h('button.btn.small', { type: 'button', onclick: () => { el.remove(); this.openFloorFor(pointId); } }, 'เปิดชั้นที่เกิดเหตุ'),
       h('button.btn.small.ghost', { type: 'button', 'aria-label': 'ปิดข้อความ', onclick: () => el.remove() }, '×'));
     this.toastEl.prepend(el);
-    while (this.toastEl.children.length > 4) this.toastEl.lastChild.remove();
-    setTimeout(() => el.remove(), 15000);
+    while (this.toastEl.children.length > 2) this.toastEl.lastChild.remove(); // ไม่บังหน้าจอระหว่างนำเสนอ
+    setTimeout(() => el.remove(), 10000);
   }
 
   /** คืน true เมื่อลายเซ็นของส่วนนั้นเปลี่ยน (ใช้เลี่ยงการวาด DOM ใหม่ที่ไม่จำเป็น ซึ่งทำให้คลิกหลุด) */
@@ -383,11 +478,15 @@ export class App {
     this.sigs?.clear();
     this.#renderHeader();
     this.#renderModebar();
+    if (this.simBadge) this.simBadge.hidden = this.ctl.mode !== 'demo'; // ป้าย "ข้อมูลจำลอง" ตลอดเวลาในโหมดเดโม
     this.#renderNotices();
     this.#renderNav();
     this.#renderKpis();
     const v = this.state.view;
     if (v !== 'overview' && this.sceneHost.isConnected) this.sceneHost.remove();
+    // ภาพรวม: โมเดล 3D ขึ้นก่อน — ย้ายตัวชี้วัดสรุปลงไปใต้โมเดล (หน้าอื่นอยู่ตำแหน่งเดิม)
+    this.root.classList.toggle('v-overview', v === 'overview');
+    if (v !== 'overview' && this.kpiEl.parentElement !== this.root) this.root.insertBefore(this.kpiEl, this.viewEl);
     if (v === 'overview') this.#renderOverview();
     else if (v === 'points') this.#renderPointsView();
     else if (v === 'alerts') renderAlertsView(this);
@@ -537,23 +636,46 @@ export class App {
     this.stageToolbar = h('div.toolbar');
     this.viewport = h('div.viewport');
     this.legendEl = h('p.legend');
-    stage.append(this.stageToolbar,
+    this.demoBarEl = h('div.demo-bar', { 'data-testid': 'demo-bar', role: 'group', 'aria-label': 'ควบคุมการสาธิต' });
+    stage.append(this.demoBarEl, this.stageToolbar,
       h('details.scene-toggle', { open: st.sceneOpen, ontoggle: (e) => { if (e.target.open !== st.sceneOpen) this.setState({ sceneOpen: e.target.open }, { render: false }); } },
         h('summary', st.viewMode === '3d' ? 'แสดง/ซ่อนโมเดลอาคาร' : 'แสดง/ซ่อนผังชั้น'),
         // โมเดลอยู่ซ้าย แผงลิฟต์เป็นคอลัมน์แยกด้านขวา (จอเล็กอยู่ใต้โมเดล) — ไม่ทับโมเดล
-        this.stageBody = h('div.stage-body', this.viewport, this.liftSide = h('aside.lift-side', { 'aria-label': 'ควบคุมลิฟต์จำลอง' }))),
+        // โมเดล 3 มิติเต็มพื้นที่ (ซ้าย) + Sidebar เดียวกว้างไม่เกิน 300px (ขวา): รายละเอียดจุด · ห้อง · ลิฟต์ · ระดับน้ำ แบบ Accordion — ไม่ทับโมเดล
+        this.stageBody = h('div', { class: `stage-body has-side ${this.sideHidden ? 'side-hidden' : ''}` }, this.viewport,
+          this.sideEl = h('aside.ov-side', { 'aria-label': 'แผงข้อมูลข้างโมเดล', 'data-testid': 'ov-side' },
+            this.detailsEl = h('section.details.acc', { 'aria-label': 'รายละเอียดจุดที่เลือก', 'data-testid': 'details' }),
+            this.liftSide = h('div.lift-side', { 'aria-label': 'ควบคุมลิฟต์จำลอง' })))),
       this.legendEl);
-    this.detailsEl = h('aside.details', { 'aria-label': 'รายละเอียดจุดที่เลือก' });
     this.trendsEl = h('section.trends', { 'aria-label': 'แนวโน้มของจุดที่เลือก' });
     this.tableHost = h('section.table-card', { 'aria-label': 'รายการจุด' });
-    const layout = h('div', { class: `overview ${st.detailsOpen ? '' : 'details-closed'}` }, stage, this.detailsEl, h('div.below', this.trendsEl, this.tableHost));
+    const layout = h('div', { class: 'overview ov-single' }, stage, h('div.below', this.kpiEl, this.trendsEl, this.tableHost));
     replaceChildren(this.viewEl, layout);
+    this.#renderDemoBar();
     this.#renderToolbar();
     this.#mountViewport();
+    // เปิดเว็บครั้งแรก: เลื่อนหน้าให้โมเดล 3D เต็มจอที่สุด (ส่วนหัว/ตัวชี้วัดเลื่อนขึ้นไปดูได้) — ทำครั้งเดียว และไม่ทำถ้าผู้ใช้เลื่อนเองแล้ว
+    if (!this.didAutoScroll) {
+      this.didAutoScroll = true;
+      setTimeout(() => {
+        if (window.scrollY > 4 || !stage.isConnected) return;
+        const small = matchMedia('(max-width: 760px)').matches;
+        const vpTop = this.viewport.getBoundingClientRect().top + window.scrollY;
+        const top = small ? vpTop - 64 : stage.getBoundingClientRect().top + window.scrollY - 6;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+      }, 250);
+    }
     this.#renderDetails(true);
     this.#renderPointTable(true);
     this.trendSig = '';
     this.#renderTrends();
+  }
+
+  /** ขยายโมเดล: ซ่อน Sidebar ชั่วคราว (โมเดลเต็มความกว้าง) — กดอีกครั้งเพื่อแสดงแผงข้าง */
+  toggleSide(on = !this.sideHidden) {
+    this.sideHidden = !!on;
+    this.stageBody?.classList.toggle('side-hidden', this.sideHidden);
+    if (this.stageToolbar?.isConnected) this.#renderToolbar();
   }
 
   #renderToolbar() {
@@ -582,7 +704,8 @@ export class App {
           ['3d', '2d'].map((m) => h('button', { type: 'button', class: `btn small ${st.viewMode === m ? 'active' : ''}`, 'aria-pressed': String(st.viewMode === m), 'data-focus-key': `vm-${m}`,
             disabled: m === '3d' && this.sceneError ? true : null,
             onclick: () => this.setViewMode(m) }, m === '3d' ? 'โมเดล 3D' : 'ผัง 2D'))),
-        is3d ? h('div.seg.floor-chips', { role: 'group', 'aria-label': 'เลือกดูชั้น' },
+        is3d ? h('span.tb-label', 'ดูชั้น') : null,
+        is3d ? h('div.seg.floor-chips', { role: 'group', 'aria-label': 'เลือกดูชั้น (เปลี่ยนโมเดลที่แสดง ไม่ได้สั่งลิฟต์)' },
           h('button', { type: 'button', class: `btn small ${!st.isolated ? 'active' : ''}`, 'aria-pressed': String(!st.isolated), 'data-focus-key': 'fc-all', onclick: () => this.showBuilding() }, 'ทั้งอาคาร'),
           floors.filter((f) => f.kind !== 'tower').map((f) => h('button', { type: 'button', class: `btn small ${st.isolated && st.floorId === f.id ? 'active' : ''}`,
             'aria-pressed': String(st.isolated && st.floorId === f.id), 'data-focus-key': `fc-${f.id}`, title: f.name, onclick: () => this.isolateFloor(f.id) }, f.id))) : null,
@@ -591,6 +714,8 @@ export class App {
       h('div.tb-row.tb-sub',
         is3d ? h('button.btn.small', { type: 'button', 'data-focus-key': 'reset-cam', 'data-testid': 'reset-cam', title: 'กลับมุมกล้องเริ่มต้นของมุมมองนี้',
           onclick: () => this.scene.preset(st.isolated ? 'fit' : 'all') }, '⟲ รีเซ็ตมุมกล้อง') : null,
+        h('button', { type: 'button', class: `btn small ${this.sideHidden ? 'active' : ''}`, 'data-testid': 'expand-model', 'aria-pressed': String(!!this.sideHidden),
+          title: 'ซ่อน Sidebar ชั่วคราว ให้โมเดลเต็มความกว้าง', onclick: () => this.toggleSide() }, this.sideHidden ? '⇤ แสดงแผงข้าง' : '⤢ ขยายโมเดล'),
         st.viewMode === '2d' ? h('div.seg', { role: 'group', 'aria-label': 'ขยายผัง' }, [1, 2, 3].map((z) => h('button', {
           type: 'button', class: `btn small ${st.planZoom === z ? 'active' : ''}`, 'aria-pressed': String(st.planZoom === z), 'data-focus-key': `zoom-${z}`,
           onclick: () => { this.state.planZoom = z; this.#renderToolbar(); this.sigs?.delete('plan'); this.#updateSpatial(); },
@@ -604,7 +729,11 @@ export class App {
           h('div.dd-panel', Object.entries(SYSTEMS).map(([k, v]) => h('label.check', h('input', {
             type: 'checkbox', checked: st.layers[k], 'data-focus-key': `layer-${k}`,
             onchange: (e) => { this.setState({ layers: { ...st.layers, [k]: e.target.checked } }, { render: false }); this.#updateSpatial(); },
-          }), v.label))))),
+          }), v.label)),
+          is3d ? [h('strong.dd-title', 'เลเยอร์ฉาก 3D'), this.scene.layerList().map((l) => h('label', { class: `check ${l.future ? 'future' : ''}`, title: `แหล่งข้อมูล: ${l.dataSource}` }, h('input', {
+            type: 'checkbox', checked: l.visible, disabled: l.future ? true : null, 'data-testid': `scene-layer-${l.id}`,
+            onchange: (e) => this.scene.setLayerVisible(l.id, e.target.checked),
+          }), l.future ? `${l.name} (อนาคต)` : l.name))] : null))),
     );
   }
 
@@ -680,9 +809,9 @@ export class App {
       this.scene.setPoints(items);
       this.scene.setSelected(st.selectedId);
       this.scene.setLayers(st.layers);
-      const tank = this.#freshValue('P-002', 'level');
       const run = this.#freshValue('P-003', 'run');
-      this.scene.setDynamic({ tankLevel: tank, pumpRunning: run === null ? null : run === 'run' });
+      this.scene.setDynamic({ water: this.#waterState(), pumpRunning: run === null ? null : run === 'run' });
+      this.#updateWater();
       replaceChildren(this.legendEl,
         h('span.lg-title', 'สถานะจุดตรวจวัด'),
         [['normal', 'ปกติ'], ['warning', 'เฝ้าระวัง'], ['critical', 'แจ้งเตือน'], ['unknown', 'ไม่มีข้อมูล / ไม่สดใหม่']].map(([k, t]) => h('span', { class: `lg-item lg-${k}` }, h('i', { 'aria-hidden': 'true' }), t)),
@@ -706,6 +835,22 @@ export class App {
       const off = items.filter((it) => it.point.floorId !== st.floorId).length;
       this.legendEl.textContent = `แสดง ${onFloor.length} จุดบน${floor.name} (อีก ${off} จุดอยู่ชั้นอื่น) · หมุดเข้าถึงด้วยแป้น Tab แล้วกด Enter · ${floor.plan.note}`;
     }
+  }
+
+  /** จุดที่มีเกจ (ค่าวัดที่กำหนด gauge ในการตั้งค่า) → [{ point, metric }] — ใช้ทั้งแผงเกจและภาพถังบนโมเดล */
+  gaugePoints() {
+    return this.activePoints().map((p) => ({ point: p, metric: p.metrics.find((m) => m.gauge) })).filter((x) => x.metric);
+  }
+
+  /** ระดับ (สัดส่วนของช่วงเกจ) และสถานะของทุกจุดที่มีเกจ */
+  #waterState() {
+    const out = {};
+    for (const { point: p, metric: m } of this.gaugePoints()) {
+      const v = this.#freshValue(p.id, m.id);
+      const g = m.gauge;
+      out[p.id] = { frac: typeof v === 'number' ? (v - g.min) / (g.max - g.min) : null, severity: this.status(p).severity, metricId: m.id };
+    }
+    return out;
   }
 
   #freshValue(pointId, metricId) {
@@ -856,7 +1001,8 @@ export class App {
       if (live && p) replaceChildren(live, this.#detailsLive(p));
       return;
     }
-    if (!p) {
+    if (el.classList.contains('acc')) { this.#renderDetailsAcc(el, p); if (!p || !st.detailsOpen) return; }
+    else if (!p) {
       const vf = this.state.view === 'overview' ? this.viewingFloorId() : null;
       const onFloor = vf ? this.activePoints().filter((x) => x.floorId === vf).length : null;
       replaceChildren(el, h('div.details-empty', { 'data-testid': 'details-empty' },
@@ -865,7 +1011,7 @@ export class App {
           : h('p', vf ? `เลือกจุดบน${this.floorName(vf)}จากโมเดล ผัง หรือรายการ (${onFloor} จุด)` : 'เลือกจุดจากโมเดล ผัง หรือรายการ เพื่อดูค่าวัด ความสดของข้อมูล เกณฑ์ และการแจ้งเตือน')));
       return;
     }
-    if (!st.detailsOpen) {
+    if (!st.detailsOpen && !el.classList.contains('acc')) {
       replaceChildren(el, h('button.btn.small', { type: 'button', 'aria-expanded': 'false', onclick: () => this.setState({ detailsOpen: true }) }, 'แสดงรายละเอียด'));
       return;
     }
@@ -875,11 +1021,12 @@ export class App {
     const episodes = (this.engine?.episodes() ?? []).filter((e) => e.pointId === p.id).sort((a, b) => b.openedAt - a.openedAt);
     const open = episodes.filter(isEpisodeUnresolved);
     const past = episodes.filter((e) => !isEpisodeUnresolved(e)).slice(0, 5);
-    replaceChildren(el,
+    const target = el.classList.contains('acc') ? this.accBody : el;
+    replaceChildren(target,
       h('div.details-head',
         h('span', { class: `num big sev-${status.severity} q-${status.quality}` }, n ? String(n) : '–'),
         h('div', h('h2', p.name), h('p.pid', `${p.id}${p.equipmentId ? ` · อุปกรณ์ ${p.equipmentId}` : ''}`)),
-        h('button.btn.small.ghost.close', { type: 'button', 'aria-label': 'ซ่อนรายละเอียด', 'aria-expanded': 'true', onclick: () => this.setState({ detailsOpen: false }) }, '×')),
+        el.classList.contains('acc') ? null : h('button.btn.small.ghost.close', { type: 'button', 'aria-label': 'ซ่อนรายละเอียด', 'aria-expanded': 'true', onclick: () => this.setState({ detailsOpen: false }) }, '×')),
       h('div.badges', sevBadge(status.severity), qualBadge(status.quality), sourceBadge(this.ctl.mode)),
       p.status === 'archived' ? h('p.notice.warn', 'จุดนี้ถูกเก็บถาวร ไม่ได้ติดตามแล้ว') : null,
       p.example ? h('p.example-note', 'จุดตัวอย่าง — ไม่ใช่อุปกรณ์จริงที่ยืนยันแล้ว ตำแหน่งรอยืนยัน') : null,
@@ -897,6 +1044,39 @@ export class App {
         h('button.btn.small', { type: 'button', onclick: () => this.setState({ view: 'history', history: { ...this.state.history, pointId: p.id } }) }, 'ดูประวัติข้อมูล'),
         h('button.btn.small.ghost', { type: 'button', onclick: () => this.setState({ view: 'settings', editing: p.id }) }, 'แก้ไขจุด/เกณฑ์')),
     );
+  }
+
+  /**
+   * แผงรายละเอียดจุดแบบ Accordion ใน Sidebar: ค่าเริ่มต้นย่อ (หัวข้อ + ข้อความสั้น + ปุ่มลูกศร)
+   * กดหมุด/จุดจึงขยายอย่างนุ่มนวล (~250 ms) เนื้อหามากเลื่อนภายในแผง ไม่ขยายจนเบียดโมเดล · ปุ่ม × ย่อแผงคืนพื้นที่
+   */
+  #renderDetailsAcc(el, p) {
+    const open = !!this.state.detailsOpen;
+    const wasOpen = el.classList.contains('open');
+    el.classList.toggle('open', open);
+    el.classList.toggle('has-point', !!p);
+    const status = p ? this.status(p) : null;
+    const n = p ? this.numberOf(p.id) : null;
+    const toggle = () => this.setState({ detailsOpen: !open });
+    const head = h('div.acc-head',
+      h('button.acc-title', { type: 'button', 'aria-expanded': String(open), 'data-testid': 'details-toggle', onclick: toggle },
+        h('span.acc-text', h('strong', 'รายละเอียดจุด'),
+          h('span.acc-sub', p ? [h('span', { class: `num sev-${status.severity} q-${status.quality}` }, n ? String(n) : '–'), ` ${p.name}`] : 'เลือกจุดเพื่อดูรายละเอียด')),
+        open ? null : h('span.acc-arrow', { 'aria-hidden': 'true' }, '›')),
+      open ? h('button.acc-close', { type: 'button', 'aria-label': 'ย่อแผง', title: 'ย่อแผง', 'data-testid': 'details-close', onclick: () => this.setState({ detailsOpen: false }) }, '×') : null);
+    this.accBody = h('div', { class: `acc-body ${open && !wasOpen ? 'anim' : ''}`, 'data-testid': 'details-body' });
+    if (open && !p) {
+      // ขยายแต่ยังไม่เลือกจุด: รายการจุดของมุมมองนี้ให้กดเลือกได้ทันที
+      const vf = this.viewingFloorId();
+      const pts = this.activePoints().filter((x) => !vf || x.floorId === vf);
+      replaceChildren(this.accBody, h('div.details-empty', { 'data-testid': 'details-empty' },
+        h('p', 'เลือกจุดเพื่อดูรายละเอียด'),
+        pts.length ? h('ul.acc-points', pts.map((x) => { const st = this.status(x); return h('li', h('button', { type: 'button', onclick: () => this.select(x.id) },
+          h('span', { class: `num sev-${st.severity} q-${st.quality}` }, String(this.numberOf(x.id) ?? '–')), h('span', x.name))); }))
+          : h('p.empty-floor', 'ยังไม่มีจุดตรวจวัดในชั้นนี้')));
+    }
+    replaceChildren(el, head, open ? this.accBody : null);
+    if (!p) el.dataset.empty = 'true'; else delete el.dataset.empty;
   }
 
   #detailsLive(p) {

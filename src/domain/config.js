@@ -101,6 +101,11 @@ export function validateConfig(config) {
       mids.add(m.id);
       metricKeys.set(`${p.id}|${m.id}`, m);
       if (!num(m.staleAfterSec) || m.staleAfterSec < 5) err(`${mw}: เวลาหมดอายุข้อมูลต้องไม่น้อยกว่า 5 วินาที`);
+      if (m.gauge != null) { // เกจ (ไม่บังคับ): ช่วงที่แสดง และรูปแบบภาพบนโมเดล
+        if (!num(m.gauge.min) || !num(m.gauge.max) || m.gauge.max <= m.gauge.min) err(`${mw}: ช่วงเกจต้องเป็นตัวเลขและ max มากกว่า min`);
+        if (m.gauge.visual != null && !['pit', 'tank'].includes(m.gauge.visual)) err(`${mw}: รูปแบบเกจต้องเป็น pit หรือ tank`);
+        if (m.kind !== 'numeric') err(`${mw}: เกจใช้ได้กับค่าวัดตัวเลขเท่านั้น`);
+      }
       if (m.kind === 'numeric') {
         if (!m.unit || typeof m.unit !== 'string') err(`${mw}: ค่าตัวเลขต้องมีหน่วย`);
         if (m.plausible && (!num(m.plausible.min) || !num(m.plausible.max) || m.plausible.min > m.plausible.max)) {

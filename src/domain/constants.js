@@ -1,6 +1,6 @@
 // ค่าคงที่ของโดเมน — ไม่มีการพึ่ง DOM หรือ WebGL
 
-export const SCHEMA_VERSION = 4; // v2: แยกสำนักงานรายชั้น · v3: สำนักงาน 11–32 · v4: โมเดลรายชั้นจาก Blender ของผู้ใช้
+export const SCHEMA_VERSION = 5; // v2: แยกสำนักงานรายชั้น · v3: สำนักงาน 11–32 · v4: โมเดลรายชั้นจาก Blender ของผู้ใช้ · v5: จุดระดับน้ำ WL-001/WL-002
 export const TELEMETRY_SCHEMA_VERSION = 1;
 
 export const SOURCES = /** @type {const} */ (['demo', 'api']);

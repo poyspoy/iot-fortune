@@ -119,15 +119,15 @@ with sync_playwright() as p:
     check('เริ่มต้นจอดชั้นล่างสุด ประตูเปิด พื้นห้องลิฟต์ตรงพื้นชั้น', st0['target'] == floors[0] and st0['door'] == 1 and abs(st0['carY'] - st0['levels'][floors[0]]) < 1e-6)
     page.click('[data-testid=lift-cut]')
     page.wait_for_timeout(1200)
-    page.screenshot(path=os.path.join(OUT, '01-lift-view.png'))
+    page.screenshot(path=os.path.join(OUT, '01-lift-view.png'), timeout=180000)
     top, mid = floors[-1], floors[len(floors) // 2]
     trip(page, top, f'ขึ้น {floors[0]}→{top}')
-    page.screenshot(path=os.path.join(OUT, '02-at-top.png'))
+    page.screenshot(path=os.path.join(OUT, '02-at-top.png'), timeout=180000)
     st = page.evaluate('window.__iotFortune.app.state')
     check('ลิฟต์ไม่เปลี่ยนมุมมอง: ยังดูทั้งอาคาร และไม่ตั้งชั้นที่เลือกค้างไว้', not st['isolated'])
     trip(page, floors[0], f'ลง {top}→{floors[0]}')
     trip(page, mid, f'หยุดชั้นกลาง {floors[0]}→{mid}')
-    page.screenshot(path=os.path.join(OUT, '03-at-middle.png'))
+    page.screenshot(path=os.path.join(OUT, '03-at-middle.png'), timeout=180000)
     # กดชั้นเดิม: ไม่เดินทาง
     log = page.evaluate("""(floor) => { const sc = window.__iotFortune.app.scene; const snap = %s; const log = [snap()];
       document.querySelector(`.lift-btn[data-floor="${floor}"]`).click();
@@ -163,13 +163,13 @@ with sync_playwright() as p:
     banner = page.locator('[data-testid=viewing]').inner_text()
     vis = page.evaluate('window.__iotFortune.app.scene.elevatorProbe().visible')
     check('ปุ่ม "แยกดูชั้น" เปิดมุมมองชั้นเดี่ยวของระบบเดิม และซ่อนลิฟต์', banner.startswith('กำลังดู: ') and floors[0] in banner and not vis, banner)
-    page.screenshot(path=os.path.join(OUT, '04-isolated.png'))
+    page.screenshot(path=os.path.join(OUT, '04-isolated.png'), timeout=180000)
     page.click('.lift-iso button')
     page.wait_for_function("() => !window.__iotFortune.app.state.isolated", timeout=10000)
     page.wait_for_function(SETTLED, timeout=60000)
     check('กลับมาดูทั้งอาคารแล้วลิฟต์แสดงอีกครั้ง', page.evaluate('window.__iotFortune.app.scene.elevatorProbe().visible'))
     check('ไม่มีข้อผิดพลาดในคอนโซล', not errs, '; '.join(errs)[:200])
-    page.screenshot(path=os.path.join(OUT, '05-back.png'))
+    page.screenshot(path=os.path.join(OUT, '05-back.png'), timeout=180000)
     ctx.close(); browser.close()
 
 ok = sum(1 for r in results if r[1])

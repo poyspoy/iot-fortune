@@ -11,7 +11,7 @@ import { createDefaultConfig } from './defaultConfig.js';
 export function migrateConfig(config) {
   if (!config || typeof config !== 'object') return config;
   if (config.schemaVersion === SCHEMA_VERSION) return config;
-  if (![1, 2, 3].includes(config.schemaVersion)) return config; // ไม่รู้จัก — ให้การตรวจรายงานข้อผิดพลาด
+  if (![1, 2, 3, 4].includes(config.schemaVersion)) return config; // ไม่รู้จัก — ให้การตรวจรายงานข้อผิดพลาด
   const out = structuredClone(config);
   const def = createDefaultConfig();
   const towerFloors = def.building.floors.filter((f) => f.kind === 'tower');
@@ -49,6 +49,18 @@ export function migrateConfig(config) {
     if (d.detail) f.detail = structuredClone(d.detail); else delete f.detail;
     if (['4', '5'].includes(f.id) && f.model && d.model) f.model.depth = d.model.depth;
     if (f.id === '4' && d.plan) f.plan.note = d.plan.note;
+  }
+  // v4 → v5: จุดระดับน้ำตัวอย่าง P-001/P-002 → WL-001/WL-002 (รหัสใหม่สำหรับสาธิต) — ย้ายรหัสในจุดและกฎ ไม่สร้างจุดซ้ำ
+  const RENAME = { 'P-001': 'WL-001', 'P-002': 'WL-002' };
+  for (const [from, to] of Object.entries(RENAME)) {
+    const p = out.points?.find((x) => x.id === from);
+    if (!p || out.points.some((x) => x.id === to)) continue;
+    const d = def.points.find((x) => x.id === to);
+    p.id = to;
+    if (p.sourceKey === from) p.sourceKey = to;
+    if (d && /\(ตัวอย่าง\)$/.test(p.name ?? '')) p.name = d.name;
+    for (const m of p.metrics ?? []) { const dm = d?.metrics.find((x) => x.id === m.id); if (dm?.gauge && !m.gauge) m.gauge = { ...dm.gauge }; }
+    for (const r of out.rules ?? []) if (r.pointId === from) r.pointId = to;
   }
   out.building.towerNote = def.building.towerNote;
   if (!out.building.modelSrc) out.building.modelSrc = def.building.modelSrc;

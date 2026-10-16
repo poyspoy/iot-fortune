@@ -24,9 +24,9 @@ export function validateBackup(obj, { maxErrors = 50 } = {}) {
   const err = (m) => { if (errors.length < maxErrors) errors.push(m); };
   if (!obj || typeof obj !== 'object') return { ok: false, errors: ['ไฟล์ไม่ใช่ JSON object'], summary: null };
   if (obj.format !== BACKUP_FORMAT) err('ไม่ใช่ไฟล์สำรองของ IoT ฟอร์จูน (format ไม่ตรง)');
-  if (obj.schemaVersion !== SCHEMA_VERSION && ![1, 2, 3].includes(obj.schemaVersion)) err(`schemaVersion ไม่รองรับ: ${obj.schemaVersion}`);
+  if (obj.schemaVersion !== SCHEMA_VERSION && ![1, 2, 3, 4].includes(obj.schemaVersion)) err(`schemaVersion ไม่รองรับ: ${obj.schemaVersion}`);
   // ไฟล์สำรองรุ่นเก่า ย้ายการตั้งค่าเป็นรุ่นปัจจุบันก่อนตรวจ (ค่าวัด/เหตุการณ์ใช้ต่อได้)
-  if ([1, 2, 3].includes(obj.schemaVersion) && obj.config) {
+  if ([1, 2, 3, 4].includes(obj.schemaVersion) && obj.config) {
     obj = { ...obj, schemaVersion: SCHEMA_VERSION, config: migrateConfig(obj.config), migratedFrom: obj.schemaVersion };
   }
   const cv = validateConfig(obj.config);

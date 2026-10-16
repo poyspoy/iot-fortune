@@ -10,7 +10,7 @@
 // ฉาก 3D แปลง pos เป็นความสูงจริงด้วยระดับพื้นของแต่ละชั้น — pos เป็นจำนวนเต็มเมื่อพื้นห้องลิฟต์ตรงพื้นชั้น
 
 export const ELEVATOR_TIMING = Object.freeze({
-  doorMs: 1400, // เวลาปิด/เปิดประตู
+  doorMs: 1000, // เวลาปิด/เปิดประตู (~1 วินาที)
   perFloorMs: 1500, // เวลาเดินทางต่อชั้น
   minTravelMs: 2200, // เวลาเดินทางขั้นต่ำ (ระยะ 1 ชั้นก็ยังเห็นการออกตัว/ชะลอ)
 });
@@ -24,7 +24,9 @@ export const ELEVATOR_TIMING = Object.freeze({
 export const ELEVATOR_L1 = Object.freeze({
   id: 'L1',
   name: 'ลิฟต์โดยสาร L1',
-  floors: Object.freeze(['G', '1', '2', '3']),
+  floors: Object.freeze(['G', '1', '2', '3', '4', '5']),
+  // ชั้นที่มีสัญลักษณ์ลิฟต์ตำแหน่งนี้ในผังจริง = G–3 · ชั้น 4–5 เพิ่มเพื่อการสาธิต (ตำแหน่งปล่องในชั้นเหล่านี้ยังไม่ยืนยัน)
+  verifiedFloors: Object.freeze(['G', '1', '2', '3']),
   x: -1.62,
   z: 0.05,
   shaft: Object.freeze({ w: 0.3, d: 0.3 }), // ≈ 2.5 × 2.5 ม. ตามสเกลผัง
@@ -36,7 +38,7 @@ export const ELEVATOR_L1 = Object.freeze({
     { floor: '2', object: 'Elevators_Location.012', x: -1.636, z: -0.088 },
     { floor: '3', object: 'Elevators_Location.015', x: -1.517, z: 0.126 },
   ]),
-  note: 'จำลองการทำงาน ไม่ได้เชื่อมข้อมูลลิฟต์จริง · ตำแหน่งปล่องตามสัญลักษณ์ลิฟต์ในผังชั้น G–3 · ทิศประตูสมมติ',
+  note: 'จำลองการทำงาน ไม่ได้เชื่อมข้อมูลลิฟต์จริง ไม่มีคำสั่งควบคุมลิฟต์จริง · ตำแหน่งปล่องตามสัญลักษณ์ลิฟต์ในผังชั้น G–3 (ชั้น 4–5 เพื่อสาธิต ยังไม่ยืนยัน) · ทิศประตูสมมติ',
 });
 
 /** ความเร็วเป็นศูนย์ที่ต้นและปลาย (ease-in-out แบบโคไซน์) */
@@ -106,15 +108,18 @@ export function elevatorStatus(state) {
   const { floors, phase } = state;
   const target = floors[state.to];
   const nearest = floors[Math.min(floors.length - 1, Math.max(0, Math.round(state.pos)))];
-  const direction = phase === 'closing' || phase === 'moving' ? (state.to > state.from ? 'up' : 'down') : null;
+  // ลูกศรขึ้น/ลงแสดงหลังประตูปิดสนิทแล้ว (ระหว่างเคลื่อนที่)
+  const direction = phase === 'moving' ? (state.to > state.from ? 'up' : 'down') : null;
+  const heading = phase === 'closing' ? (state.to > state.from ? 'up' : 'down') : direction;
   const doors = { open: 'open', closing: 'closing', moving: 'closed', opening: 'opening' }[phase];
   const doorText = { open: 'ประตูเปิด', closing: 'กำลังปิดประตู', closed: 'ประตูปิด', opening: 'กำลังเปิดประตู' }[doors];
   const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '';
   let headline;
   if (phase === 'open' || phase === 'opening') headline = state.trips === 0 && phase === 'open' ? `จอดที่ชั้น ${target}` : `ถึงชั้น ${target}`;
-  else headline = `${arrow} ${direction === 'up' ? 'ขึ้น' : 'ลง'}ไปชั้น ${target}`;
+  else if (phase === 'closing') headline = `กำลังปิดประตู · ไปชั้น ${target}`;
+  else headline = `${arrow} กำลัง${direction === 'up' ? 'ขึ้น' : 'ลง'}ไปชั้น ${target}`;
   return {
-    phase, target, direction, doors, doorText, headline,
+    phase, target, direction, heading, doors, doorText, headline,
     arrow,
     position: state.pos,
     nearest, // ชั้นที่ห้องลิฟต์อยู่ใกล้ที่สุดตอนนี้ (ตามตำแหน่งที่เห็น)

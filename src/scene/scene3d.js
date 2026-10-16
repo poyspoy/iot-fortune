@@ -4,7 +4,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { textSprite } from './textures.js';
 import { planTo3D, isolatedOffset, assembledOffset, markerPosition, detailTransform } from '../domain/geometry.js';
 import { severityRank } from '../domain/constants.js';
-import { ELEVATOR_L1, createElevator, requestFloor, stepElevator, elevatorStatus } from '../domain/elevator.js';
+import { ELEVATOR_L1 } from '../domain/elevator.js';
+import { ElevatorSim, ELEVATOR_DEMO_CONFIG } from '../domain/elevatorSim.js';
+import { LayerManager } from './layers.js';
 import { ElevatorRig } from './elevator3d.js';
 import { prepareDetail } from './detailModel.js';
 import { pickRoom } from '../domain/rooms.js';
@@ -100,6 +102,10 @@ export class MallScene {
     this.root.position.y = BASE_Y;
     this.scene.add(this.root);
     this.raycaster = new THREE.Raycaster();
+    // เลเยอร์ของฉาก (base/building/floor-plan/assets/sensors/elevator/alerts/labels …) — ซ่อน/แสดงทั้งเลเยอร์ได้ ค่าเงาใช้ชุดเดียวกับกล้องหลัก
+    this.sceneLayers = new LayerManager(this.camera, this.raycaster);
+    this.sceneLayers.onChange = () => { if (this.config) this.#placeMarkers(); };
+    this.sceneLayers.assign(this.baseGroup, 'base');
 
     this.#bindPointer();
     this.resizeObs = new ResizeObserver(() => this.#resize());
@@ -129,34 +135,37 @@ export class MallScene {
     fill.position.set(14, 10, -12);
     s.add(fill);
 
-    // พื้นฉาก (ไกล) + เส้นกริดจาง ๆ
+    // พื้นฉาก (ไกล) + เส้นกริดจาง ๆ — รวมไว้ในกลุ่มฐาน (เลเยอร์ base) แยกจากไฟ
+    this.baseGroup = new THREE.Group();
+    this.baseGroup.name = 'layer-base';
+    s.add(this.baseGroup);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: '#182125', roughness: 1 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.62;
     ground.receiveShadow = true;
-    s.add(ground);
+    this.baseGroup.add(ground);
     const grid = new THREE.GridHelper(120, 60, '#24343a', '#1e2a2f');
     grid.position.y = -0.6;
-    s.add(grid);
+    this.baseGroup.add(grid);
 
     // ฐานอาคาร: แท่นสีเทาเข้ม ผิวบนเรียบ ขอบเรืองแสงสีเขียว Nexza
     const W = 25.2; const D = 13.8; const cx = -0.3; const cz = -2.1;
     const plinth = new THREE.Mesh(new THREE.BoxGeometry(W, 0.6, D), new THREE.MeshStandardMaterial({ color: '#2b3539', roughness: 0.85, metalness: 0.05 }));
     plinth.position.set(cx, -0.3, cz);
     plinth.receiveShadow = true;
-    s.add(plinth);
+    this.baseGroup.add(plinth);
     const top = new THREE.Mesh(new THREE.BoxGeometry(W - 0.4, BASE_Y, D - 0.4), new THREE.MeshStandardMaterial({ color: '#3a464b', roughness: 0.9 }));
     top.position.set(cx, BASE_Y / 2, cz);
     top.receiveShadow = true;
-    s.add(top);
+    this.baseGroup.add(top);
     const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(W - 0.4, BASE_Y, D - 0.4)), new THREE.LineBasicMaterial({ color: '#2fa39a', transparent: true, opacity: 0.85 }));
     edge.position.copy(top.position);
-    s.add(edge);
+    this.baseGroup.add(edge);
     const baseGrid = new THREE.GridHelper(24, 24, '#4a585d', '#435055');
     baseGrid.scale.set((W - 0.4) / 24, 1, (D - 0.4) / 24);
     baseGrid.position.set(cx, BASE_Y + 0.002, cz);
     baseGrid.material.transparent = true; baseGrid.material.opacity = 0.35;
-    s.add(baseGrid);
+    this.baseGroup.add(baseGrid);
   }
 
   // ---------------------------------------------------------------- อาคาร
@@ -173,7 +182,11 @@ export class MallScene {
     this.#buildEquipment();
     this.#loadModel();
     this.#buildElevator();
-    this.#loadAllDetails();
+    // มุมมองทั้งอาคารใช้โมเดลอาคารแบบเบา (fortune.glb + ผัง) — โมเดลรายละเอียดโหลดเฉพาะชั้นที่เลือกดู
+    for (const fg of this.floorGroups.values()) this.sceneLayers.assign(fg.group, 'building');
+    if (this.towerDeco) this.sceneLayers.assign(this.towerDeco, 'building');
+    for (const t of this.tanks.values()) this.sceneLayers.assign(t.group, 'assets');
+    if (this.pump) this.sceneLayers.assign(this.pump.group, 'assets');
     if (this.isolatedId && !this.floorGroups.has(this.isolatedId)) this.isolatedId = null;
     if (!this.floorId) this.floorId = config.building.floors[0]?.id;
     this.#applyMode(true);
@@ -295,8 +308,10 @@ export class MallScene {
         fg.model?.parent?.remove(fg.model);
         fg.model = clone;
         fg.group.add(clone);
+        this.sceneLayers.assign(clone, 'building');
       }
       this.modelLoaded = true;
+      this.onDetail?.("building", "ready");
       this.#applyMode();
     }, undefined, () => { this.modelLoaded = false; });
   }
@@ -304,7 +319,7 @@ export class MallScene {
   // ---------------------------------------------------------------- ลิฟต์จำลอง
   /** ปล่อง + ห้องลิฟต์ L1 — จอดเฉพาะชั้นที่มีอยู่ในการตั้งค่าอาคาร (ลำดับตาม order) */
   #buildElevator() {
-    if (this.lift) { this.root.remove(this.lift.rig.group); disposeTree(this.lift.rig.group); }
+    if (this.lift) { this.sceneLayers.release(this.lift.rig.group); this.root.remove(this.lift.rig.group); disposeTree(this.lift.rig.group); }
     const have = new Map(this.config.building.floors.map((f) => [f.id, f]));
     const floors = ELEVATOR_L1.floors.filter((id) => have.has(id)).sort((a, b) => have.get(a).order - have.get(b).order);
     if (floors.length < 2) { this.lift = null; return; }
@@ -312,38 +327,44 @@ export class MallScene {
     const levelOf = (id) => { const fg = this.floorGroups.get(id); return fg ? fg.group.position.y + fg.slabT : null; };
     const heightOf = (id) => have.get(id)?.model.height ?? 0.8;
     const rig = new ElevatorRig(spec, levelOf, heightOf, (id) => this.floorGroups.get(id)?.group.visible !== false);
-    // คงตำแหน่งลิฟต์เดิมเมื่อโหลดการตั้งค่าใหม่ (ถ้าชั้นนั้นยังอยู่)
-    const prev = this.lift?.state;
-    const start = prev && floors.includes(prev.floors[prev.to]) && prev.phase === 'open' ? prev.floors[prev.to] : floors[0];
-    this.lift = { spec, rig, state: { ...createElevator(spec, { startFloor: start, now: this.#now() }), trips: prev?.trips ?? 0 }, sig: '' };
+    // ตัวจำลองเดิมเดินต่อ (ไม่เริ่มใหม่ที่ G) เมื่อโหลดการตั้งค่าใหม่ ถ้าชั้นที่จอดยังเหมือนเดิม
+    const prev = this.lift?.sim;
+    const sim = prev && prev.floors.join() === floors.join() ? prev
+      : new ElevatorSim(floors, { config: this.liftConfig ?? ELEVATOR_DEMO_CONFIG, now: this.#now(), seed: (Date.now() & 0xffff) || 7 });
+    this.lift = { spec, rig, sim, sig: '' };
+    this.sceneLayers.assign(rig.group, 'elevator');
+    for (const o of rig.labelObjects()) this.sceneLayers.assign(o, 'labels');
     this.root.add(rig.group);
-    rig.update(this.lift.state);
+    this.#stepLift();
   }
 
-  /** สั่งลิฟต์ไปชั้น — คืน 'started' | 'same-floor' | 'busy' | 'unknown-floor' | 'none' */
+  /** สั่งลิฟต์จำลองไปชั้น (คำสั่งผู้ใช้มีสิทธิ์ก่อนโหมดอัตโนมัติ) — คืน 'started' | 'same-floor' | 'unknown-floor' | 'none' */
   requestElevator(floorId) {
     if (!this.lift) return 'none';
-    const r = requestFloor(this.lift.state, floorId, this.#now());
-    this.lift.state = r.state;
+    const r = this.lift.sim.request(floorId, this.#now());
     this.#emitElevator(true);
-    return r.result;
+    return r === 'same-floor' || r === 'unknown-floor' ? r : 'started';
   }
 
+  setLiftAuto(on) { if (!this.lift) return; this.lift.sim.setAuto(on); this.#emitElevator(true); }
+  setLiftPaused(on) { if (!this.lift) return; this.lift.sim.setPaused(on); this.#emitElevator(true); }
+  resetLift() { if (!this.lift) return; this.lift.sim.reset(this.#now()); this.#emitElevator(true); }
+
   elevatorFloors() { return this.lift ? [...this.lift.spec.floors] : []; }
-  elevatorStatus() { return this.lift ? elevatorStatus(this.lift.state) : null; }
+  elevatorStatus() { return this.lift ? this.lift.sim.status() : null; }
 
   /** ข้อมูลตรวจสอบ (ใช้ในการทดสอบเบราว์เซอร์): ความสูงพื้นห้องลิฟต์เทียบกับพื้นชั้น และระยะเปิดประตู */
   elevatorProbe() {
     if (!this.lift) return null;
-    const { rig, state } = this.lift;
-    const levels = Object.fromEntries(rig.spec.floors.map((id, i) => [id, rig.levels()[i]]));
-    // ระดับพื้นของโมเดลห้องจาก Blender (Z = 0 ของโมเดล) ในพิกัดเดียวกับห้องลิฟต์
+    const { rig, sim } = this.lift;
+    const lv = rig.lastLevels ?? rig.levels();
+    const levels = Object.fromEntries(rig.spec.floors.map((id, i) => [id, lv[i]]));
     const modelFloor = Object.fromEntries(rig.spec.floors.map((id) => {
       const fg = this.floorGroups.get(id);
       return [id, fg?.detailObj ? fg.group.position.y + fg.detailObj.position.y : null];
     }));
-    return { phase: state.phase, pos: state.pos, door: state.door, carY: rig.car.position.y, levels, modelFloor, target: state.floors[state.to],
-      doorGap: rig.doorR.position.x - rig.doorL.position.x - rig.spec.car.w / 2, visible: rig.group.visible };
+    return { phase: sim.phase, pos: sim.pos, vel: sim.vel, door: sim.door, carY: rig.car.position.y, levels, modelFloor, target: sim.floors[sim.target], mode: sim.mode,
+      doorGap: rig.doorR.position.x - rig.doorL.position.x - rig.spec.car.w / 2, visible: rig.group.visible, carVisible: rig.group.visible && rig.car.visible };
   }
 
   /** เวลาที่ใช้ขับลิฟต์ — ปกติเป็นเวลาจริง; การทดสอบ/บันทึกคลิปตั้งนาฬิกาเองได้ (เดินทีละเฟรมคงที่) */
@@ -369,16 +390,31 @@ export class MallScene {
 
   #stepLift() {
     if (!this.lift) return;
-    this.lift.state = stepElevator(this.lift.state, this.#now());
-    this.lift.rig.update(this.lift.state);
+    const { sim, rig } = this.lift;
+    sim.step(this.#now()); // ตัวจำลองเดินเบื้องหลังเสมอ (รวมตอนดูชั้นเดียว)
+    const iso = this.isolatedId;
+    if (!iso) {
+      rig.update(sim, null);
+    } else {
+      // ดูชั้นเดียว: แสดงรถลิฟต์/ประตูในชั้นนั้นเมื่อลิฟต์อยู่ใกล้ระดับชั้นนี้ (ตำแหน่งปล่องเลื่อนตามชั้นที่แยกมา)
+      const idx = rig.spec.floors.indexOf(iso);
+      const fg = this.floorGroups.get(iso);
+      if (idx < 0 || !fg) { rig.group.visible = false; }
+      else {
+        const base = fg.group.position.y + fg.slabT;
+        const h = fg.floor.model.height ?? 0.8;
+        rig.update(sim, { levels: rig.spec.floors.map((_, i) => base + (i - idx) * h), onlyIndex: idx, offset: { x: fg.group.position.x, z: fg.group.position.z } });
+        rig.group.visible = Math.abs(sim.pos - idx) < 0.85 && !(fg.fade && fg.fade.to === 0);
+      }
+    }
     this.#emitElevator();
   }
 
   setLiftView(on) { this.liftView = !!on; this.#applyMode(); }
 
   #emitElevator(force = false) {
-    const st = elevatorStatus(this.lift.state);
-    const sig = `${st.phase}|${st.target}|${st.nearest}|${st.direction}|${st.doors}`;
+    const st = this.lift.sim.status();
+    const sig = `${st.phase}|${st.target}|${st.nearest}|${st.direction}|${st.doors}|${st.mode}|${st.auto}|${st.paused}|${st.queue.join()}`;
     this.lift.rig.setDisplay(st.phase === 'moving' || st.phase === 'closing' ? st.nearest : st.target, st.arrow);
     if (!force && sig === this.lift.sig) return;
     this.lift.sig = sig;
@@ -410,26 +446,42 @@ export class MallScene {
   #buildEquipment() {
     this.equipment?.forEach((e) => { e.parent?.remove(e); disposeTree(e); });
     this.equipment = [];
-    const tankPoint = this.config.points.find((p) => p.id === 'P-002' && p.status === 'active');
     const pumpPoint = this.config.points.find((p) => p.id === 'P-003' && p.status === 'active');
-    if (tankPoint) {
-      const fg = this.floorGroups.get(tankPoint.floorId);
-      const f = fg.floor;
-      const p = planTo3D(f, tankPoint.plan, 0);
+    // ถังแสดงระดับน้ำ (เซนเซอร์ระดับน้ำจำลอง) — วางข้างหมุดของจุดนั้น น้ำค่อย ๆ ขึ้น/ลงตามค่า
+    this.tanks = new Map();
+    // ทุกจุดที่มีค่าวัดกำหนด gauge (จากการตั้งค่า/ API ในอนาคต) ได้ภาพถังบนโมเดล — ไม่ผูกรหัสจุดในโค้ดหน้าจอ
+    for (const pt of this.config.points.filter((p) => p.status === 'active')) {
+      const gm = pt.metrics.find((m) => m.gauge);
+      if (!gm || !this.floorGroups.get(pt.floorId)) continue;
+      const id = pt.id; const kind = gm.gauge.visual === 'pit' ? 'pit' : 'tank';
+      const fg = this.floorGroups.get(pt.floorId);
+      const p = planTo3D(fg.floor, pt.plan, 0);
+      const R = 0.17; const H = 0.38;
       const g = new THREE.Group();
-      const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 28, 1, true), new THREE.MeshStandardMaterial({ color: '#d7ebe8', transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
-      glass.position.y = 0.3;
-      const water = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1, 28), new THREE.MeshStandardMaterial({ color: '#2a9d94', roughness: 0.2, transparent: true, opacity: 0.85 }));
-      water.position.y = 0.01;
+      g.name = `water-${id}`;
+      const shell = kind === 'pit' ? new THREE.BoxGeometry(R * 2.2, H, R * 2.2, 1, 1, 1) : new THREE.CylinderGeometry(R, R, H, 32, 1, true);
+      const glass = new THREE.Mesh(shell, new THREE.MeshStandardMaterial({ color: '#d7ebe8', transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false }));
+      glass.position.y = H / 2;
+      const waterGeo = kind === 'pit' ? new THREE.BoxGeometry(R * 2.1, 1, R * 2.1) : new THREE.CylinderGeometry(R * 0.94, R * 0.94, 1, 32);
+      waterGeo.translate(0, 0.5, 0); // ฐานน้ำอยู่ที่ y = 0 แล้วขยายขึ้นด้านบน
+      const waterMat = new THREE.MeshStandardMaterial({ color: '#2a8fd0', roughness: 0.15, transparent: true, opacity: 0.88, emissive: '#0b3d66', emissiveIntensity: 0.35 });
+      const water = new THREE.Mesh(waterGeo, waterMat);
+      water.position.y = 0.006;
       water.scale.y = 0.001;
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.015, 6, 28), new THREE.MeshStandardMaterial({ color: '#56656c' }));
-      rim.rotation.x = Math.PI / 2; rim.position.y = 0.6;
-      g.add(glass, water, rim);
-      g.position.set(p.x + 0.65, SLAB_T, p.z);
+      const edgeGeo = kind === 'pit' ? new THREE.EdgesGeometry(shell) : new THREE.EdgesGeometry(new THREE.CylinderGeometry(R, R, H, 32, 1, true), 40);
+      const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: '#9fb6bc' }));
+      edges.position.y = H / 2;
+      // ผิวน้ำ: แผ่นบาง ๆ บนสุด เอียง/สว่างเบา ๆ เป็นคลื่น (ไม่กระพริบแรง)
+      const surfMat = new THREE.MeshBasicMaterial({ color: '#bfe6ff', transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+      const surf = new THREE.Mesh(kind === 'pit' ? new THREE.PlaneGeometry(R * 2.08, R * 2.08) : new THREE.CircleGeometry(R * 0.93, 32), surfMat);
+      surf.rotation.x = -Math.PI / 2;
+      g.add(glass, water, edges, surf);
+      g.position.set(p.x + 0.42, SLAB_T, p.z);
       fg.group.add(g);
-      this.tank = { group: g, water, floorId: tankPoint.floorId };
+      this.tanks.set(id, { group: g, water, waterMat, surf, surfMat, H, cur: 0, target: null, last: null, floorId: pt.floorId, metricId: gm.id, phase: Math.random() * 6 });
       this.equipment.push(g);
-    } else this.tank = null;
+    }
+    this.tank = null;
     if (pumpPoint) {
       const fg = this.floorGroups.get(pumpPoint.floorId);
       const p = planTo3D(fg.floor, pumpPoint.plan, 0);
@@ -455,18 +507,25 @@ export class MallScene {
   }
 
   /** ค่าที่ขับภาพเคลื่อนไหว — ใช้เฉพาะค่าที่ได้รับและยังสดใหม่ */
-  setDynamic({ tankLevel, pumpRunning }) {
-    this.dynamic = { tankLevel, pumpRunning };
-    if (this.tank) {
-      const lv = typeof tankLevel === 'number' ? Math.max(0, Math.min(100, tankLevel)) : null;
-      this.tank.water.visible = lv !== null;
-      if (lv !== null) {
-        const h = 0.58 * (lv / 100) + 0.001;
-        this.tank.water.scale.y = h;
-        this.tank.water.position.y = 0.01 + h / 2;
-      }
+  /**
+   * ค่าที่ขับภาพเคลื่อนไหว — ใช้เฉพาะค่าที่ได้รับและยังสดใหม่
+   * @param {{ water?: Record<string, {frac:number|null, severity:string}>, pumpRunning?: boolean|null }} d
+   */
+  setDynamic({ water = {}, pumpRunning }) {
+    this.dynamic = { pumpRunning };
+    for (const [id, t] of this.tanks ?? []) {
+      const w = water[id];
+      t.target = w && typeof w.frac === 'number' ? Math.max(0, Math.min(1, w.frac)) : null;
+      if (t.target !== null) t.last = t.target;
+      // ข้อมูลเก่า/ไม่มีข้อมูล: คงระดับล่าสุดแต่เป็นสีเทา (ไม่ค้างสีเขียว/น้ำเงิน) — ยังไม่เคยมีค่าเลยจึงซ่อนน้ำ
+      const stale = t.target === null;
+      t.water.visible = t.surf.visible = t.last !== null;
+      t.waterMat.color.set(stale ? '#8a969b' : w?.severity === 'critical' ? '#d0473f' : w?.severity === 'warning' ? '#e0a52a' : '#2a8fd0');
+      t.waterMat.emissive.set(stale ? '#1d2326' : '#0b3d66');
+      t.stale = stale;
     }
   }
+
 
   // ---------------------------------------------------------------- จุด IoT
   /** @param {Array<{point, number, severity, quality, label}>} items */
@@ -484,6 +543,7 @@ export class MallScene {
         ring.rotation.x = Math.PI / 2;
         ring.visible = false;
         this.root.add(sphere, pin, ring);
+        for (const m of [sphere, pin, ring]) this.sceneLayers.assign(m, 'sensors');
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.tabIndex = -1; // การเข้าถึงด้วยแป้นพิมพ์ใช้รายการจุด/ผัง 2D
@@ -558,7 +618,8 @@ export class MallScene {
   #ensureDetail(id) {
     const fg = this.floorGroups.get(id);
     const det = fg?.floor.detail;
-    if (!det || fg.detailObj) return Promise.resolve();
+    if (!det) return Promise.resolve();
+    if (fg.detailObj) { this.#touchDetail(det.src); return Promise.resolve(); }
     if (fg.detailPromise) return fg.detailPromise;
     fg.detailState = 'loading';
     this.onDetail(id, 'loading');
@@ -576,9 +637,12 @@ export class MallScene {
       obj.position.set(t.position.x, fg.slabT, t.position.z);
       obj.name = `detail-${id}`;
       obj.userData.stats = prep.stats;
+      // ซ่อนโมเดลชั้นเดิมก่อนแสดงชั้นใหม่: ชั้นที่ไม่ได้เลือกแล้วจะไม่แสดงโมเดลรายละเอียด (applyMode)
       fg.detailObj = obj;
       fg.group.add(obj);
+      this.sceneLayers.assign(obj, 'floor-plan');
       fg.detailState = 'ready';
+      this.#touchDetail(det.src);
       this.#loadRooms(fg);
       this.#applyMode();
       this.onDetail(id, 'ready');
@@ -636,10 +700,11 @@ export class MallScene {
     for (let i = 0, j = 0; i < t.length; i += 2, j += 3) { pos[j] = t[i]; pos[j + 1] = y; pos[j + 2] = -t[i + 1]; }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.roomHlMat ??= new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    this.roomHlMat ??= new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // กันกระพริบซ้อนพื้น (z-fighting)
     const mesh = new THREE.Mesh(geo, this.roomHlMat);
     mesh.renderOrder = 6;
     mesh.name = 'room-highlight';
+    this.sceneLayers.assign(mesh, 'alerts');
     fg.detailObj.add(mesh);
     this.roomSel = { floorId, room, mesh };
     return room;
@@ -693,21 +758,50 @@ export class MallScene {
     return null;
   }
 
-  /** มุมมองทั้งอาคาร: โหลดโมเดลห้องของทุกชั้นทีละ 2 ไฟล์ — ชั้นที่ลิฟต์จอดก่อน ตามด้วยห้างและสำนักงาน */
-  #loadAllDetails() {
-    const token = (this.allToken = (this.allToken ?? 0) + 1);
-    const lift = new Set(this.lift?.spec.floors ?? []);
-    // จอเล็ก (มือถือ): โหลดเฉพาะชั้นห้าง ชั้นสำนักงานโหลดเมื่อแยกดูชั้นนั้น (ลดการดาวน์โหลด ~11 MB และภาระการวาด)
-    this.towerOnDemand = typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
-    const order = [...this.floorGroups.values()].filter((g) => g.floor.detail && !(this.towerOnDemand && g.floor.kind === 'tower'))
-      .sort((a, b) => (lift.has(b.floor.id) - lift.has(a.floor.id)) || ((a.floor.kind === 'tower') - (b.floor.kind === 'tower')) || a.floor.order - b.floor.order)
-      .map((g) => g.floor.id);
-    const next = () => {
-      if (token !== this.allToken || this.disposed || !order.length) return;
-      this.#ensureDetail(order.shift()).then(next, next);
-    };
-    next(); next();
+  /**
+   * แคชโมเดลรายละเอียดแบบจำกัด (LRU): เดสก์ท็อปเก็บ 4 ไฟล์ มือถือ 2 ไฟล์ — ไฟล์ที่เกินจะถูกถอดออกจากฉาก
+   * และกำจัด geometry/วัสดุ/ภาพ เพื่อไม่ให้หน่วยความจำเพิ่มเรื่อย ๆ เมื่อสลับชั้นหลายครั้ง (ไม่ลบชั้นที่กำลังดู)
+   */
+  get detailCacheLimit() {
+    return typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches ? 2 : 4;
   }
+
+  #touchDetail(src) {
+    this.detailLRU ??= [];
+    this.detailLRU = this.detailLRU.filter((x) => x !== src);
+    this.detailLRU.push(src);
+    const keep = this.isolatedId ? this.floorGroups.get(this.isolatedId)?.floor.detail?.src : null;
+    while (this.detailLRU.length > this.detailCacheLimit) {
+      const victim = this.detailLRU.find((x) => x !== keep && x !== src);
+      if (!victim) break;
+      this.detailLRU = this.detailLRU.filter((x) => x !== victim);
+      this.#evictDetail(victim);
+    }
+  }
+
+  #evictDetail(src) {
+    for (const fg of this.floorGroups.values()) {
+      if (fg.floor.detail?.src !== src) continue;
+      if (this.roomSel?.floorId === fg.floor.id) { this.selectRoom(null); this.onRoom(null); }
+      if (fg.detailObj) { this.sceneLayers.release(fg.detailObj); fg.detailObj.parent?.remove(fg.detailObj); }
+      fg.detailObj = null; fg.detailPromise = null; fg.detailState = undefined;
+    }
+    const p = this.detailCache.get(src);
+    this.detailCache.delete(src);
+    p?.then((prep) => disposeTree(prep.group), () => {});
+    this.evictions = (this.evictions ?? 0) + 1;
+  }
+
+  /** ข้อมูลตรวจสอบหน่วยความจำ (ทดสอบเบราว์เซอร์) */
+  memoryProbe() {
+    const info = this.renderer.info;
+    let detailObjs = 0;
+    this.scene.traverse((o) => { if (o.name?.startsWith('detail-')) detailObjs++; });
+    return { geometries: info.memory.geometries, textures: info.memory.textures, calls: info.render.calls, cached: [...(this.detailLRU ?? [])], detailObjs, evictions: this.evictions ?? 0, layers: this.sceneLayers.list().map((l) => ({ id: l.id, visible: l.visible, objects: l.objects })) };
+  }
+
+  setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.#placeMarkers(); return ok; }
+  layerList() { return this.sceneLayers.list(); }
 
   #cutPlane() {
     if (!this.clipPlane) {
@@ -732,8 +826,8 @@ export class MallScene {
 
   /** จำนวนชั้นที่โหลดโมเดลห้องแล้ว / ทั้งหมด */
   detailProgress() {
-    const all = [...this.floorGroups.values()].filter((g) => g.floor.detail && !(this.towerOnDemand && g.floor.kind === 'tower' && !g.detailObj));
-    return { ready: all.filter((g) => g.detailObj).length, total: all.length, towerOnDemand: !!this.towerOnDemand };
+    const all = [...this.floorGroups.values()].filter((g) => g.floor.detail);
+    return { ready: all.filter((g) => g.detailObj).length, total: all.length, light: true, building: this.modelLoaded ? 'ready' : 'loading' };
   }
 
   setLayers(layers) { this.layers = { ...layers }; this.#placeMarkers(); }
@@ -802,7 +896,7 @@ export class MallScene {
       // มีโมเดล Blender: ซ่อนเปลือกแบบโค้ด ใช้ผนังกระจกในมุมมองอาคาร และซ่อนกระจกในมุมมองชั้นเดี่ยว (เห็นผนังตัดแบบผังสามมิติ)
       const hasModel = !!fg.model;
       // มุมมองชั้นเดี่ยว + มีโมเดลรายชั้นของผู้ใช้: แสดงเฉพาะโมเดลนั้น (แผ่นพื้น ผัง และผนังแบบง่ายซ่อน)
-      const showDetail = !!fg.detailObj && (!iso || iso === f.id);
+      const showDetail = !!fg.detailObj && iso === f.id; // ทั้งอาคารใช้โมเดลแบบเบาเสมอ (ไม่ผสมโมเดลรายละเอียดที่ค้างในแคช)
       if (fg.detailObj) fg.detailObj.visible = !!showDetail;
       fg.slab.visible = fg.plan.visible = !showDetail;
       if (fg.model) fg.model.visible = !showDetail;
@@ -815,14 +909,15 @@ export class MallScene {
       if (cut) fg.shellMat.opacity = Math.min(fg.shellMat.opacity, 0.06);
       // โมเดลห้องของผู้ใช้: ตัดหน้าตัดด้านหน้าปล่องออก (ระนาบตัด) ให้เห็นห้องลิฟต์ — ไม่เปลี่ยนสีหรือรูปทรง
       if (fg.detailObj) this.#setClip(fg.detailObj, cut ? this.#cutPlane() : null);
-      for (const eq of [this.tank, this.pump]) if (eq && eq.floorId === f.id) eq.group.visible = !showDetail;
+      if (this.pump && this.pump.floorId === f.id) this.pump.group.visible = !showDetail;
+      for (const t of this.tanks?.values() ?? []) if (t.floorId === f.id) t.group.visible = true; // ถังระดับน้ำแสดงบนโมเดลห้องด้วย
       fg.edges.material.color.set(isSel ? '#0f6f69' : '#8fa79f');
       fg.edges.material.opacity = isSel ? 0.95 : (f.kind === 'tower' ? 0.3 : 0.5);
       fg.isoLabel.visible = false; // ไม่แสดงป้ายชื่อชั้นลอยข้างโมเดล (ชื่อชั้นอยู่ที่ "กำลังดู" และปุ่มชั้น)
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
     this.#applyLabels();
-    if (this.lift) this.lift.rig.group.visible = !iso; // มุมมองชั้นเดี่ยวใช้สัญลักษณ์ลิฟต์ในโมเดลของผู้ใช้
+    if (this.lift) { if (!iso) this.lift.rig.group.visible = true; this.#stepLift(); } // ชั้นเดียว: แสดงรถลิฟต์เมื่อมาถึงชั้นนั้น
     if (this.roomSel && (iso ? this.roomSel.floorId !== iso : !this.floorGroups.get(this.roomSel.floorId)?.group.visible)) { this.selectRoom(null); this.onRoom(null); }
     this.#placeMarkers();
   }
@@ -884,7 +979,7 @@ export class MallScene {
       o.pin.scale.y = Math.max(0.01, pos.y - baseY);
       o.pin.position.set(pos.x, (pos.y + baseY) / 2, pos.z);
       o.ring.position.set(pos.x, baseY + 0.02, pos.z);
-      o.visible = fg.group.visible && this.layers[p.system] !== false && (!this.isolatedId || p.floorId === this.isolatedId);
+      o.visible = fg.group.visible && this.layers[p.system] !== false && this.sceneLayers.isVisible('sensors') && (!this.isolatedId || p.floorId === this.isolatedId);
       o.sphere.visible = o.pin.visible = o.visible;
       o.ring.visible = o.visible && p.id === this.selectedId;
     }
@@ -961,21 +1056,18 @@ export class MallScene {
           const b = this.lift.rig.bounds();
           const H = b.y1 - b.y0 + 0.4;
           const vfov = THREE.MathUtils.degToRad(this.camera.fov);
-          const dist = Math.max(3.5, (H / 2) / Math.tan(vfov / 2) * 1.08);
+          const dist = Math.max(4.5, (H / 2) / Math.tan(vfov / 2) * 1.5); // เห็นปล่องทั้งเส้นทาง G–5 และอาคารรอบ ๆ
           target = new THREE.Vector3(b.x, BASE_Y + (b.y0 + b.y1) / 2, b.z);
           const dir = new THREE.Vector3(0.42, 0.16, 1).normalize();
-          // เลื่อนกรอบภาพให้ปล่องอยู่ค่อนซ้าย (แผงลิฟต์อยู่ด้านขวาของภาพ)
-          const right = new THREE.Vector3().crossVectors(dir.clone().negate(), new THREE.Vector3(0, 1, 0)).normalize();
-          const halfW = Math.tan(vfov / 2) * dist * this.camera.aspect;
-          target.add(right.multiplyScalar(halfW * 0.22));
           pos = target.clone().add(dir.multiplyScalar(dist));
           break;
         }
         default: {
           // ทั้งอาคาร: ให้เห็นทั้งห้าง ทาวเวอร์ และป้ายชื่อชั้นด้านซ้ายพอดีกรอบ (ปรับตามสัดส่วนพื้นที่แสดงผล)
-          target = new THREE.Vector3(-1.2, 2.2, -1.8);
-          const dir = new THREE.Vector3(5, 15.5, 19).normalize(); // มุมเฉียงด้านบน ~38°
-          const dist = this.#fitDistance(25, 13, 40);
+          // มุมต่ำลง (~27°) ให้เห็นการเคลื่อนขึ้น–ลงของลิฟต์ชัดขึ้น และโมเดลใหญ่เต็มกรอบ
+          target = new THREE.Vector3(-1.0, 2.6, -1.8);
+          const dir = new THREE.Vector3(4, 10, 19).normalize();
+          const dist = this.#fitDistance(25, 13, 27) * 0.9;
           pos = target.clone().add(dir.multiplyScalar(dist));
         }
       }
@@ -1040,6 +1132,8 @@ export class MallScene {
     }
     if (moving) this.#placeMarkers();
     this.#stepLift();
+    // ป้ายในฉาก: ซ่อนเมื่อกล้องไกลมาก (ระดับซูม = ระยะมาตรฐาน 22 / ระยะจริง) ไม่ให้ป้ายบังโมเดล
+    this.sceneLayers.updateZoom(22 / Math.max(1, this.camera.position.distanceTo(this.controls.target)));
     if (this.towerCenter && !this.isolatedId) {
       const near = this.camera.position.distanceTo(this.towerCenter) < 10.5;
       if (near !== this.towerNear) { this.towerNear = near; this.#applyLabels(); }
@@ -1054,6 +1148,18 @@ export class MallScene {
     }
     // ปั๊มหมุนเฉพาะเมื่อได้รับสถานะ run ที่สดใหม่ (ไม่ใช่การยืนยันสภาพเครื่อง)
     if (this.pump && this.dynamic.pumpRunning === true) this.pump.fan.rotation.x += dt * 9;
+    // น้ำในถังค่อย ๆ ขึ้น/ลงสู่ค่าล่าสุด (ไม่กระโดด)
+    for (const t of this.tanks?.values() ?? []) {
+      const goal = t.target ?? t.last;
+      if (goal === null) continue;
+      t.cur += (goal - t.cur) * Math.min(1, dt * 2.2); // ค่อย ๆ ขึ้น/ลง (ตามเวลา ไม่ผูกกับจำนวนเฟรม)
+      const top = Math.max(0.001, t.cur * (t.H - 0.012));
+      t.water.scale.y = top;
+      const k = nowMs / 1000 + t.phase;
+      t.surf.position.y = 0.006 + top + Math.sin(k * 2.1) * 0.002;
+      t.surf.rotation.set(-Math.PI / 2 + Math.sin(k * 1.7) * 0.03, Math.cos(k * 1.3) * 0.03, 0);
+      t.surfMat.opacity = t.stale ? 0.12 : 0.28 + Math.sin(k * 2.6) * 0.07;
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.#projectMarkers();

@@ -422,7 +422,7 @@ tr.archived td { color: var(--muted); }
 .lift-panel.collapsed .lift-body, .lift-panel.collapsed .lift-iso { display: none; }
 .lift-panel.collapsed .lift-toggle { transform: rotate(-90deg); }
 .lift-body { display: grid; gap: 6px; }
-.lift-panel.iso .lift-body { display: none; }
+.lift-panel.iso .lift-body { display: grid; }
 .lift-iso { display: none; align-items: center; gap: 8px; color: var(--muted); }
 .lift-panel.iso:not(.collapsed) .lift-iso { display: flex; }
 .lift-status { display: flex; align-items: center; gap: 8px; background: #1d2a2e; color: #e8efe9; border-radius: 8px; padding: 4px 10px; min-height: 46px; }
@@ -562,3 +562,158 @@ body.has-vp-full { overflow: hidden; }
   .stage-body.sb-full { grid-template-columns: minmax(0, 1fr); grid-template-rows: 60% minmax(0, 1fr); gap: 8px; padding: 6px; }
   .stage-body.sb-full .lift-side { overflow: auto; }
 }
+
+/* ---------------- Executive demo ---------------- */
+.lift-info { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; margin: 0; font-size: 0.82rem; }
+.lift-info dt { color: var(--muted); }
+.lift-info dd { margin: 0; font-weight: 700; color: #1d2a2e; }
+.lift-info .door-open { color: #1c7a4d; } .lift-info .door-closed { color: #7a3b1c; }
+.lift-demo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lift-auto-note { font-size: 0.75rem; color: var(--muted); }
+.btn.danger { background: #c8423a; color: #fff; border-color: #a5332c; }
+
+.water-panel { background: #fbfcf9; border: 1px solid var(--line); border-left: 5px solid #2a8fd0; border-radius: 10px; padding: 8px 10px; display: grid; gap: 8px; }
+.wp-head { display: flex; align-items: center; gap: 8px; }
+.wp-card { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: stretch; text-align: left; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; padding: 8px; cursor: pointer; font: inherit; color: inherit; }
+.wp-card:hover { border-color: var(--teal); }
+.wp-card.selected { box-shadow: 0 0 0 3px rgba(15,111,105,0.35); }
+.wp-card:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.wp-gauge { position: relative; height: 86px; border: 2px solid #8fa3a9; border-top-width: 1px; border-radius: 4px 4px 10px 10px; background: linear-gradient(#f3f7f8, #e6eef0); overflow: hidden; }
+.wp-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(#5fb4ea, #2a8fd0); transition: height 0.9s ease, background 0.6s ease; }
+.wp-fill::before { content: ''; position: absolute; left: 0; right: 0; top: -3px; height: 6px; background: rgba(255,255,255,0.45); border-radius: 50%; }
+.sev-warning .wp-fill { background: linear-gradient(#f0c560, #d99a1e); }
+.sev-critical .wp-fill { background: linear-gradient(#e7746c, #c8423a); }
+.sev-unknown .wp-fill { background: #b7c1c5; }
+.wp-lines { position: absolute; inset: 0; pointer-events: none; }
+.wp-line { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed; }
+.wp-line.warning { border-color: #d99a1e; } .wp-line.critical { border-color: #c8423a; }
+.wp-info { display: grid; gap: 2px; align-content: center; min-width: 0; }
+.wp-title { font-size: 0.78rem; color: var(--muted); }
+.wp-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wp-value { font-size: 1.35rem; color: #1d2a2e; }
+.wp-status { font-size: 0.78rem; font-weight: 800; border-radius: 99px; padding: 1px 9px; color: #fff; background: #2f8f83; }
+.sev-warning .wp-status { background: #d99a1e; } .sev-critical .wp-status { background: #c8423a; } .sev-unknown .wp-status { background: #7d8a91; }
+.wp-time { font-size: 0.72rem; color: var(--muted); }
+.sev-critical.wp-card { border-color: #c8423a; animation: wp-crit 2.4s ease-in-out infinite; }
+@keyframes wp-crit { 0%, 100% { box-shadow: 0 0 0 0 rgba(200,66,58,0); } 50% { box-shadow: 0 0 0 4px rgba(200,66,58,0.28); } }
+
+/* หมุดวิกฤต: กระพริบแบบนุ่ม ไม่รบกวนสายตา */
+.marker.sev-critical { animation: marker-crit 2s ease-in-out infinite; }
+@keyframes marker-crit { 0%, 100% { box-shadow: 0 0 0 0 rgba(200,66,58,0.0), 0 2px 6px rgba(0,0,0,0.35); } 50% { box-shadow: 0 0 0 7px rgba(200,66,58,0.35), 0 2px 6px rgba(0,0,0,0.35); } }
+@media (prefers-reduced-motion: reduce) { .marker.sev-critical, .sev-critical.wp-card { animation: none; } }
+
+/* ป้ายข้อมูลจำลอง (แสดงตลอดเวลา) */
+.sim-badge { position: fixed; left: 10px; bottom: 10px; z-index: 60; background: #fff2c2; color: #6b4f00; border: 1px solid #e3c766; border-radius: 99px;
+  padding: 4px 12px; font-size: 0.8rem; font-weight: 800; box-shadow: 0 3px 10px rgba(0,0,0,0.18); pointer-events: none; }
+.sim-badge[hidden] { display: none; }
+
+/* แถบสาธิต */
+.demo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; margin-bottom: 8px; border-radius: 10px;
+  background: linear-gradient(90deg, #12332f, #1d4a44); color: #e8f4f1; }
+.demo-bar .db-title { font-weight: 800; margin-right: 4px; }
+.demo-bar .btn.small { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.35); }
+.demo-bar .btn.small.active { background: #f0c560; color: #3b2a00; border-color: #f0c560; }
+.demo-bar .db-start { background: #2fa39a; border-color: #2fa39a; font-weight: 800; }
+.demo-bar .db-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,0.25); margin: 0 2px; }
+
+/* คำบรรยายการนำเสนอ (ลอยด้านล่าง หยุดได้ตลอด) */
+.present-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; gap: 12px;
+  background: rgba(16,26,30,0.94); color: #fff; border-radius: 14px; padding: 10px 12px 10px 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+  width: min(720px, calc(100% - 24px)); }
+.present-bar .pb-step { font-size: 0.78rem; color: #9fd8cf; white-space: nowrap; }
+.present-bar .pb-text { flex: 1; font-weight: 700; }
+.present-bar .pb-progress { position: absolute; left: 12px; right: 12px; bottom: 4px; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.15); overflow: hidden; }
+.present-bar .pb-progress i { display: block; height: 100%; width: 0; background: #2fa39a; transition: width 0.4s ease; }
+.present-bar .btn { background: #c8423a; color: #fff; border: 0; font-weight: 800; }
+@media (max-width: 760px) { .present-bar { bottom: 10px; gap: 8px; padding: 8px 10px; } .present-bar .pb-step { display: none; } }
+.plan-marker.sev-critical .dot { animation: plan-crit 2s ease-in-out infinite; }
+@keyframes plan-crit { 0%, 100% { stroke-width: 2; stroke-opacity: 1; } 50% { stroke-width: 9; stroke-opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .plan-marker.sev-critical .dot { animation: none; } }
+
+.stage-body.has-lift { grid-template-columns: minmax(0, 1fr) 290px; }
+@media (max-width: 1180px) { .stage-body.has-lift { grid-template-columns: minmax(0, 1fr); } }
+.lift-buttons { gap: 5px; }
+.lift-btn { min-width: 36px; min-height: 36px; }
+@media (max-width: 760px) { .sim-badge { left: 6px; bottom: 6px; font-size: 0.72rem; } }
+@media (min-width: 761px) { .stage-body.has-lift.sb-full { grid-template-columns: minmax(0, 1fr) 290px; } }
+body.presenting .toasts { bottom: 92px; }
+.tb-label { font-size: 0.82rem; font-weight: 700; color: var(--muted); }
+
+/* ---------------- Overview v1.8: โมเดล 3D เป็นจุดเด่น · Sidebar เดียว ≤ 300px ---------------- */
+.overview.ov-single { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "below"; }
+.stage-body.has-side { grid-template-columns: minmax(0, 1fr) 280px; align-items: stretch; }
+.stage-body.has-side .viewport { height: max(600px, calc(100vh - 230px)); max-height: 960px; }
+.ov-side { min-width: 0; display: flex; flex-direction: column; gap: 10px; max-height: max(600px, calc(100vh - 230px)); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.stage-body.side-hidden { grid-template-columns: minmax(0, 1fr); }
+.stage-body.side-hidden .ov-side { display: none; }
+.ov-side .lift-side { display: grid; gap: 10px; align-content: start; }
+.ov-side .lift-panel, .ov-side .water-panel, .ov-side .room-card { box-shadow: none; }
+/* แผงรายละเอียดจุดแบบ Accordion */
+.ov-side .details.acc { position: static; max-height: none; overflow: visible; padding: 0; display: block; flex: 0 0 auto; border-radius: 10px; }
+.acc-head { display: flex; align-items: stretch; }
+.acc-title { flex: 1; display: flex; align-items: center; gap: 8px; text-align: left; background: none; border: 0; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; min-width: 0; }
+.acc-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.acc-text strong { font-size: 0.98rem; }
+.acc-sub { color: var(--muted); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+.acc-sub .num { width: 20px; height: 20px; font-size: 0.7rem; flex: none; }
+.acc-arrow { font-size: 1.4rem; line-height: 1; color: var(--teal-2); transition: transform 0.25s ease; }
+.acc-close { border: 0; background: none; font-size: 1.3rem; line-height: 1; padding: 0 12px; cursor: pointer; color: var(--muted); border-radius: 0 10px 0 0; }
+.acc-close:hover, .acc-title:hover { background: rgba(15,111,105,0.06); }
+.acc-body { border-top: 1px solid var(--line); padding: 10px 12px 12px; max-height: min(62vh, 560px); overflow-y: auto; overscroll-behavior: contain; }
+.acc-body.anim { animation: acc-open 0.26s ease-out both; }
+@keyframes acc-open { from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; } to { opacity: 1; max-height: min(62vh, 560px); } }
+@media (prefers-reduced-motion: reduce) { .acc-body.anim { animation: none; } }
+.acc-body .details-head { grid-template-columns: auto 1fr; }
+.acc-body .details-head h2 { font-size: 0.98rem; }
+.acc-body .details-actions .btn { flex: 1 1 auto; }
+.acc-points { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.acc-points button { width: 100%; display: flex; align-items: center; gap: 8px; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 5px 8px; font: inherit; font-size: 0.85rem; cursor: pointer; }
+.acc-points .num { width: 22px; height: 22px; font-size: 0.72rem; flex: none; }
+.dd-title { font-size: 0.78rem; color: var(--muted); margin-top: 6px; border-top: 1px solid var(--line); padding-top: 6px; }
+.layers-dd .check.future { color: var(--muted); }
+.stage-body.sb-full.has-side .ov-side { max-height: 100%; }
+.stage-body.sb-full.has-side { grid-template-columns: minmax(0, 1fr) 280px; }
+.stage-body.sb-full.side-hidden { grid-template-columns: minmax(0, 1fr); }
+/* สวิตช์ลิฟต์อัตโนมัติ */
+.lift-modebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.lift-switch { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 10px 4px 4px; font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.lift-switch i { width: 34px; height: 20px; border-radius: 999px; background: #b8c3c6; position: relative; transition: background 0.2s; }
+.lift-switch i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.lift-switch.on i { background: var(--teal); }
+.lift-switch.on i::after { transform: translateX(14px); }
+.lift-mode { font-size: 0.78rem; color: var(--muted); }
+.sim-chip { display: inline-block; background: #fff4d6; color: #7a5a00; border: 1px solid #f0d58a; border-radius: 6px; padding: 1px 6px; font-size: 0.74rem; font-weight: 700; }
+@media (max-width: 1100px) { .stage-body.has-side { grid-template-columns: minmax(0, 1fr) 260px; } }
+@media (max-width: 900px) {
+  /* แท็บเล็ต/โทรศัพท์: โมเดลบนสุดเต็มความกว้าง แผงอยู่ด้านล่าง (พับไว้) — ไม่มีแผงใดทับโมเดล */
+  .stage-body.has-side { grid-template-columns: minmax(0, 1fr); }
+  .stage-body.has-side .viewport { height: max(380px, 62vh); }
+  .ov-side { max-height: none; overflow: visible; }
+  .ov-side .details.acc, .ov-side .details.acc.open { position: static; display: block; max-height: none; box-shadow: none; border-radius: 10px; border-bottom: 1px solid var(--line); }
+}
+/* ภาพรวม: ส่วนหัวกระชับ ให้โมเดลอยู่สูงขึ้น */
+.v-overview .modebar { padding-top: 6px; padding-bottom: 6px; gap: 4px 12px; font-size: 0.85rem; }
+.v-overview .modebar .mode-note, .v-overview .modebar .mode-meta { display: none; }
+.v-overview .modebar select { padding-top: 3px; padding-bottom: 3px; }
+.v-overview .app-nav { padding-top: 4px; }
+.v-overview .view { padding-top: 8px; }
+.v-overview .stage { padding: 8px; }
+.v-overview .demo-bar { margin-bottom: 6px; padding-top: 6px; padding-bottom: 6px; }
+.v-overview .toolbar { margin-bottom: 6px; gap: 4px; }
+.v-overview .floor-banner.outside { padding: 4px 10px; margin-bottom: 6px; }
+.v-overview .floor-banner .fb-meta, .v-overview .floor-banner .fb-model { display: none; }
+.v-overview .below .kpis { padding: 0; }
+.ov-side .details.acc { align-self: stretch; }
+.stage-body.has-side .viewport { height: max(600px, calc(100vh - 150px)); }
+.ov-side { max-height: max(600px, calc(100vh - 150px)); }
+@media (max-width: 760px) {
+  .v-overview .modebar { display: none; } /* โทรศัพท์: ใช้แถบโหมดสาธิตในกรอบโมเดลแทน */
+  .v-overview .app-nav { padding-top: 2px; }
+  .stage-body.has-side .viewport { height: max(380px, 62vh); }
+}
+/* Sidebar กระชับ: ซ่อนคำอธิบายยาวของแผงลิฟต์ (คงป้าย "ลิฟต์จำลอง · ไม่ใช่ข้อมูลจริง") ให้เห็นเกจระดับน้ำโดยไม่ต้องเลื่อน */
+.ov-side .lift-note { font-size: 0; margin-top: 4px; }
+.ov-side .lift-note .sim-chip { font-size: 0.74rem; }
+.ov-side .lift-actions, .ov-side .lift-demo { gap: 6px; }
+@media (max-width: 760px) { .stage-body.has-side .viewport { height: max(340px, 54vh); } }

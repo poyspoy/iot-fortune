@@ -47,11 +47,11 @@ def overlay(img, st, floors):
         ax, ay = x0 + 40, y0 + 76
         tri = [(ax - 16, ay + 10), (ax + 16, ay + 10), (ax, ay - 14)] if st['direction'] == 'up' else [(ax - 16, ay - 10), (ax + 16, ay - 10), (ax, ay + 14)]
         d.polygon(tri, fill=(125, 255, 176))
-    d.text((x0 + 70, y0 + 50), st['headline'].replace(st['arrow'], '').strip(), font=FB(22), fill=(255, 255, 255))
+    d.text((x0 + 70, y0 + 50), st['headline'].replace('▲', '').replace('▼', '').strip(), font=FB(20), fill=(255, 255, 255))
     d.text((x0 + 70, y0 + 80), st['doorText'] + (f" · {st['detail']}" if st['detail'] else ''), font=FR(15), fill=(185, 211, 204))
     d.text((x0 + 14, y0 + 130), 'ไปชั้น', font=FB(15), fill=(86, 102, 108))
     for i, f in enumerate(floors):
-        cx, cy, r = x0 + 90 + i * 56, y0 + 140, 21
+        cx, cy, r = x0 + 78 + i * 44, y0 + 140, 18
         here = st['atFloor'] == f
         tgt = not st['atFloor'] and st['target'] == f
         alpha = 255 if st['buttonsEnabled'] or here or tgt else 120
@@ -63,8 +63,8 @@ def overlay(img, st, floors):
         d.text((cx - tw / 2, cy - 12), f, font=FB(18), fill=(255, 255, 255, alpha) if here else (29, 42, 46, alpha))
     d.text((x0 + 14, y0 + ph - 26), 'ปุ่มถูกปิดระหว่างเดินทาง' if not st['buttonsEnabled'] else 'กดเลือกชั้นได้', font=FR(13), fill=(86, 102, 108))
     # หัวคลิป
-    d.rounded_rectangle([12, 12, 560, 46], 8, fill=(31, 40, 44, 210))
-    d.text((22, 17), 'IoT ฟอร์จูน · ลิฟต์ 3 มิติ (จำลอง) · เวลาในคลิป = เวลาจริงของแอป', font=FB(16), fill=(232, 239, 233))
+    d.rounded_rectangle([12, 12, 600, 46], 8, fill=(31, 40, 44, 210))
+    d.text((22, 17), 'IoT ฟอร์จูน · ลิฟต์ L1 · ข้อมูลจำลอง · ไม่ใช่ข้อมูลจริง · ลำดับ G > 3 > 1 > 5 > G', font=FB(16), fill=(232, 239, 233))
 
 
 def frame(page, step):
@@ -97,16 +97,15 @@ with sync_playwright() as p:
     page = browser.new_page(viewport={'width': 1280, 'height': 900})
     page.goto(f'{BASE}/?db=clip{random.randint(1000, 9999)}')
     page.wait_for_selector('[data-testid=lift-panel]', timeout=60000)
-    page.add_style_tag(content='.viewport{height:600px !important}')
+    page.add_style_tag(content='.viewport{height:520px !important}')
     page.wait_for_function('() => { const sc = window.__iotFortune.app.scene; return sc.modelLoaded && [...sc.floorGroups.values()].every(g => !g.anim); }', timeout=120000)
-    page.evaluate("document.querySelector('[data-testid=lift-cut]').click()")  # เปิดปล่อง + มุมกล้องลิฟต์
+    page.evaluate("() => { const a = window.__iotFortune.app; a.scene.setLiftView(true); a.scene.preset('lift'); }")  # เปิดปล่อง + มุมกล้องลิฟต์
     page.wait_for_function('() => !window.__iotFortune.app.scene.tween', timeout=120000)
     page.evaluate('() => { const sc = window.__iotFortune.app.scene; sc.setPaused(true); sc.setManualClock(performance.now()); }')
     floors = page.evaluate('window.__iotFortune.app.scene.elevatorFloors()')
     hold(page, 1.0)
-    go(page, floors[-1])
-    go(page, floors[0])
-    go(page, floors[len(floors) // 2])
+    for f in ['3', '1', '5', 'G']:  # ลำดับสาธิตอัตโนมัติ G → 3 → 1 → 5 → G
+        go(page, f)
     browser.close()
 
 mp4 = os.path.join(OUT, 'elevator-up-down.mp4')

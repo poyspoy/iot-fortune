@@ -42,6 +42,6 @@ test('ทุกชั้น × ทุกจุด: เลือกได้เ�
 test('ค่าที่บันทึกไว้เสีย: ชั้นไม่มีอยู่ หรือจุดถูกเก็บถาวร', () => {
   assert.equal(norm({ floorId: 'OF', isolated: true }).floorId, 'G');
   const c2 = structuredClone(c); c2.points[0].status = 'archived';
-  const st = normalizeViewState({ viewMode: '3d', isolated: false, floorId: 'G', selectedId: 'P-001' }, indexConfig(c2), 'G');
+  const st = normalizeViewState({ viewMode: '3d', isolated: false, floorId: 'G', selectedId: 'WL-001' }, indexConfig(c2), 'G');
   assert.equal(st.selectedId, null);
 });

@@ -59,7 +59,7 @@ test('CSV: escape และป้องกันสูตร', () => {
 
 test('CSV ค่าวัดมีทั้งเวลา UTC และเวลาไทย', () => {
   const c = createDefaultConfig();
-  const csv = readingsCsv([{ source: 'demo', pointId: 'P-001', metricId: 'level', value: 0, unit: 'cm', quality: 'good', observedAt: T0, receivedAt: T0, sequence: 1 }], indexConfig(c));
+  const csv = readingsCsv([{ source: 'demo', pointId: 'WL-001', metricId: 'level', value: 0, unit: 'cm', quality: 'good', observedAt: T0, receivedAt: T0, sequence: 1 }], indexConfig(c));
   assert.match(csv, /2026-10-14T03:00:00.000Z/);
   assert.match(csv, /ข้อมูลจำลอง/);
 });
@@ -108,7 +108,7 @@ function sampleOf(source, pointId, metricId, value, observedAt) {
 
 test('สำรองข้อมูล: ไปกลับได้ และเวลาเดิมคงอยู่', () => {
   const config = createDefaultConfig();
-  const samples = [sampleOf('api', 'P-001', 'level', 5, T0 - 86_400_000)];
+  const samples = [sampleOf('api', 'WL-001', 'level', 5, T0 - 86_400_000)];
   const b = JSON.parse(JSON.stringify(makeBackup({ config, samples, episodes: [], settings: null, exportedAt: T0 })));
   const v = validateBackup(b);
   assert.equal(v.ok, true, v.errors.join());
@@ -120,8 +120,8 @@ test('สำรองข้อมูล: ตรวจการอ้างอิ
   const config = createDefaultConfig();
   const b = makeBackup({
     config,
-    samples: [sampleOf('api', 'P-404', 'level', 5, T0), { ...sampleOf('demo', 'P-001', 'level', 5, T0), id: 'wrong' }],
-    episodes: [{ id: 'E1', source: 'api', pointId: 'P-001', metricId: 'level', ruleId: 'R-404', severity: 'warning', peakSeverity: 'warning', openedAt: T0, acks: [], events: [] }],
+    samples: [sampleOf('api', 'P-404', 'level', 5, T0), { ...sampleOf('demo', 'WL-001', 'level', 5, T0), id: 'wrong' }],
+    episodes: [{ id: 'E1', source: 'api', pointId: 'WL-001', metricId: 'level', ruleId: 'R-404', severity: 'warning', peakSeverity: 'warning', openedAt: T0, acks: [], events: [] }],
     exportedAt: T0,
   });
   const v = validateBackup(b);

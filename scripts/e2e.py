@@ -72,8 +72,8 @@ with sync_playwright() as p:
     # 1) เลือกจุดจากหมุด 3D และจากตาราง / สลับชั้นและ 2D/3D แล้วการเลือกยังอยู่
     page.locator('.marker-layer .marker[aria-label^="1. "]').click()
     page.wait_for_timeout(300)
-    check('1a เลือกจากหมุด 3D แล้วแผงรายละเอียดแสดงจุดนั้น', 'P-001' in page.locator('.details .pid').first.inner_text())
-    check('1b แถวในตารางถูกเลือกตาม', page.locator('tr[data-focus-key="row-P-001"]').get_attribute('aria-selected') == 'true')
+    check('1a เลือกจากหมุด 3D แล้วแผงรายละเอียดแสดงจุดนั้น', 'WL-001' in page.locator('.details .pid').first.inner_text())
+    check('1b แถวในตารางถูกเลือกตาม', page.locator('tr[data-focus-key="row-WL-001"]').get_attribute('aria-selected') == 'true')
     page.locator('tr[data-focus-key="row-P-005"]').click()
     page.wait_for_timeout(300)
     check('1c เลือกจากตาราง แล้วหมุดเดียวกันถูกเน้น', 'selected' in (page.locator('.marker-layer .marker[aria-label^="5. "]').get_attribute('class') or ''))
@@ -88,17 +88,17 @@ with sync_playwright() as p:
     page.locator('.plan-marker[aria-label^="1. "]').focus()
     page.keyboard.press('Enter')
     page.wait_for_timeout(300)
-    check('1f ผัง 2D: เลือกหมุดด้วยแป้นพิมพ์ (Tab/Enter)', 'P-001' in page.locator('.details .pid').first.inner_text())
+    check('1f ผัง 2D: เลือกหมุดด้วยแป้นพิมพ์ (Tab/Enter)', 'WL-001' in page.locator('.details .pid').first.inner_text())
     page.locator('button[data-focus-key="vm-3d"]').click()
     page.wait_for_selector('.marker-layer .marker')
     page.wait_for_timeout(500)
-    check('1g กลับเป็น 3D แล้วยังเลือก P-001', 'selected' in (page.locator('.marker-layer .marker[aria-label^="1. "]').get_attribute('class') or ''))
+    check('1g กลับเป็น 3D แล้วยังเลือก WL-001', 'selected' in (page.locator('.marker-layer .marker[aria-label^="1. "]').get_attribute('class') or ''))
     # คลิก vs ลาก
     box = page.locator('canvas.scene-canvas').bounding_box()
     cx, cy = box['x'] + 60, box['y'] + box['height'] - 60
     page.mouse.move(cx, cy); page.mouse.down(); page.mouse.move(cx + 120, cy - 40, steps=8); page.mouse.up()
     page.wait_for_timeout(400)
-    check('1h ลากหมุนกล้องไม่เปลี่ยนจุดที่เลือก', 'P-001' in page.locator('.details .pid').first.inner_text())
+    check('1h ลากหมุนกล้องไม่เปลี่ยนจุดที่เลือก', 'WL-001' in page.locator('.details .pid').first.inner_text())
 
     # 9) มุมมองชั้นเดี่ยว: สลับทุกชั้น (G–5 และสำนักงาน 11–31 รายชั้น)
     page.locator('select[data-focus-key="floor"]').select_option('')
@@ -252,13 +252,13 @@ with sync_playwright() as p:
 
     # 5) รีโหลดแล้วข้อมูลยังอยู่ (การตั้งค่า ประวัติ การรับทราบ)
     page.evaluate('''async () => { const c = window.__iotFortune.ctl; const cfg = structuredClone(c.config);
-      cfg.points.find(p => p.id === "P-001").name = "บ่อสูบน้ำ (ตัวอย่าง-แก้ไข)"; return c.saveConfig(cfg); }''')
+      cfg.points.find(p => p.id === "WL-001").name = "บ่อสูบน้ำ (ตัวอย่าง-แก้ไข)"; return c.saveConfig(cfg); }''')
     before = page.evaluate('() => window.__iotFortune.ctl.repo.countSamples()')
     page.reload()
     page.wait_for_selector('.points-table tbody tr, .table-card')
     page.wait_for_timeout(1500)
     after = page.evaluate('''async () => { const c = window.__iotFortune.ctl; const eps = await c.repo.getEpisodes("demo");
-      return { name: c.config.points.find(p => p.id==="P-001").name, count: await c.repo.countSamples(),
+      return { name: c.config.points.find(p => p.id==="WL-001").name, count: await c.repo.countSamples(),
                ack: eps.some(e => e.pointId==="P-008" && e.acks.some(a => a.note.includes("ส่งช่าง"))) } }''')
     check('5 รีโหลดแล้วการตั้งค่า ประวัติ และการรับทราบยังอยู่', after['name'].endswith('แก้ไข)') and after['count'] >= before and after['ack'], json.dumps(after, ensure_ascii=False))
 
@@ -301,18 +301,18 @@ with sync_playwright() as p:
     page.locator('.api-fields input[type=number]').nth(0).fill('5')
     page.locator('.api-fields input[type=number]').nth(1).fill('3')
     page.get_by_role('button', name='บันทึกและเริ่มใช้').click()
-    wait_until(page, '() => window.__iotFortune.ctl.mode === "api" && window.__iotFortune.ctl.engine?.quality("P-001","level") === "fresh"', timeout=20000)
+    wait_until(page, '() => window.__iotFortune.ctl.mode === "api" && window.__iotFortune.ctl.engine?.quality("WL-001","level") === "fresh"', timeout=20000)
     page.wait_for_timeout(600)
     htxt = page.locator('.app-header').inner_text()
     check('4a โหมด API รับค่าจาก fixture และป้ายแหล่งข้อมูลเป็น "ข้อมูลจาก API"', 'ข้อมูลจาก API' in htxt, htxt.replace('\n', ' '))
     nodemo = page.evaluate('() => window.__iotFortune.ctl.engine?.quality("P-003","run")')
     check('4b จุดที่ API ไม่ได้ส่งมาเป็น "ยังไม่มีข้อมูล" (ไม่ใช้ค่าจำลองแทน)', nodemo == 'nodata', nodemo)
     page.evaluate('''async () => { const c = window.__iotFortune.ctl; const cfg = structuredClone(c.config);
-      cfg.points.find(p => p.id === "P-001").metrics[0].staleAfterSec = 8; return c.saveConfig(cfg); }''')
+      cfg.points.find(p => p.id === "WL-001").metrics[0].staleAfterSec = 8; return c.saveConfig(cfg); }''')
     fixture('stuck')
     page.wait_for_timeout(12000)
-    st = page.evaluate('''() => { const c = window.__iotFortune.ctl; const e = c.engine.entry("P-001","level");
-      return { q: c.engine.quality("P-001","level"), conn: c.connection.state, lastSuccess: c.connection.lastSuccessAt, observedAt: e.lastValid.observedAt } }''')
+    st = page.evaluate('''() => { const c = window.__iotFortune.ctl; const e = c.engine.entry("WL-001","level");
+      return { q: c.engine.quality("WL-001","level"), conn: c.connection.state, lastSuccess: c.connection.lastSuccessAt, observedAt: e.lastValid.observedAt } }''')
     check('4c poll สำเร็จแต่ค่าค้าง → ยังเป็นข้อมูลเก่า (เวลาสังเกต ≠ เวลา poll)', st['q'] == 'stale' and st['conn'] == 'ok' and st['lastSuccess'] - st['observedAt'] > 8000, json.dumps(st))
     page.locator('button[data-focus-key="nav-overview"]').click()
     page.wait_for_selector('select[data-focus-key="floor"]')
@@ -321,12 +321,12 @@ with sync_playwright() as p:
     else:
         page.locator('select[data-focus-key="floor"]').select_option('G')
     page.wait_for_timeout(600)
-    page.locator('tr[data-focus-key="row-P-001"]').click()
+    page.locator('tr[data-focus-key="row-WL-001"]').click()
     page.wait_for_timeout(500)
     page.screenshot(path=f'{SHOTS}/07-desktop-api-stale.png')
     fixture('fail')
     wait_until(page, '() => window.__iotFortune.ctl.connection?.state === "retrying"', timeout=20000)
-    st2 = page.evaluate('() => { const c = window.__iotFortune.ctl; return { mode: c.mode, q: c.engine.quality("P-001","level"), v: c.engine.entry("P-001","level").lastValid.value, err: c.connection.lastError } }')
+    st2 = page.evaluate('() => { const c = window.__iotFortune.ctl; return { mode: c.mode, q: c.engine.quality("WL-001","level"), v: c.engine.entry("WL-001","level").lastValid.value, err: c.connection.lastError } }')
     check('4d API ล้มเหลว → แสดงการเชื่อมต่อล้มเหลว ค่าเดิมคงอยู่ ไม่สลับเป็นค่าจำลอง', st2['mode'] == 'api' and st2['q'] == 'stale' and 'HTTP 503' in (st2['err'] or ''), json.dumps(st2, ensure_ascii=False))
     page.wait_for_timeout(1500)
     mtxt = page.locator('.modebar').inner_text()
@@ -336,11 +336,11 @@ with sync_playwright() as p:
     # 7) คีย์บอร์ด/โฟกัส, ไม่ล้นแนวนอน, ไม่มี error
     page.locator('button[data-focus-key="nav-points"]').focus()
     page.keyboard.press('Enter')
-    page.wait_for_selector('tr[data-focus-key="row-P-002"]')
-    page.locator('tr[data-focus-key="row-P-002"]').focus()
+    page.wait_for_selector('tr[data-focus-key="row-WL-002"]')
+    page.locator('tr[data-focus-key="row-WL-002"]').focus()
     page.keyboard.press('Enter')
     page.wait_for_timeout(300)
-    check('7a เลือกจุดจากตารางด้วยแป้นพิมพ์', 'P-002' in page.locator('.details .pid').first.inner_text())
+    check('7a เลือกจุดจากตารางด้วยแป้นพิมพ์', 'WL-002' in page.locator('.details .pid').first.inner_text())
     fv = page.evaluate('() => ({ fv: document.activeElement.matches(":focus-visible"), shadow: getComputedStyle(document.activeElement).boxShadow })')
     check('7b องค์ประกอบที่โฟกัสด้วยแป้นพิมพ์มีกรอบโฟกัส (:focus-visible)', fv['fv'] and '247, 201, 72' in fv['shadow'], json.dumps(fv))
     check('7c เดสก์ท็อป 1440 ไม่ล้นแนวนอน', no_overflow(page))
@@ -362,7 +362,7 @@ with sync_playwright() as p:
         mp.wait_for_timeout(1500)
         check(f'7e มือถือ {w}px ไม่ล้นแนวนอน', no_overflow(mp))
         mp.screenshot(path=f'{SHOTS}/08-mobile-{w}.png', full_page=False, timeout=180000)
-        mp.locator('tr[data-focus-key="row-P-001"]').click()
+        mp.locator('tr[data-focus-key="row-WL-001"]').click()
         mp.wait_for_selector('.details.open')
         check(f'7f มือถือ {w}px แตะรายการแล้วเปิดลิ้นชักรายละเอียด', mp.locator('.details.open').is_visible())
         mp.screenshot(path=f'{SHOTS}/09-mobile-{w}-drawer.png', timeout=180000)

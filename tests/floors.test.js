@@ -46,7 +46,7 @@ function v1Config() {
 test('ย้ายการตั้งค่ารุ่น 1 (ชั้น OF เดียว) เป็นชั้นแยก', () => {
   const old = v1Config();
   const m = migrateConfig(old);
-  assert.equal(m.schemaVersion, 4);
+  assert.equal(m.schemaVersion, 5);
   assert.deepEqual(validateConfig(m).errors, []);
   const byId = Object.fromEntries(m.points.map((p) => [p.id, p]));
   assert.equal(byId['P-004'].floorId, '11');
@@ -64,7 +64,7 @@ test('ไฟล์สำรองรุ่น 1 นำเข้าได้ ค�
   const v = validateBackup(JSON.parse(JSON.stringify(b)));
   assert.equal(v.ok, true, v.errors.join('\n'));
   assert.equal(v.summary.migratedFrom, 1);
-  assert.equal(v.data.config.schemaVersion, 4);
+  assert.equal(v.data.config.schemaVersion, 5);
 });
 
 test('มุมมองชั้นเดี่ยว: หมุดคงตำแหน่งเดิมเมื่อเทียบกับผังทุกชั้น', () => {
@@ -135,4 +135,16 @@ test('โมเดล Blender ทุกชั้นวางตรงกับ�
     }
     assert.ok(Math.abs(t.scale.x / t.scale.z - 1) < 0.005, `ชั้น ${f.id} สเกล x/z ${t.scale.x / t.scale.z}`);
   }
+});
+
+test('v4 → v5: จุด P-001/P-002 เดิมเปลี่ยนเป็น WL-001/WL-002 พร้อมกฎ ไม่สร้างจุดซ้ำ', async () => {
+  const { migrateConfig } = await import('../src/domain/migrate.js');
+  const c = createDefaultConfig();
+  c.schemaVersion = 4;
+  for (const p of c.points) if (p.id.startsWith('WL-')) { const old = p.id === 'WL-001' ? 'P-001' : 'P-002'; p.id = old; p.sourceKey = old; p.name = p.id === 'P-001' ? 'บ่อสูบน้ำ (ตัวอย่าง)' : 'ถังเก็บน้ำ (ตัวอย่าง)'; }
+  for (const r of c.rules) if (r.pointId === 'WL-001') r.pointId = 'P-001'; else if (r.pointId === 'WL-002') r.pointId = 'P-002';
+  const m = migrateConfig(c);
+  assert.equal(m.schemaVersion, 5);
+  assert.deepEqual(m.points.filter((p) => /^(P-00[12]|WL-)/.test(p.id)).map((p) => [p.id, p.name]), [['WL-001', 'ระดับน้ำบ่อสูบน้ำ'], ['WL-002', 'ระดับน้ำถังเก็บน้ำ']]);
+  assert.ok(m.rules.some((r) => r.pointId === 'WL-001') && !m.rules.some((r) => r.pointId === 'P-001'));
 });

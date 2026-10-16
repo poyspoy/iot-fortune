@@ -6,9 +6,10 @@
 export const DEMO_STEP_MS = 30_000;
 export const DEMO_BACKFILL_MS = 30 * 60_000;
 export const SCENARIOS = {
-  normal: 'ทำงานปกติ',
-  'sump-rising': 'ระดับบ่อสูบน้ำสูงขึ้น',
-  'tank-low': 'ระดับถังเก็บน้ำต่ำ',
+  normal: 'ปกติ',
+  'sump-rising': 'ระดับน้ำบ่อสูง',
+  'tank-low': 'ระดับน้ำถังต่ำ',
+  both: 'จำลองทั้งสองเหตุการณ์',
   'room-hot': 'ห้องไฟฟ้าอุณหภูมิสูง',
   leak: 'ตรวจพบน้ำรั่ว',
   'device-loss': 'อุปกรณ์ขาดการติดต่อ',
@@ -31,18 +32,29 @@ export function noise(seed, key, k) {
 const r1 = (v) => Math.round(v * 10) / 10;
 
 /** ค่าของทุกค่าวัด ณ เวลา t (คืน [] ถ้าอุปกรณ์ขาดการติดต่อ) */
-export function demoValuesAt(t, { seed, scenario, scenarioStartedAt, lossPointId }) {
+export function demoValuesAt(t, { seed, scenario, scenarioStartedAt, lossPointId, prev }) {
   const k = Math.floor(t / DEMO_STEP_MS);
   const n = (key) => noise(seed, key, k);
-  const active = (name) => scenario === name && scenarioStartedAt != null && t >= scenarioStartedAt;
+  const inScenario = (name) => scenario === name || (scenario === 'both' && (name === 'sump-rising' || name === 'tank-low'));
+  const active = (name) => inScenario(name) && scenarioStartedAt != null && t >= scenarioStartedAt;
   const el = (name) => (active(name) ? (t - scenarioStartedAt) / 60_000 : 0);
+  // ค่าเบี่ยงเบนจากสถานการณ์: เพิ่มขึ้นตามเวลา และเมื่อเปลี่ยนสถานการณ์ ค่อย ๆ กลับสู่ปกติ (ไม่กระโดด)
+  const inPrev = (name) => prev && prev.endedAt != null && (prev.scenario === name || (prev.scenario === 'both' && (name === 'sump-rising' || name === 'tank-low')));
+  const offset = (name, perMin, recoverPerMin, cap) => {
+    if (active(name)) return Math.min(cap, perMin * el(name));
+    if (inPrev(name) && t >= prev.endedAt && prev.startedAt != null) {
+      const peak = Math.min(cap, (perMin * Math.max(0, prev.endedAt - prev.startedAt)) / 60_000);
+      return Math.max(0, peak - (recoverPerMin * (t - prev.endedAt)) / 60_000);
+    }
+    return 0;
+  };
 
   const minuteOfCycle = (t / 60_000) % 20;
   const running = minuteOfCycle < 12;
   const day = ((t + 7 * 3600_000) % 86_400_000) / 86_400_000; // เวลาไทย 0–1
   const out = [
-    ['P-001', 'level', r1(Math.min(195, 62 + 2.5 * n('p1') + 6 * el('sump-rising'))), 'cm'],
-    ['P-002', 'level', r1(Math.max(12, 76 + 1.2 * n('p2') - 4 * el('tank-low'))), '%'],
+    ['WL-001', 'level', r1(Math.min(195, 60 + 2.5 * n('p1') + offset('sump-rising', 6, 15, 133))), 'cm'],
+    ['WL-002', 'level', r1(Math.max(12, 75 + 1.2 * n('p2') - offset('tank-low', 4, 10, 63))), '%'],
     ['P-003', 'run', running ? 'run' : 'stop', ''],
     ['P-003', 'current', running ? r1(12 + 0.6 * n('p3')) : 0, 'A'],
     ['P-004', 'chws', r1(7 + 0.3 * n('p4s')), '°C'],

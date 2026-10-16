@@ -20,7 +20,7 @@ function samples(now) {
   const at = new Date(now).toISOString();
   const lvl = mode === 'high' ? 160 : 58 + Math.round(Math.sin(now / 60000) * 30) / 10;
   return [
-    { pointId: 'P-001', metricId: 'level', value: lvl, unit: 'cm', observedAt: at, quality: 'good', sequence: seq },
+    { pointId: 'WL-001', metricId: 'level', value: lvl, unit: 'cm', observedAt: at, quality: 'good', sequence: seq },
     { pointId: 'P-005', metricId: 'temp', value: 24.6, unit: '°C', observedAt: at, quality: 'good', sequence: seq },
     { pointId: 'P-005', metricId: 'rh', value: 57, unit: '%RH', observedAt: at, quality: 'good', sequence: seq },
     { pointId: 'P-008', metricId: 'leak', value: 'dry', unit: '', observedAt: at, quality: 'good', sequence: seq },
@@ -49,7 +49,7 @@ const server = createServer((req, res) => {
       body = { schemaVersion: 1, samples: samples(stuckAt) };
     } else if (mode === 'invalid') {
       seq++;
-      body = { schemaVersion: 1, samples: [{ pointId: 'P-001', metricId: 'level', value: 'NaN', unit: 'cm', observedAt: new Date().toISOString(), quality: 'good', sequence: seq }] };
+      body = { schemaVersion: 1, samples: [{ pointId: 'WL-001', metricId: 'level', value: 'NaN', unit: 'cm', observedAt: new Date().toISOString(), quality: 'good', sequence: seq }] };
     } else {
       seq++;
       body = { schemaVersion: 1, samples: samples(Date.now()) };

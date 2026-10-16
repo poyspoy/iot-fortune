@@ -78,17 +78,18 @@ export function createDefaultConfig() {
 
   const points = [
     {
-      id: 'P-001', sourceKey: 'P-001', name: 'บ่อสูบน้ำ (ตัวอย่าง)', system: 'water', equipmentId: '',
+      id: 'WL-001', sourceKey: 'WL-001', name: 'ระดับน้ำบ่อสูบน้ำ', system: 'water', equipmentId: '',
       floorId: 'G', areaId: 'G-SVC', plan: { x: 0.88, y: 0.86 }, pos3d: null, status: 'active', example: true,
       metrics: [num('level', 'ระดับน้ำในบ่อ', 'cm', 0, 400, {
         unitConversions: { mm: { factor: 0.1, offset: 0 } },
+        gauge: { min: 0, max: 200, visual: 'pit' }, // เกจระดับน้ำ: ช่วงที่แสดง + รูปแบบภาพบนโมเดล (ค่าตัวอย่าง)
         explain: 'ระดับน้ำเป็นเซนติเมตร (cm) วัดจากก้นบ่อ ยิ่งสูงยิ่งเสี่ยงล้น',
       })],
     },
     {
-      id: 'P-002', sourceKey: 'P-002', name: 'ถังเก็บน้ำ (ตัวอย่าง)', system: 'water', equipmentId: '',
+      id: 'WL-002', sourceKey: 'WL-002', name: 'ระดับน้ำถังเก็บน้ำ', system: 'water', equipmentId: '',
       floorId: '4', areaId: '4-MALL', plan: { x: 0.88, y: 0.40 }, pos3d: null, status: 'active', example: true,
-      metrics: [num('level', 'ระดับน้ำในถัง', '%', 0, 100, { explain: 'ร้อยละของความจุถัง (%) ยิ่งต่ำยิ่งเสี่ยงน้ำไม่พอ' })],
+      metrics: [num('level', 'ระดับน้ำในถัง', '%', 0, 100, { explain: 'ร้อยละของความจุถัง (%) ยิ่งต่ำยิ่งเสี่ยงน้ำไม่พอ', gauge: { min: 0, max: 100, visual: 'tank' } })],
     },
     {
       id: 'P-003', sourceKey: 'P-003', name: 'ปั๊มน้ำ (ตัวอย่าง)', system: 'water', equipmentId: 'PUMP-EX-01',
@@ -143,8 +144,8 @@ export function createDefaultConfig() {
     hysteresis: 0, dwellSec: 60, ...o,
   });
   const rules = [
-    r('R-001', 'P-001', 'level', 'high', { warning: 120, critical: 150, hysteresis: 5 }),
-    r('R-002', 'P-002', 'level', 'low', { warning: 40, critical: 25, hysteresis: 3 }),
+    r('R-001', 'WL-001', 'level', 'high', { warning: 120, critical: 150, hysteresis: 5 }),
+    r('R-002', 'WL-002', 'level', 'low', { warning: 40, critical: 25, hysteresis: 3 }),
     r('R-003', 'P-003', 'current', 'high', { warning: 18, critical: 22, hysteresis: 1 }),
     r('R-004', 'P-004', 'chws', 'high', { warning: 10, critical: 13, hysteresis: 0.5 }),
     r('R-005', 'P-005', 'temp', 'high', { warning: 27, critical: 29, hysteresis: 0.5 }),

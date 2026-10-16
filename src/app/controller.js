@@ -180,7 +180,13 @@ export class Controller {
   async setDemoParams(patch) {
     if (this.mode !== 'demo' || !this.adapter) return;
     const d = { ...this.settings.demo, ...patch };
-    if (patch.scenario !== undefined) d.scenarioStartedAt = this.adapter.now();
+    if (patch.scenario !== undefined) {
+      const old = this.settings.demo;
+      // จำสถานการณ์ก่อนหน้า เพื่อให้ค่าค่อย ๆ กลับสู่ปกติแทนการกระโดด
+      d.prev = old.scenario && old.scenario !== 'normal' && old.scenarioStartedAt != null
+        ? { scenario: old.scenario, startedAt: old.scenarioStartedAt, endedAt: this.adapter.now() } : (old.prev ?? null);
+      d.scenarioStartedAt = this.adapter.now();
+    }
     this.settings.demo = d;
     this.adapter.setParams(d);
     await this.saveSettings({ demo: d });
@@ -190,7 +196,7 @@ export class Controller {
   async resetDemo() {
     this.stopSource();
     await this.repo.clearSource('demo');
-    this.settings.demo = { ...this.settings.demo, scenario: 'normal', scenarioStartedAt: null, speed: 1 };
+    this.settings.demo = { ...this.settings.demo, scenario: 'normal', scenarioStartedAt: null, speed: 1, prev: null };
     await this.saveSettings({ demo: this.settings.demo });
     await this.startSource();
   }
