@@ -259,8 +259,16 @@ export class MallScene {
     label.center.set(1, 0.5);
     group.add(label);
 
+    // ป้ายชื่อชั้นตัวใหญ่ข้างโมเดล — แสดงเมื่อแยกดูชั้นนี้
+    const isoLabel = textSprite(floor.name, { scale: 0.022, size: 44, color: '#ffffff', bg: 'rgba(15,111,105,0.95)' });
+    isoLabel.center.set(0, 0);
+    isoLabel.position.set(m.cx - m.width / 2, 0.6, m.cz - m.depth / 2); // มุมซ้ายด้านหลัง เหนือผนัง (ไม่บังห้อง)
+    isoLabel.visible = false;
+    isoLabel.name = 'iso-label';
+    group.add(isoLabel);
+
     this.root.add(group);
-    return { group, slab, slabT, plan, shell, shellMat, edges, label, floor, planMat, target: new THREE.Vector3() };
+    return { group, slab, slabT, plan, shell, shellMat, edges, label, isoLabel, floor, planMat, target: new THREE.Vector3() };
   }
 
   /**
@@ -795,7 +803,8 @@ export class MallScene {
       for (const eq of [this.tank, this.pump]) if (eq && eq.floorId === f.id) eq.group.visible = !showDetail;
       fg.edges.material.color.set(isSel ? '#0f6f69' : '#8fa79f');
       fg.edges.material.opacity = isSel ? 0.95 : (f.kind === 'tower' ? 0.3 : 0.5);
-      fg.label.visible = iso ? false : (isSel || (this.mode === 'exploded' && f.kind !== 'tower')); // มุมมองเดี่ยวใช้ป้าย "กำลังดู" แทน
+      fg.label.visible = iso ? false : (isSel || (this.mode === 'exploded' && f.kind !== 'tower')); // มุมมองเดี่ยวใช้ป้ายตัวใหญ่แทน
+      fg.isoLabel.visible = iso === f.id;
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
     if (this.lift) this.lift.rig.group.visible = !iso; // มุมมองชั้นเดี่ยวใช้สัญลักษณ์ลิฟต์ในโมเดลของผู้ใช้
