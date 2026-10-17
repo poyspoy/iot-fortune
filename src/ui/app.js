@@ -65,6 +65,8 @@ export class App {
     this.ctl.on((e) => this.#onCtl(e));
     this.render();
     setInterval(() => this.#scheduleLive(), 1000);
+    // แท็บถูกซ่อน: ไม่อัปเดตแผงข้อมูล/กราฟ (ข้อมูลยังเดินต่อ) · กลับมาเห็นแล้วอัปเดตทันทีครั้งเดียว
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.#scheduleLive(); });
   }
 
   // ------------------------------------------------------------------ helpers
@@ -469,9 +471,13 @@ export class App {
   }
 
   #scheduleLive() {
-    if (this.liveTimer) return;
+    if (this.liveTimer || document.hidden) return;
     const wait = Math.max(0, 450 - (Date.now() - this.lastLive));
-    this.liveTimer = setTimeout(() => { this.liveTimer = null; this.lastLive = Date.now(); this.renderLive(); }, wait);
+    // อัปเดตแผงข้อมูลในช่วงว่างระหว่างเฟรม (requestIdleCallback) ไม่แทรกกลางเฟรม 3D · รอไม่เกิน 300 ms
+    const run = () => { this.liveTimer = null; if (document.hidden) return; this.lastLive = Date.now(); this.renderLive(); };
+    this.liveTimer = setTimeout(() => {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 300 }); else run();
+    }, wait);
   }
 
   // ------------------------------------------------------------------ เรนเดอร์
@@ -1151,9 +1157,15 @@ export class App {
     const lastObs = p ? p.metrics.map((m) => this.engine.entry(p.id, m.id)?.lastValid?.observedAt ?? 0).join(',') : '';
     const sig = `${p?.id}|${this.state.trendRange}|${lastObs}|${Math.floor(now / 30000)}|${this.ctl.mode}|${this.config.rules.length}`;
     if (sig === this.trendSig) return;
-    // ค่าใหม่เข้ามาถี่ (เดโมเร่งความเร็ว) — วาดกราฟใหม่ไม่เกินทุก 5 วินาที ยกเว้นเปลี่ยนจุด/ช่วงเวลา
+    // ค่าใหม่เข้ามาถี่ (เดโมเร่งความเร็ว) — วาดกราฟใหม่ไม่เกินทุก 15 วินาที ยกเว้นเปลี่ยนจุด/ช่วงเวลา (สร้างใหม่ทันที)
+    // และไม่วาดขณะกราฟอยู่นอกจอหรือแท็บถูกซ่อน (ค่ารอบถัดไปจะตามมาเมื่อกลับมาเห็น)
     const structural = `${p?.id}|${this.state.trendRange}|${this.ctl.mode}|${this.config.rules.length}`;
-    if (this.trendStruct === structural && Date.now() - (this.trendAt ?? 0) < 5000) return;
+    if (this.trendStruct === structural && Date.now() - (this.trendAt ?? 0) < 15000) return;
+    if (this.trendStruct === structural && (document.hidden || this.trendOffscreen)) return;
+    if (!this.trendIO && typeof IntersectionObserver === 'function') {
+      this.trendIO = new IntersectionObserver((es) => { const off = !es.some((e) => e.isIntersecting); const was = this.trendOffscreen; this.trendOffscreen = off; if (was && !off) this.#renderTrends(); });
+    }
+    if (this.trendIO && this.trendIOEl !== el) { this.trendIO.disconnect(); this.trendIO.observe(el); this.trendIOEl = el; }
     if (el.querySelector('details.chart-table[open]') && this.trendStruct === structural && Date.now() - (this.trendAt ?? 0) < 30000) return;
     if (!this.trendRO && typeof ResizeObserver === 'function') {
       let lastW = 0; let tmr = 0;
