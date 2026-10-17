@@ -1286,7 +1286,6 @@ export class MallScene {
     this.raf = requestAnimationFrame(this.loopFn);
     const dt = Math.min(this.clock.getDelta(), 0.1);
     if (this.paused || this.compiling || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
-    if (!this.onScreen) { this.#stepLift(); return; } // โมเดลอยู่นอกจอ: ไม่วาด แต่ลิฟต์ยังเดินและแผงสถานะลิฟต์ยังอัปเดต
     let moving = false;
     const nowMs = performance.now();
     for (const fg of this.floorGroups.values()) {
@@ -1337,6 +1336,8 @@ export class MallScene {
       t.surfMat.opacity = t.stale ? 0.12 : 0.28 + Math.sin(k * 2.6) * 0.07;
     }
     this.controls.update();
+    // โมเดลอยู่นอกจอ (เลื่อนลงดูตาราง/กราฟ): สถานะทุกอย่างยังเดินตามปกติ (ลิฟต์ ชั้นที่กำลังเลื่อน กล้อง) แต่ไม่วาดภาพ
+    if (!this.onScreen) return;
     this.#flushShadows(moving);
     this.renderer.render(this.scene, this.camera);
     this.#projectMarkers();
