@@ -295,7 +295,7 @@ export class MallScene {
     const token = this.modelToken;
     this.modelLoaded = false;
     if (!src) return;
-    this.glassMat ??= new THREE.MeshStandardMaterial({ color: '#a9d2cd', transparent: true, opacity: 0.26, roughness: 0.08, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+    this.glassMat ??= new THREE.MeshStandardMaterial({ color: '#a9d2cd', transparent: true, opacity: 0.26, roughness: 0.08, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }); // กระจกบาง: วาดรอบเดียว (ไม่แยกด้านหลัง/หน้า 2 รอบ)
     new GLTFLoader().load(src, (gltf) => {
       if (token !== this.modelToken || this.disposed) return;
       for (const fg of this.floorGroups.values()) {
@@ -891,7 +891,9 @@ export class MallScene {
     const solid = st.a >= 0.999 && !this.styleAnim;
     const ghost = (m) => {
       let g = this.styleMatCache.get(m);
-      if (!g) { g = m.clone(); g.transparent = true; g.depthWrite = false; this.styleMatCache.set(m, g); }
+      // forceSinglePass: วัสดุสองด้านที่โปร่งใส three.js จะวาด 2 รอบ (ด้านหลังแล้วด้านหน้า) → Draw Calls และ Overdraw เป็นสองเท่า
+      // ในโหมดโปร่งใส (ทึบ 22%) วาดรอบเดียวให้ผลเหมือนกันด้วยตา รูปทรงและสีไม่เปลี่ยน
+      if (!g) { g = m.clone(); g.transparent = true; g.depthWrite = false; g.forceSinglePass = true; this.styleMatCache.set(m, g); }
       g.opacity = m.opacity * st.a;
       g.visible = st.a > 0.01;
       if (g.clippingPlanes !== m.clippingPlanes) { g.clippingPlanes = m.clippingPlanes; g.needsUpdate = true; }
