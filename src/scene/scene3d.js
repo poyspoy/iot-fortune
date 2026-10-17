@@ -215,14 +215,39 @@ export class MallScene {
     this.#applyMode(true);
     // คอมไพล์ shader ของฉากเริ่มต้นแบบไม่บล็อกหน้าเว็บ (KHR_parallel_shader_compile) ก่อนวาดเฟรมแรก — เดิมคอมไพล์ตอนวาดครั้งแรกทำให้หน้าค้าง
     this.compiling = true;
-    this.#compile(this.scene).finally(() => { this.compiling = false; });
+    this.#compile(this.scene, 'scene', 1500).finally(() => { this.compiling = false; });
   }
 
-  /** คอมไพล์วัสดุของวัตถุล่วงหน้าแบบ async (ใช้แสง/หมอกของฉากหลัก) — ถ้าเบราว์เซอร์ไม่รองรับก็ผ่านไปตามเดิม */
-  #compile(obj) {
-    const r = this.renderer;
-    if (typeof r.compileAsync !== 'function') return Promise.resolve();
-    return r.compileAsync(obj, this.camera, this.scene).catch(() => {});
+  /**
+   * คอมไพล์ shader ของวัตถุล่วงหน้าแบบไม่บล็อก (KHR_parallel_shader_compile) แล้วรอให้พร้อม "แต่ไม่เกิน timeoutMs"
+   * - สั่ง gl.flush() ทุกครั้งที่ตรวจ: ถ้าไม่ flush คำสั่งคอมไพล์จะค้างใน command buffer จนกว่าจะมีการวาด (เดิมทำให้รอได้ถึง ~30 วินาทีบนเครื่องที่ยังไม่มี shader cache)
+   * - เกินเวลา: ไปต่อทันที (Fallback) — shader ที่ยังไม่เสร็จจะคอมไพล์ให้จบตอนวาดตามปกติ หน้าเว็บไม่ถูกรอไม่สิ้นสุด
+   * - เบราว์เซอร์ไม่มีส่วนขยายนี้: ไม่รอ (การรอไม่ช่วยอะไร)
+   * บันทึกเวลาไว้ที่ this.loadTimings เพื่อตรวจสอบ
+   */
+  #compile(obj, label = 'compile', timeoutMs = 1500) {
+    const r = this.renderer; const gl = r.getContext();
+    const t0 = performance.now();
+    const log = (this.loadTimings ??= {});
+    let mats;
+    try { mats = r.compile(obj, this.camera, this.scene); } catch (e) { log[label] = { ms: 0, error: String(e) }; return Promise.resolve(); }
+    gl.flush();
+    const ext = r.extensions.get('KHR_parallel_shader_compile');
+    const total = mats.size;
+    if (!ext || !total) { log[label] = { ms: Math.round(performance.now() - t0), programs: total, parallel: !!ext }; return Promise.resolve(); }
+    return new Promise((res) => {
+      const check = () => {
+        for (const m of mats) { const prog = r.properties.get(m).currentProgram; if (!prog || prog.isReady()) mats.delete(m); }
+        const ms = performance.now() - t0;
+        if (!mats.size || ms > timeoutMs || this.disposed) {
+          log[label] = { ms: Math.round(ms), programs: total, pending: mats.size, timedOut: mats.size > 0, parallel: true };
+          res(); return;
+        }
+        gl.flush();
+        setTimeout(check, 16);
+      };
+      check();
+    });
   }
 
   #shape(floor) {
@@ -330,7 +355,7 @@ export class MallScene {
         o.castShadow = true; o.receiveShadow = true;
         if (o.material?.name === 'Glass') { o.material = this.glassMat; o.castShadow = false; }
       });
-      await this.#compile(gltf.scene);
+      await this.#compile(gltf.scene, 'model', 2000);
       if (token !== this.modelToken || this.disposed) return;
       for (const fg of this.floorGroups.values()) {
         const node = gltf.scene.getObjectByName(`floor-${fg.floor.id}`);
@@ -674,7 +699,7 @@ export class MallScene {
     if (!p) {
       // โหลด → เตรียม → คอมไพล์ shader แบบไม่บล็อก แล้วจึงแสดง (ลดอาการค้างตอนเปิดชั้นครั้งแรก)
       p = new Promise((res, rej) => new GLTFLoader().load(det.src, (g) => res(prepareDetail(g.scene)), undefined, rej))
-        .then((prep) => this.#compile(prep.group).then(() => prep));
+        .then((prep) => this.#compile(prep.group, `detail-${id}`, 2000).then(() => prep));
       this.detailCache.set(det.src, p);
     }
     const cfg = this.config;
