@@ -127,6 +127,12 @@ export class MallScene {
     this.#bindPointer();
     this.resizeObs = new ResizeObserver(() => this.#resize());
     this.resizeObs.observe(container);
+    // ลูปวาดชุดเดียว (rAF) — หยุดวาดเมื่อแท็บถูกซ่อน หรือโมเดลเลื่อนออกนอกจอ (เช่นเลื่อนลงดูตาราง/กราฟบนมือถือ)
+    this.onScreen = true;
+    if (typeof IntersectionObserver === 'function') {
+      this.visObs = new IntersectionObserver((es) => { this.onScreen = es.some((e) => e.isIntersecting); });
+      this.visObs.observe(container);
+    }
     this.#resize();
     this.loopFn = () => this.#frame();
     this.raf = requestAnimationFrame(this.loopFn);
@@ -1255,6 +1261,7 @@ export class MallScene {
     this.raf = requestAnimationFrame(this.loopFn);
     const dt = Math.min(this.clock.getDelta(), 0.1);
     if (this.paused || this.compiling || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
+    if (!this.onScreen) { this.#stepLift(); return; } // โมเดลอยู่นอกจอ: ไม่วาด แต่ลิฟต์ยังเดินและแผงสถานะลิฟต์ยังอัปเดต
     let moving = false;
     const nowMs = performance.now();
     for (const fg of this.floorGroups.values()) {
@@ -1355,6 +1362,7 @@ export class MallScene {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.resizeObs.disconnect();
+    this.visObs?.disconnect();
     this.controls.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
