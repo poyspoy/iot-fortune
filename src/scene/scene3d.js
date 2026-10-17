@@ -45,6 +45,16 @@ const COLORS = {
 /** รูปแบบอาคาร: a = ความทึบของวัสดุอาคาร (คูณค่าเดิม), l = ความเข้มของเส้นโครง */
 const BUILDING_STYLES = { solid: { a: 1, l: 0 }, transparent: { a: 0.22, l: 0 }, wire: { a: 0, l: 1 } };
 
+/**
+ * ความละเอียดการวาด (pixel ratio) สูงสุด: เดิม ≤ 2 → จอความละเอียดสูงต้องวาดพิกเซลมากถึง 4 เท่า
+ * Desktop ≤ 1.25 · มือถือ/แท็บเล็ต ≤ 1.25 (ทดสอบ 1.0 ได้ด้วย ?dpr=1.0 เพื่อเทียบคุณภาพภาพก่อนใช้จริง)
+ */
+export function maxPixelRatio(dpr = window.devicePixelRatio || 1) {
+  const q = Number(new URLSearchParams(location.search).get('dpr'));
+  const cap = q >= 0.5 && q <= 3 ? q : 1.25;
+  return Math.min(dpr, cap);
+}
+
 export class MallScene {
   /**
    * @param {HTMLElement} container
@@ -74,7 +84,7 @@ export class MallScene {
     this.clock = new THREE.Clock();
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(maxPixelRatio());
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
