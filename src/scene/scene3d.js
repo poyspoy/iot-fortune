@@ -232,7 +232,7 @@ export class MallScene {
     let mats;
     try { mats = r.compile(obj, this.camera, this.scene); } catch (e) { log[label] = { ms: 0, error: String(e) }; return Promise.resolve(); }
     gl.flush();
-    const ext = r.extensions.get('KHR_parallel_shader_compile');
+    const ext = r.extensions.has('KHR_parallel_shader_compile'); // has(): ไม่พิมพ์คำเตือนลง Console เมื่อเบราว์เซอร์ไม่รองรับ
     const total = mats.size;
     if (!ext || !total) { log[label] = { ms: Math.round(performance.now() - t0), programs: total, parallel: !!ext }; return Promise.resolve(); }
     return new Promise((res) => {
