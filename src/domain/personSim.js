@@ -19,8 +19,8 @@ export class PersonAgent {
   /**
    * @param {Array<{ points:[number,number][], stop?: { kind:string, face?:[number,number]|null, dwell?:number } }>} legs  พิกัดในกลุ่มชั้น (x, z)
    */
-  constructor(legs, { config = PERSON_CONFIG, loop = true } = {}) {
-    this.cfg = config; this.loop = loop;
+  constructor(legs, { config = PERSON_CONFIG, loop = true, lane = 0 } = {}) {
+    this.cfg = config; this.loop = loop; this.lane = lane; // lane: เดินชิดขวาของทาง (หน่วยฉาก) — สวนกันไม่ชนกัน
     this.legs = legs.map((l) => ({ ...l, route: new Route(l.points) }));
     this.t = 0; this.restart();
   }
@@ -82,7 +82,9 @@ export class PersonAgent {
     if (remain <= brake) this.v = Math.max(Math.min(this.v, Math.sqrt(2 * C.decel * Math.max(0, remain))), Math.min(0.01, remain / dt));
     this.s = Math.min(r.length, this.s + this.v * dt);
     const a = r.at(this.s);
-    this.x = a.x; this.z = a.z;
+    // ชิดขวาของทิศเดินเล็กน้อย (ลดลงใกล้ต้น/ปลายทาง ให้หยุดตรงจุดหมาย)
+    const len = Math.hypot(a.dx, a.dz) || 1; const taper = Math.min(1, this.s / 0.08, (r.length - this.s) / 0.08);
+    this.x = a.x + (-a.dz / len) * this.lane * taper; this.z = a.z + (a.dx / len) * this.lane * taper;
     this.#turnToward(Math.atan2(a.dx, a.dz), C.turnRateWalk, dt);
     if (r.length - this.s <= 1e-4) this.#arrive();
   }

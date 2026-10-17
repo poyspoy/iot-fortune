@@ -50,7 +50,7 @@ export class PersonRig {
     gr.addColorStop(0, 'rgba(0,0,0,0.22)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
     this.shadowTex = new THREE.CanvasTexture(c);
     this.shadowMat = new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false });
-    this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.36 / PERSON_SCALE, 0.36 / PERSON_SCALE).rotateX(-Math.PI / 2), this.shadowMat);
+    this.shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.11 / PERSON_SCALE, 0.11 / PERSON_SCALE).rotateX(-Math.PI / 2), this.shadowMat);
     this.shadow.position.y = 0.02; this.shadow.renderOrder = 2;
     this.root.add(this.shadow);
     this.look = look;
@@ -80,6 +80,8 @@ export class PersonRig {
 
   dispose() {
     this.root.parent?.remove(this.root); this.mixer.stopAllAction();
+    this.mixer.uncacheRoot(this.root);
+    this.root.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.dispose(); }); // boneTexture ต่อโครงกระดูก (กันหน่วยความจำรั่วเมื่อเปิด–ปิดซ้ำ)
     for (const m of this.materials) m.dispose();
     this.shadow.geometry.dispose(); this.shadowMat.dispose(); this.shadowTex.dispose();
   }

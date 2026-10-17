@@ -7,12 +7,7 @@ import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
 import { ElevatorSim, ELEVATOR_DEMO_CONFIG } from '../domain/elevatorSim.js';
 import { LayerManager } from './layers.js';
-import { MobilitySim } from '../domain/mobilitySim.js';
-import { MobilityView } from './mobility3d.js';
-import { VehicleSim } from '../domain/vehicleSim.js';
-import { VehicleRig } from './vehicle3d.js';
-import { PersonAgent } from '../domain/personSim.js';
-import { PersonRig, LOOKS } from './person3d.js';
+import { MobilityLayers } from './mobilityLayers.js';
 import { ElevatorRig } from './elevator3d.js';
 import { prepareDetail } from './detailModel.js';
 import { pickRoom } from '../domain/rooms.js';
@@ -823,95 +818,31 @@ export class MallScene {
    * เริ่มตัวจำลองคน/รถจากข้อมูลเส้นทาง — ภาพเป็น InstancedMesh ในเลเยอร์ "people"
    * ดูชั้นอื่น: ซ่อนคนชั้น G (กลุ่มชั้นถูกซ่อน) และรถด้านนอก แต่ตัวจำลองเดินต่อ ไม่ลบสถานะ
    */
-  setMobility(data, level = 'medium') {
-    if (this.mob) { this.mob.car?.rig.dispose(); this.mob.person?.rig.dispose(); this.mob.view.dispose(); this.sceneLayers.release(this.mob.view.indoor); this.sceneLayers.release(this.mob.view.outdoorGroup); this.mob = null; }
+  setMobility(data) {
+    this.simLayers?.dispose(); this.simLayers = null;
     if (!data) return;
     const fg = this.floorGroups.get(data.floorId);
     if (!fg) return;
     const small = typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
     const toLocal = ([x, y]) => { const p = planTo3D(fg.floor, { x, y }, 0); return [p.x, p.z]; };
-    const sim = new MobilitySim(data, toLocal, { level, small, seed: (Date.now() & 0xffff) || 11, cars: false }); // รถใช้โมเดล 3 มิติแยก (VehicleSim)
-    for (let i = 0; i < 8; i++) sim.step(5); // เริ่มแบบกระจายตัว (ไม่เริ่มจากศูนย์ทุกตัวพร้อมกัน)
-    const view = new MobilityView(sim, { floorGroup: fg.group, floorY: fg.slabT, outdoor: this.root, small, vehicles: data.vehicles });
-    view.indoor.userData.keepOpaque = true; // ไม่จางตามรูปแบบอาคาร
-    this.sceneLayers.assign(view.indoor, 'people');
-    this.sceneLayers.assign(view.outdoorGroup, 'people');
-    this.mob = { sim, view, data };
+    this.simLayers = new MobilityLayers({ data, floorGroup: fg.group, floorY: fg.slabT, outdoor: this.root, toLocal, small, assign: (o) => this.sceneLayers.assign(o, 'people') });
     this.#applyMobilityVis();
-    // รถยนต์ 3 มิติ 1 คัน (รอบแรก): ทางเข้า → ช่องจอด → ถอยออก → ทางออก
-    const token = (this.mobToken = (this.mobToken ?? 0) + 1);
-    new GLTFLoader().load('models/vehicles/sedan.glb', (g) => {
-      if (token !== this.mobToken || !this.mob || this.disposed) return;
-      const rig = new VehicleRig(g.scene);
-      const vsim = new VehicleSim(data.vehicles, { wheelbase: rig.wheelbase, wheelRadius: rig.wheelRadius }, { stallId: 'P05' });
-      view.outdoorGroup.add(rig.root);
-      this.sceneLayers.assign(rig.root, 'people');
-      this.mob.car = { sim: vsim, rig };
-      rig.update(vsim.pose(), vsim.brake, vsim.visible);
-    });
-    // คน 3 มิติแบบ Rigged 1 คน (รอบแรก): ทางเข้ากลาง → หน้าร้าน (หยุดดู) → หน้าลิฟต์ L1 (ยืนรอ) → บันไดเลื่อน → ออกทางเข้าเดิม
-    new GLTFLoader().load('models/people/person.glb', (g) => {
-      if (token !== this.mobToken || !this.mob || this.disposed) return;
-      const poi = new Map(data.people.poi.map((p) => [p.id, p]));
-      const pathOf = (a, b) => { const k = data.people.paths[`${a}>${b}`]; return k ?? [...data.people.paths[`${b}>${a}`]].reverse(); };
-      const plan = ['ent-center', 'lift-L1', 'shop-2', 'esc-2', 'ent-center']; // เข้า → รอลิฟต์ → ดูร้าน → บันไดเลื่อน → ออก
-      const legs = [];
-      for (let i = 0; i < plan.length - 1; i++) {
-        const to = poi.get(plan[i + 1]);
-        legs.push({ points: pathOf(plan[i], plan[i + 1]).map(toLocal), stop: { kind: to.kind, face: to.faceTo ? toLocal(to.faceTo) : null } });
-      }
-      const agent = new PersonAgent(legs);
-      const rig = new PersonRig(g, LOOKS[1]);
-      this.personGltf = g;
-      view.indoor.add(rig.root);
-      this.sceneLayers.assign(rig.root, 'people');
-      view.people.visible = false; if (view.peopleBlob) view.peopleBlob.visible = false; // ซ่อนรูปทรงแทนคนแบบเดิม
-      this.mob.person = { agent, rig };
-      rig.update(agent.pose(), 0);
-    });
   }
-
-  setMobilityLevel(level) { if (!this.mob) return; this.mob.sim.setLevel(level); this.mob.view.update(); this.#applyMobilityVis(); }
-  stepMobility(ms) { if (this.mob) this.#stepMob(ms / 1000); }
-  #stepMob(dt) {
-    const m = this.mob;
-    m.sim.step(dt); m.view.update();
-    if (m.car) { m.car.sim.step(dt); m.car.rig.update(m.car.sim.pose(), m.car.sim.brake, m.car.sim.visible); }
-    if (m.person) { m.person.agent.step(dt); m.person.rig.update(m.person.agent.pose(), dt); }
-  }
-  carProbe() { return this.mob?.car ? { ...this.mob.car.sim.status(), wheels: Object.keys(this.mob.car.rig.wheels), visible: this.mob.car.rig.root.visible } : null; }
-  /** ตัวอย่างรูปลักษณ์ (ภาพนิ่งสำหรับตรวจ): วางคนยืน 4 แบบเรียงกันใกล้ตำแหน่งที่กำหนด — ปิดได้ */
-  showLookLineup(on, at = null) {
-    for (const r of this.lineup ?? []) r.dispose();
-    this.lineup = [];
-    if (!on || !this.personGltf || !this.mob) return;
-    const p = at ?? { x: this.mob.person.agent.x, z: this.mob.person.agent.z };
-    LOOKS.slice(0, 4).forEach((look, i) => {
-      const r = new PersonRig(this.personGltf, look);
-      r.update({ x: p.x + (i - 1.5) * 0.09, z: p.z, h: 0.25, v: 0, state: 'idle', turnRate: 0 }, 0.5 + i * 0.37);
-      this.mob.view.indoor.add(r.root); this.sceneLayers.assign(r.root, 'people'); this.lineup.push(r);
-    });
-  }
-
-  personProbe() {
-    const p = this.mob?.person; if (!p) return null;
-    const a = p.agent; const w = p.rig.w;
-    return { state: a.state, leg: a.leg, v: +a.v.toFixed(4), h: +a.heading.toFixed(3), x: +a.x.toFixed(3), z: +a.z.toFixed(3), walkScale: +p.rig.actions.Walk.getEffectiveTimeScale().toFixed(2),
-      w: { Idle: +w.Idle.toFixed(2), Walk: +w.Walk.toFixed(2), Turn: +w.Turn.toFixed(2) }, log: a.log.slice(-6) };
-  }
-  carWorld() { const r = this.mob?.car?.rig.root; if (!r) return null; const v = new THREE.Vector3(); r.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z, h: r.rotation.y }; }
-  mobilityProbe() {
-    if (!this.mob) return null;
-    const v = this.mob.view;
-    let shown = 0; const m = new THREE.Matrix4(); const sc = new THREE.Vector3();
-    for (let i = 0; i < v.people.count; i++) { v.people.getMatrixAt(i, m); sc.setFromMatrixScale(m); if (sc.x > 0) shown++; }
-    return { ...this.mob.sim.stats(), drawnPeople: shown, indoorVisible: v.indoor.visible && !!v.indoor.parent?.visible, outdoorVisible: v.outdoorGroup.visible, small: v.small };
-  }
+  /** สวิตช์ "👤 คนจำลอง" (ค่าเริ่มต้นปิด) — เปิดครั้งแรกจึงโหลดโมเดล */
+  async setSimPeople(on) { if (!this.simLayers) return; await this.simLayers.setPeople(on); this.#applyMobilityVis(); this.#kick(); }
+  /** สวิตช์ "🚗 รถจำลอง" (ค่าเริ่มต้นปิด) */
+  async setSimCars(on) { if (!this.simLayers) return; await this.simLayers.setCars(on); this.#applyMobilityVis(); this.#kick(); }
+  #kick() { if (this.paused) this.renderNow?.(); }
+  simCounts() { return this.simLayers?.counts() ?? { people: 0, cars: 0, peopleOn: false, carsOn: false }; }
+  stepMobility(ms) { if (!this.simLayers?.active) return; const n = Math.ceil(ms / 50); for (let i = 0; i < n; i++) this.simLayers.update(ms / n / 1000); this.#applyMobilityVis(); }
+  mobilityProbe() { return this.simLayers ? this.simLayers.probe() : null; }
+  carWorld() { const r = this.simLayers?.cars?.rig.root; if (!r) return null; const v = new THREE.Vector3(); r.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z, h: r.rotation.y }; }
+  personWorld(i = 0) { const r = this.simLayers?.people?.list[i]?.rig.root; if (!r) return null; const v = new THREE.Vector3(); r.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z, h: r.rotation.y }; }
 
   #applyMobilityVis() {
-    if (!this.mob) return;
-    const on = this.mob.sim.level !== 'off';
-    this.mob.view.setVisible({ indoor: on, outdoor: on && !this.isolatedId });
+    const L = this.simLayers; if (!L) return;
+    if (L.cars) L.cars.group.visible = !this.isolatedId; // ดูชั้นเดี่ยว: ซ่อนรถด้านนอก (ตัวจำลองเดินต่อ)
+    if (L.people) L.people.group.visible = !this.isolatedId || this.isolatedId === L.data.floorId; // ดูชั้นอื่น: ซ่อนคนชั้น G (สถานะเดินต่อ)
   }
 
   // ---------------------------------------------------------------- รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร)
@@ -1344,7 +1275,7 @@ export class MallScene {
     if (moving) this.#placeMarkers();
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(nowMs);
-    if (this.mob && this.mob.sim.level !== 'off') this.#stepMob(dt); // คน/รถจำลอง: ลูปเดียวทุกตัว ตามเวลาที่ผ่านไป
+    if (this.simLayers?.active) this.simLayers.update(dt); // คน/รถจำลอง: ทำงานเฉพาะเมื่อเปิดเลเยอร์ (ปิด = ไม่ประมวลผล)
     // ป้ายในฉาก: ซ่อนเมื่อกล้องไกลมาก (ระดับซูม = ระยะมาตรฐาน 22 / ระยะจริง) ไม่ให้ป้ายบังโมเดล
     this.sceneLayers.updateZoom(22 / Math.max(1, this.camera.position.distanceTo(this.controls.target)));
     if (this.towerCenter && !this.isolatedId) {
@@ -1414,6 +1345,7 @@ export class MallScene {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.simLayers?.dispose();
     this.resizeObs.disconnect();
     this.controls.dispose();
     disposeTree(this.scene);

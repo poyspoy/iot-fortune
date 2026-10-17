@@ -43,7 +43,7 @@ export class App {
       filters: { search: '', floor: '', area: '', system: '', severity: '', quality: '', attention: false, ...(ui.filters ?? {}) },
       detailsOpen: false, // เปิดเว็บ: แผงรายละเอียดจุดพับไว้ก่อน ให้โมเดลเด่นที่สุด (กดหมุด/จุดจึงขยาย)
       buildingStyle: ['solid', 'transparent', 'wire'].includes(ui.buildingStyle) ? ui.buildingStyle : 'solid', // รูปแบบอาคาร
-      mobility: ['off', 'low', 'medium', 'high'].includes(ui.mobility) ? ui.mobility : 'medium', // คนและยานพาหนะจำลอง
+      simPeople: false, simCars: false, // คน/รถจำลอง: ค่าเริ่มต้นปิดทุกครั้ง (ไม่จำค่าเปิดไว้)
       sceneOpen: ui.sceneOpen ?? true, // เว็บไซต์ 3 มิติ: เปิดโมเดลทุกขนาดจอ
       trendRange: ui.trendRange ?? '1h',
       planZoom: 1,
@@ -93,7 +93,7 @@ export class App {
   setState(patch, { render = true } = {}) {
     Object.assign(this.state, patch);
     const st = this.state;
-    this.ctl.saveUi({ view: st.view, selectedId: st.selectedId, floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, sceneMode: st.sceneMode, layers: st.layers, filters: st.filters, detailsOpen: st.detailsOpen, sceneOpen: st.sceneOpen, buildingStyle: st.buildingStyle, mobility: st.mobility, trendRange: st.trendRange });
+    this.ctl.saveUi({ view: st.view, selectedId: st.selectedId, floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, sceneMode: st.sceneMode, layers: st.layers, filters: st.filters, detailsOpen: st.detailsOpen, sceneOpen: st.sceneOpen, buildingStyle: st.buildingStyle, trendRange: st.trendRange });
     if (render) this.render();
   }
 
@@ -692,19 +692,38 @@ export class App {
     this.setBuildingStyle(prev);
   }
 
-  /** ระดับคนและยานพาหนะจำลอง: ปิด / ต่ำ / ปานกลาง / สูง (มือถือลดจำนวนอัตโนมัติ) — สถานะการจำลองไม่ถูกรีเซ็ต */
-  setMobility(level) {
-    this.setState({ mobility: level }, { render: false });
-    this.scene?.setMobilityLevel(level);
+  /** สวิตช์ "👤 คนจำลอง" / "🚗 รถจำลอง" — แยกกัน ค่าเริ่มต้นปิด · ปิด = จางหายแล้วหยุดประมวลผล */
+  async setSim(kind, on) {
+    this.setState({ [kind === 'people' ? 'simPeople' : 'simCars']: !!on }, { render: false });
     this.#mountMobilityChip();
+    try { await (kind === 'people' ? this.scene?.setSimPeople(!!on) : this.scene?.setSimCars(!!on)); } catch (e) { console.warn('โหลดโมเดลจำลองไม่สำเร็จ', e); }
+    this.#mountMobilityChip();
+  }
+
+  #simCountText() {
+    const c = this.scene?.simCounts?.() ?? { people: 0 };
+    const parts = [];
+    if (this.state.simPeople) parts.push(`👤 กำลังจำลอง ${c.people} คน`);
+    if (this.state.simCars) parts.push(`🚗 รถ ${c.cars ?? 0} คัน`);
+    return parts.join(' · ');
   }
 
   #mountMobilityChip() {
     if (!this.viewport?.isConnected) return;
-    const on = this.state.mobility !== 'off' && this.scene?.mobilityProbe();
-    this.mobChip ??= h('div.mob-chip', { 'data-testid': 'mobility-chip', role: 'note' }, 'คนจำลอง · ไม่ใช่ข้อมูลติดตามบุคคลจริง');
+    const on = this.state.viewMode === '3d' && (this.state.simPeople || this.state.simCars);
+    if (!this.mobChip) {
+      this.mobCount = h('span.mob-count', { 'data-testid': 'sim-count' });
+      this.mobChip = h('div.mob-chip', { 'data-testid': 'mobility-chip', role: 'note' }, h('span', 'การเคลื่อนไหวจำลอง · ไม่ใช่ข้อมูลติดตามบุคคลจริง'), this.mobCount);
+    }
     if (on && this.mobChip.parentElement !== this.viewport) this.viewport.appendChild(this.mobChip);
-    if (!on) this.mobChip.remove();
+    if (!on) { this.mobChip.remove(); clearInterval(this.mobTimer); this.mobTimer = null; }
+    const upd = () => {
+      const t = this.#simCountText();
+      if (this.mobCount.textContent !== t) this.mobCount.textContent = t;
+      for (const el of document.querySelectorAll('[data-testid="sim-count-dd"]')) if (el.textContent !== t) el.textContent = t;
+    };
+    upd();
+    if (on && !this.mobTimer) this.mobTimer = setInterval(upd, 500);
   }
 
   /** ขยายโมเดล: ซ่อน Sidebar ชั่วคราว (โมเดลเต็มความกว้าง) — กดอีกครั้งเพื่อแสดงแผงข้าง */
@@ -758,8 +777,6 @@ export class App {
         }, `ขยาย ${z}×`))) : null,
         is3d ? h('div.seg', { role: 'group', 'aria-label': 'มุมกล้อง' },
           presets.filter((p) => p !== 'all' && p !== 'fit' && p !== 'floor').map((p) => h('button', { type: 'button', class: 'btn small ghost', 'data-focus-key': `preset-${p}`, onclick: () => this.scene.preset(p) }, PRESET[p]))) : null,
-        is3d ? h('label.inline.mob-sel', h('span.tb-label', 'คนและยานพาหนะ'), select([['off', 'ปิด'], ['low', 'ต่ำ'], ['medium', 'ปานกลาง'], ['high', 'สูง']], st.mobility, { 'data-testid': 'mobility-level', 'aria-label': 'คนและยานพาหนะจำลอง',
-          onchange: (e) => this.setMobility(e.target.value) })) : null,
         is3d ? h('div.bstyle', { role: 'group', 'aria-label': 'รูปแบบอาคาร' }, h('span.tb-label', 'รูปแบบอาคาร'),
           h('div.seg.bstyle-seg', [['solid', 'ทึบ'], ['transparent', 'โปร่งใส'], ['wire', 'โครงอาคาร']].map(([k, t]) => h('button', { type: 'button', class: `btn small ${st.buildingStyle === k ? 'active' : ''}`, 'aria-pressed': String(st.buildingStyle === k),
             'data-testid': `bstyle-${k}`, onclick: () => this.setBuildingStyle(k) }, t))),
@@ -772,7 +789,11 @@ export class App {
             type: 'checkbox', checked: st.layers[k], 'data-focus-key': `layer-${k}`,
             onchange: (e) => { this.setState({ layers: { ...st.layers, [k]: e.target.checked } }, { render: false }); this.#updateSpatial(); },
           }), v.label)),
-          is3d ? [h('strong.dd-title', 'เลเยอร์ฉาก 3D'), this.scene.layerList().map((l) => h('label', { class: `check ${l.future ? 'future' : ''}`, title: `แหล่งข้อมูล: ${l.dataSource}` }, h('input', {
+          is3d ? [h('strong.dd-title', 'การเคลื่อนไหวจำลอง'),
+            h('label.check', h('input', { type: 'checkbox', checked: st.simPeople, 'data-testid': 'sim-people', onchange: (e) => this.setSim('people', e.target.checked) }), '👤 คนจำลอง'),
+            h('label.check', h('input', { type: 'checkbox', checked: st.simCars, 'data-testid': 'sim-cars', onchange: (e) => this.setSim('cars', e.target.checked) }), '🚗 รถจำลอง'),
+            h('small.sim-note', { 'data-testid': 'sim-count-dd' }, this.#simCountText()),
+            h('strong.dd-title', 'เลเยอร์ฉาก 3D'), this.scene.layerList().filter((l) => l.id !== 'people').map((l) => h('label', { class: `check ${l.future ? 'future' : ''}`, title: `แหล่งข้อมูล: ${l.dataSource}` }, h('input', {
             type: 'checkbox', checked: l.visible, disabled: l.future ? true : null, 'data-testid': `scene-layer-${l.id}`,
             onchange: (e) => this.scene.setLayerVisible(l.id, e.target.checked),
           }), l.future ? `${l.name} (อนาคต)` : l.name))] : null))),
@@ -809,7 +830,7 @@ export class App {
           this.scene.setLayers(st.layers);
           this.scene.setBuildingStyle(st.buildingStyle, { instant: true });
           // คนและยานพาหนะจำลอง (ชั้น G + ลานหน้าอาคาร) — ข้อมูลเส้นทางแยกไฟล์ public/mobility/
-          fetch('mobility/floor-G.json').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && this.scene) { this.scene.setMobility(d, this.state.mobility); this.#mountMobilityChip(); } }).catch(() => {});
+          fetch('mobility/floor-G.json').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && this.scene) { this.scene.setMobility(d); if (this.state.simPeople) this.scene.setSimPeople(true); if (this.state.simCars) this.scene.setSimCars(true); this.#mountMobilityChip(); } }).catch(() => {});
           if (st.isolated) this.scene.isolate(st.floorId, { instant: true });
           else this.scene.preset('all', { instant: true });
           this.#renderToolbar();

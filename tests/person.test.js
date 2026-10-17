@@ -41,3 +41,19 @@ test('ไม่ขึ้นกับอัตราเฟรม', () => {
   for (let i = 0; i < 24 * 40; i++) b.step(1 / 24);
   assert.ok(Math.hypot(a.x - b.x, a.z - b.z) < 0.005, `${a.x},${a.z} vs ${b.x},${b.z}`);
 });
+
+test('เดินชิดขวา (lane) ไม่ออกนอกทางเกินระยะที่กำหนด และหยุดตรงจุดหมาย · blocked → ชะลอจนหยุด', () => {
+  const lane = 0.017;
+  const a = new PersonAgent(legs(), { loop: false, lane });
+  const pts = legs().flatMap((l) => l.points);
+  const dist = (x, z) => { let m = Infinity; for (let i = 1; i < pts.length; i++) { const [ax, az] = pts[i - 1]; const [bx, bz] = pts[i]; const dx = bx - ax; const dz = bz - az; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1))); m = Math.min(m, Math.hypot(ax + t * dx - x, az + t * dz - z)); } return m; };
+  let maxOff = 0;
+  for (let i = 0; i < 60 * 240 && a.state !== 'done'; i++) { a.step(1 / 60); maxOff = Math.max(maxOff, dist(a.x, a.z)); }
+  assert.ok(maxOff <= lane + 0.004, `ห่างเส้นทางสูงสุด ${maxOff}`);
+  const b = new PersonAgent(legs(), { loop: false });
+  for (let i = 0; i < 300; i++) b.step(1 / 60);
+  assert.ok(b.v > 0.05);
+  b.blocked = true;
+  for (let i = 0; i < 180; i++) b.step(1 / 60);
+  assert.ok(b.v < 1e-3, `ยังเดินอยู่ v=${b.v}`);
+});
