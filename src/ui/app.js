@@ -36,7 +36,7 @@ export class App {
       view: VIEWS.some(([v]) => v === ui.view) ? ui.view : 'overview',
       selectedId: ui.selectedId ?? null,
       floorId: ui.floorId ?? 'G',
-      isolated: ui.isolated ?? false, // true = แยกดูชั้นเดี่ยวในโมเดล 3D
+      isolated: false, // เปิดเว็บที่มุมทั้งอาคารเสมอ — ไม่แยกชั้นจากสถานะครั้งก่อน (ไม่โหลดโมเดลรายละเอียดชั้นโดยอัตโนมัติ)
       viewMode: ui.viewMode ?? '3d',
       sceneMode: ui.sceneMode === 'exploded' ? 'exterior' : (ui.sceneMode ?? 'exterior'),
       layers: { electrical: true, hvac: true, water: true, environment: true, ...(ui.layers ?? {}) },

@@ -197,6 +197,16 @@ export class MallScene {
     if (this.isolatedId && !this.floorGroups.has(this.isolatedId)) this.isolatedId = null;
     if (!this.floorId) this.floorId = config.building.floors[0]?.id;
     this.#applyMode(true);
+    // คอมไพล์ shader ของฉากเริ่มต้นแบบไม่บล็อกหน้าเว็บ (KHR_parallel_shader_compile) ก่อนวาดเฟรมแรก — เดิมคอมไพล์ตอนวาดครั้งแรกทำให้หน้าค้าง
+    this.compiling = true;
+    this.#compile(this.scene).finally(() => { this.compiling = false; });
+  }
+
+  /** คอมไพล์วัสดุของวัตถุล่วงหน้าแบบ async (ใช้แสง/หมอกของฉากหลัก) — ถ้าเบราว์เซอร์ไม่รองรับก็ผ่านไปตามเดิม */
+  #compile(obj) {
+    const r = this.renderer;
+    if (typeof r.compileAsync !== 'function') return Promise.resolve();
+    return r.compileAsync(obj, this.camera, this.scene).catch(() => {});
   }
 
   #shape(floor) {
@@ -296,7 +306,15 @@ export class MallScene {
     this.modelLoaded = false;
     if (!src) return;
     this.glassMat ??= new THREE.MeshStandardMaterial({ color: '#a9d2cd', transparent: true, opacity: 0.26, roughness: 0.08, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }); // กระจกบาง: วาดรอบเดียว (ไม่แยกด้านหลัง/หน้า 2 รอบ)
-    new GLTFLoader().load(src, (gltf) => {
+    new GLTFLoader().load(src, async (gltf) => {
+      if (token !== this.modelToken || this.disposed) return;
+      // ตั้งค่าเงา/กระจกบนต้นฉบับก่อน (ทุกชั้นโคลนจากต้นฉบับ) แล้วคอมไพล์ shader แบบไม่บล็อก ก่อนนำเข้าฉาก
+      gltf.scene.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true; o.receiveShadow = true;
+        if (o.material?.name === 'Glass') { o.material = this.glassMat; o.castShadow = false; }
+      });
+      await this.#compile(gltf.scene);
       if (token !== this.modelToken || this.disposed) return;
       for (const fg of this.floorGroups.values()) {
         const node = gltf.scene.getObjectByName(`floor-${fg.floor.id}`);
@@ -308,7 +326,7 @@ export class MallScene {
           if (!o.isMesh) return;
           o.castShadow = true; o.receiveShadow = true;
           const name = o.material?.name;
-          if (name === 'Glass') { o.material = this.glassMat; o.renderOrder = 3; o.castShadow = false; fg.facade.push(o); }
+          if (o.material === this.glassMat || name === 'Glass') { o.material = this.glassMat; o.renderOrder = 3; o.castShadow = false; fg.facade.push(o); }
           else if (name === 'Frame') fg.facade.push(o);
           else if (name === 'Wall') fg.walls.push(o);
         });
@@ -638,7 +656,9 @@ export class MallScene {
     this.onDetail(id, 'loading');
     let p = this.detailCache.get(det.src);
     if (!p) {
-      p = new Promise((res, rej) => new GLTFLoader().load(det.src, (g) => res(prepareDetail(g.scene)), undefined, rej));
+      // โหลด → เตรียม → คอมไพล์ shader แบบไม่บล็อก แล้วจึงแสดง (ลดอาการค้างตอนเปิดชั้นครั้งแรก)
+      p = new Promise((res, rej) => new GLTFLoader().load(det.src, (g) => res(prepareDetail(g.scene)), undefined, rej))
+        .then((prep) => this.#compile(prep.group).then(() => prep));
       this.detailCache.set(det.src, p);
     }
     const cfg = this.config;
@@ -1224,7 +1244,7 @@ export class MallScene {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.loopFn);
     const dt = Math.min(this.clock.getDelta(), 0.1);
-    if (this.paused || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
+    if (this.paused || this.compiling || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
     let moving = false;
     const nowMs = performance.now();
     for (const fg of this.floorGroups.values()) {
