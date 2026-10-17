@@ -230,6 +230,6 @@ function dataTable(metric, data) {
       h('tbody', rows.map((d) => h('tr',
         h('td', fmtDateTime(d.observedAt)),
         h('td', metric.kind === 'numeric' ? `${fmtNum(d.value, metric.decimals ?? 1)} ${metric.unit}` : (label.get(d.value) ?? d.value)),
-        h('td', d.quality === 'good' ? 'ดี' : 'ไม่แน่นอน'))))),
+        h('td', d.quality === 'good' ? 'ข้อมูลถูกต้อง' : 'ไม่แน่นอน'))))), // คอลัมน์ "คุณภาพ" = คุณภาพข้อมูล (ไม่ใช่สถานะระดับน้ำ)
     ));
 }

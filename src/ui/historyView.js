@@ -38,6 +38,7 @@ export async function renderHistoryView(app, { live = false } = {}) {
 
   replaceChildren(el, h('section.history-view',
     h('div.card-head', h('h2', 'ประวัติข้อมูล'),
+      source === 'demo' ? h('span.hist-sim-badge', { 'data-testid': 'history-sim-badge', role: 'note' }, 'ข้อมูลจำลอง · ไม่ใช่ข้อมูลจริง') : null,
       h('p.muted.small', 'ประวัติที่บันทึกในอุปกรณ์นี้ — เก็บเฉพาะค่าที่ได้รับขณะเปิดแอป ช่วงที่แอปปิดหรือเชื่อมต่อไม่ได้จะว่างเปล่า (ไม่มีการเติมค่าย้อนหลัง)')),
     h('div.filters',
       h('label.field.grow', h('span.field-label', 'จุด'), select(points.map((x) => [x.id, `${x.id} ${x.name}${x.status === 'archived' ? ' (เก็บถาวร)' : ''}`]), st.pointId, { 'data-focus-key': 'h-point', onchange: (e) => set({ pointId: e.target.value }) })),
