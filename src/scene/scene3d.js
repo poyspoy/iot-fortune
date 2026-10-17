@@ -80,6 +80,10 @@ export class MallScene {
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // อาคารเป็นวัตถุคงที่: ไม่คำนวณเงาใหม่ทุกเฟรม — คำนวณเฉพาะเมื่อฉากเปลี่ยน (โหลดโมเดล เปลี่ยนชั้น/มุมมอง/รูปแบบอาคาร/เลเยอร์)
+    // ส่วนที่เคลื่อนที่ (ห้องลิฟต์ ประตู) ไม่ทอดเงาลงแผนที่เงาคงที่ — ตรวจแล้วเงาของห้องลิฟต์ไม่ปรากฏในมุมมองใด
+    this.renderer.shadowMap.autoUpdate = false;
+    this.shadowDirty = true;
     this.renderer.domElement.className = 'scene-canvas';
     this.renderer.domElement.setAttribute('aria-hidden', 'true');
     container.appendChild(this.renderer.domElement);
@@ -314,6 +318,7 @@ export class MallScene {
         this.sceneLayers.assign(clone, 'building');
       }
       this.modelLoaded = true;
+      this.shadowDirty = true;
       this.#applyStyle();
       this.onDetail?.("building", "ready");
       this.#applyMode();
@@ -389,6 +394,7 @@ export class MallScene {
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(performance.now());
     this.controls.update();
+    this.#flushShadows();
     this.renderer.render(this.scene, this.camera);
     this.#projectMarkers();
   }
@@ -649,6 +655,7 @@ export class MallScene {
       fg.group.add(obj);
       this.sceneLayers.assign(obj, 'floor-plan');
       fg.detailState = 'ready';
+      this.shadowDirty = true;
       this.#touchDetail(det.src);
       this.#loadRooms(fg);
       this.#applyMode();
@@ -808,7 +815,7 @@ export class MallScene {
     return { geometries: info.memory.geometries, textures: info.memory.textures, calls: info.render.calls, cached: [...(this.detailLRU ?? [])], detailObjs, evictions: this.evictions ?? 0, layers: this.sceneLayers.list().map((l) => ({ id: l.id, visible: l.visible, objects: l.objects })) };
   }
 
-  setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.#placeMarkers(); return ok; }
+  setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.shadowDirty = true; this.#placeMarkers(); return ok; }
   layerList() { return this.sceneLayers.list(); }
 
   // ---------------------------------------------------------------- รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร)
@@ -877,6 +884,7 @@ export class MallScene {
 
   /** ใส่วัสดุตามสถานะปัจจุบัน (a = ความทึบของตัวอาคาร, l = ความเข้มเส้นโครง) */
   #applyStyle() {
+    this.shadowDirty = true;
     const st = this.styleState ?? { a: 1, l: 0 };
     if (st.l > 0 || (this.styleAnim?.to.l ?? 0) > 0) this.#ensureStyleLines(); // ชิ้นที่เพิ่งโหลดได้เส้นโครงด้วย
     this.styleMatCache ??= new Map(); // วัสดุต้นฉบับ → วัสดุโปร่ง (แคช ไม่สร้างใหม่ทุกเฟรม)
@@ -972,6 +980,7 @@ export class MallScene {
   }
 
   #applyMode(instant = false) {
+    this.shadowDirty = true;
     const sel = this.config?.building.floors.find((f) => f.id === this.floorId);
     const iso = this.isolatedId;
     for (const fg of this.floorGroups.values()) {
@@ -1045,6 +1054,7 @@ export class MallScene {
   #endFade(fg, abort = false) {
     const fd = fg.fade;
     fg.fade = null;
+    this.shadowDirty = true;
     for (const [m, o] of fd.mats) { m.opacity = o.opacity; if (m.transparent !== o.transparent) { m.transparent = o.transparent; m.needsUpdate = true; } }
     if (!abort && fd.to === 0) fg.group.visible = false;
     this.#applyLabels();
@@ -1263,9 +1273,18 @@ export class MallScene {
       t.surfMat.opacity = t.stale ? 0.12 : 0.28 + Math.sin(k * 2.6) * 0.07;
     }
     this.controls.update();
+    this.#flushShadows(moving);
     this.renderer.render(this.scene, this.camera);
     this.#projectMarkers();
     this.frameNo = (this.frameNo ?? 0) + 1;
+  }
+
+  /** ให้คำนวณเงาใหม่ในเฟรมถัดไป (เรียกเมื่อสิ่งที่ทอดเงาเปลี่ยน) */
+  markShadowsDirty() { this.shadowDirty = true; }
+  #flushShadows(moving = false) {
+    // ระหว่างชั้นเลื่อน/จาง หรือรูปแบบอาคารกำลังเปลี่ยน: เงาตามทุกเฟรม · จบแล้วคำนวณอีกครั้งเดียว
+    const animating = moving || !!this.styleAnim || [...this.floorGroups.values()].some((fg) => fg.fade || fg.anim);
+    if (this.shadowDirty || animating) { this.renderer.shadowMap.needsUpdate = true; this.shadowDirty = animating; this.shadowUpdates = (this.shadowUpdates ?? 0) + 1; }
   }
 
   #projectMarkers() {

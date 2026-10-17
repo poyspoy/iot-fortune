@@ -152,6 +152,8 @@ export class ElevatorRig {
     car.add(light);
     this.car = car;
     this.group.add(car);
+    // ห้องลิฟต์และประตูเคลื่อนที่ตลอด: ไม่ทอดเงาลงแผนที่เงาของอาคาร (ฉากคำนวณเงาเฉพาะเมื่อฉากเปลี่ยน) — ยังรับเงาตามปกติ
+    car.traverse((o) => { if (o.isMesh) o.castShadow = false; });
 
     // ---- ลวดสลิงและน้ำหนักถ่วง (เคลื่อนสวนทางห้องลิฟต์)
     this.cable = new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: '#2b3a3f' }));
