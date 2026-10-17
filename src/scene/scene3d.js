@@ -99,7 +99,7 @@ export class MallScene {
     this.controls.minDistance = 3;
     this.controls.maxDistance = 48;
     this.controls.target.set(0, 2, 0);
-    this.controls.addEventListener('start', () => { this.tween = null; this.autoFit = false; });
+    this.controls.addEventListener('start', () => { this.tween = null; this.autoFit = false; this.simFollow = null; });
 
     this.#buildRoom();
     this.root = new THREE.Group();
@@ -391,6 +391,7 @@ export class MallScene {
     if (moving) this.#placeMarkers();
     if (this.pendingSimFocus && !moving && !this.tween) this.#runSimFocus();
     this.#stepTween(now);
+    this.#stepSimFollow(now);
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(performance.now());
     this.controls.update();
@@ -845,15 +846,30 @@ export class MallScene {
       const list = L.people.list; let best = 0; let bestN = -1;
       list.forEach((p, i) => { const n = list.filter((o) => Math.hypot(o.agent.x - p.agent.x, o.agent.z - p.agent.z) < 1.2).length; if (n > bestN) { bestN = n; best = i; } });
       obj = list[best]?.rig.root; dist = 1.5; elev = 0.85;
-    } else if (kind === 'cars' && L?.cars) { obj = L.cars.rig.root; dist = 2.4; elev = 0.6; }
+    } else if (kind === 'cars' && L?.cars) { obj = L.cars.rig.root; dist = 2.6; elev = 0.6; }
     if (!obj) return;
     const t = new THREE.Vector3(); obj.getWorldPosition(t); t.y += 0.08;
     const d = this.camera.position.clone().sub(this.controls.target); d.y = 0;
     if (d.lengthSq() < 1e-6) d.set(0, 0, 1);
     d.normalize().multiplyScalar(Math.cos(elev)); d.y = Math.sin(elev);
     this.autoFit = false;
-    this.#tweenTo(t.clone().add(d.multiplyScalar(dist)), t);
+    d.multiplyScalar(dist);
+    this.#tweenTo(t.clone().add(d), t);
     this.tween.dur = 1400;
+    this.simFollow = { obj, offset: d, last: null }; // หลังเลื่อนถึงแล้ว กล้องตามต่อแบบนุ่ม จนผู้ใช้หมุน/ซูมเอง
+  }
+
+  /** กล้องตามคน/รถจำลองหลังกด "ดูใกล้" — หยุดเมื่อผู้ใช้ลากกล้อง ใช้มุมกล้องอื่น หรือวัตถุจางหาย */
+  #stepSimFollow(now) {
+    const f = this.simFollow; if (!f || this.tween) { if (f) f.last = now; return; }
+    const o = f.obj;
+    let vis = !!o.parent; for (let x = o; x && vis; x = x.parent) vis = x.visible;
+    if (!vis) { this.simFollow = null; return; }
+    const dt = Math.min(0.2, f.last == null ? 0 : (now - f.last) / 1000); f.last = now;
+    const k = 1 - Math.exp(-dt * 3);
+    const t = new THREE.Vector3(); o.getWorldPosition(t); t.y += 0.08;
+    this.controls.target.lerp(t, k);
+    this.camera.position.copy(this.controls.target).add(f.offset);
   }
   simCounts() { return this.simLayers?.counts() ?? { people: 0, cars: 0, peopleOn: false, carsOn: false }; }
   stepMobility(ms) { if (!this.simLayers?.active) return; const n = Math.ceil(ms / 50); for (let i = 0; i < n; i++) this.simLayers.update(ms / n / 1000); this.#applyMobilityVis(); }
@@ -1172,6 +1188,7 @@ export class MallScene {
   }
 
   preset(name, { instant = false } = {}) {
+    this.simFollow = null;
     this.autoFit = name === 'fit' || name === 'all'; // มุมมาตรฐานปรับตามขนาดจอ; มุมอื่นหรือผู้ใช้หมุนเองไม่ปรับ
     const floors = this.config.building.floors;
     const sel = floors.find((f) => f.id === this.floorId) ?? floors[0];
@@ -1245,6 +1262,7 @@ export class MallScene {
   }
 
   #tweenTo(pos, target) {
+    this.simFollow = null;
     this.tween = { t: 0, start: performance.now(), fromPos: this.camera.position.clone(), fromTarget: this.controls.target.clone(), pos, target };
   }
 
@@ -1316,6 +1334,7 @@ export class MallScene {
       if (near !== this.towerNear) { this.towerNear = near; this.#applyLabels(); }
     }
     this.#stepTween(nowMs);
+    this.#stepSimFollow(nowMs);
     // ปั๊มหมุนเฉพาะเมื่อได้รับสถานะ run ที่สดใหม่ (ไม่ใช่การยืนยันสภาพเครื่อง)
     if (this.pump && this.dynamic.pumpRunning === true) this.pump.fan.rotation.x += dt * 9;
     // น้ำในถังค่อย ๆ ขึ้น/ลงสู่ค่าล่าสุด (ไม่กระโดด)
