@@ -704,7 +704,7 @@ export class App {
     const c = this.scene?.simCounts?.() ?? { people: 0 };
     const parts = [];
     if (this.state.simPeople) parts.push(`👤 กำลังจำลอง ${c.people} คน`);
-    if (this.state.simCars) parts.push(`🚗 รถ ${c.cars ?? 0} คัน`);
+    if (this.state.simCars) parts.push(c.cars ? `🚗 รถ ${c.cars} คัน` : '🚗 รถซ่อนขณะดูชั้นเดี่ยว');
     return parts.join(' · ');
   }
 

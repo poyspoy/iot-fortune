@@ -187,7 +187,7 @@ export class MobilityLayers {
 
   get active() { return !!(this.people || this.cars); }
   counts() {
-    return { people: this.people ? this.people.list.filter((p) => p.phase !== 'gone' && p.k > 0.01).length : 0, peopleOn: !!this.people?.on, cars: this.cars?.on ? 1 : 0, carsOn: !!this.cars?.on };
+    return { people: this.people ? this.people.list.filter((p) => p.phase !== 'gone' && p.k > 0.01).length : 0, peopleOn: !!this.people?.on, cars: this.cars?.on && this.cars.group.visible ? 1 : 0, carsOn: !!this.cars?.on };
   }
 
   probe() {
