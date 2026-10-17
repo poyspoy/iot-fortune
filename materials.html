@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>แหล่งที่มาและข้อจำกัด — IoT ฟอร์จูน</title>
+    <script type="module" crossorigin src="./assets/materials-Ds3u0AuA.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-B5Qt9EMX.js">
+    <link rel="stylesheet" crossorigin href="./assets/materials-BMt749AR.css">
+  </head>
+  <body>
+    <main class="materials">
+      <p><a href="./index.html">← กลับสู่แอป IoT ฟอร์จูน</a></p>
+      <h1>แหล่งที่มา สัญญาอนุญาต และข้อจำกัดของต้นแบบ</h1>
+      <p class="lead">IoT ฟอร์จูน (NEXZA | FORTUNE IoT) เป็นต้นแบบฝั่งหน้าเว็บสำหรับติดตามจุดตรวจวัดในอาคาร อ่านข้อมูลอย่างเดียว ไม่มีการควบคุมอุปกรณ์</p>
+
+      <section>
+        <h2>สถานะของแบบจำลองอาคาร</h2>
+        <ul>
+          <li>รูปทรงโพเดียมและผังชั้น G, 1, 2, 3, 4, 5 มาจาก<strong>ภาพผังพื้นที่เช่า/ป้ายบอกทางที่ผู้ใช้แนบมา</strong> และผังสำนักงานชั้น 11–31 จากภาพผัง "PLAN OFFICE" ที่แนบมา — ไม่ใช่แบบก่อสร้าง (as-built)</li>
+          <li>เส้นรูปทรงอาคารลากด้วยมือจากภาพโดยประมาณ ความสูงชั้น ระยะ และสเกลในโมเดล 3D เป็นค่าแผนภาพ ไม่ใช่ขนาดจริง</li>
+          <li>ผังชั้น 4 ในภาพต้นฉบับวาดคนละสเกลกับชั้น G–3 จึงถูกยืดให้เข้ากรอบเดียวกันโดยประมาณ ผังชั้น 5 เป็นภาพย่อไม่ตามสเกล และตำแหน่งในแนวราบยังไม่ยืนยัน</li>
+          <li>ตำแหน่งทาวเวอร์สำนักงานบนโต๊ะจัดวางแยกจากโพเดียม ตำแหน่งจริงยังไม่ยืนยัน และไม่ทราบว่าจุดใดอยู่ชั้นใดใน 11–31 ชั้น 6–10 ไม่มีผังจึงไม่ได้สร้าง</li>
+          <li>ไม่มีการคาดเดาจำนวนเซนเซอร์ ความจุ พิกัด หรือการเดินสายจริงของฟอร์จูน</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>ข้อมูลตัวอย่างและเกณฑ์ตัวอย่าง</h2>
+        <ul>
+          <li>จุด IoT ทั้ง 8 จุด (P-001 ถึง P-008) เป็น<strong>ตัวอย่าง</strong> ไม่ใช่รายการอุปกรณ์จริง ตำแหน่งบนผังวางเพื่อสาธิตเท่านั้น</li>
+          <li>ค่าเตือน/วิกฤต ฮิสเทอรีซิส เวลาคงค่า และเวลาหมดอายุข้อมูลทั้งหมดเป็น<strong>ค่าตัวอย่าง</strong> ต้องได้รับการอนุมัติจากผู้รับผิดชอบระบบก่อนใช้กับอุปกรณ์จริง</li>
+          <li>โหมด "ข้อมูลจำลอง" สร้างค่าในเบราว์เซอร์ด้วยฟังก์ชันที่กำหนดได้ (seed) รวมถึงประวัติย้อนหลัง 30 นาทีเมื่อเริ่มเดโม ค่าเหล่านี้ไม่ใช่ telemetry ของฟอร์จูน</li>
+          <li>ระดับน้ำในถังและการหมุนของปั๊มในโมเดล 3D แสดงตามค่าที่ได้รับและยังสดใหม่เท่านั้น ไม่ใช่การยืนยันสภาพเครื่องจักร</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>การติดตามในเบราว์เซอร์ ≠ บริการ IoT กลาง</h2>
+        <ul>
+          <li>การดึงข้อมูล การประเมินแจ้งเตือน และเสียงแจ้งเตือน ทำงานเฉพาะขณะเปิดหน้านี้อยู่ ไม่ใช่การเฝ้าระวังอัตโนมัติ 24 ชั่วโมง</li>
+          <li>ประวัติ การตั้งค่า และการรับทราบ เก็บใน IndexedDB ของเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ซิงก์ระหว่างผู้ปฏิบัติงานหรืออุปกรณ์ ชื่อผู้รับทราบเป็นป้ายชื่อในเครื่อง ไม่ใช่การยืนยันตัวตน</li>
+          <li>ไม่มีการส่ง LINE/อีเมล ไม่มี backend เก็บ telemetry และไม่เชื่อม MQTT โดยตรง ระบบใช้งานจริงควรมีบริการฝั่งเซิร์ฟเวอร์ที่ยืนยันตัวตน เก็บข้อมูลถาวร และส่งการแจ้งเตือนเอง</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>แหล่งที่มาของภาพและโมเดล</h2>
+        <ul>
+          <li>ภาพผังชั้น: จากไฟล์ที่ผู้ใช้แนบมา (ครอปและย่อขนาด) ลิขสิทธิ์เป็นของเจ้าของต้นฉบับ ใช้ภายในเพื่ออ้างอิงตำแหน่งเท่านั้น โลโก้ที่ติดมากับภาพไม่ได้ถูกแก้ไข</li>
+          <li>เรขาคณิต วัสดุ และพื้นผิว (ลายไม้โต๊ะ พื้นห้อง ป้ายข้อความ) สร้างด้วยโค้ดทั้งหมด ไม่มีไฟล์โมเดลหรือภาพที่ดาวน์โหลดจากภายนอก</li>
+          <li>ชื่อแบรนด์ใช้ข้อความ "NEXZA | FORTUNE IoT" จนกว่าจะได้รับโลโก้ที่ได้รับอนุญาต สีที่ใช้ไม่ใช่สีทางการของแบรนด์</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>สัญญาอนุญาตของซอฟต์แวร์ที่ใช้</h2>
+        <h3>three.js 0.180.0 — MIT (รวมอยู่ในไฟล์ที่ build)</h3>
+        <pre>The MIT License
+
+Copyright © 2010-2025 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</pre>
+        <h3>Vite 6.4.3 — MIT (เครื่องมือ build; โค้ดช่วยโหลดโมดูลขนาดเล็กอาจรวมอยู่ในไฟล์ที่ build)</h3>
+        <pre>MIT License
+
+Copyright (c) 2019-present, VoidZero Inc. and Vite contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+        <h3>fake-indexeddb 6.2.5 — Apache-2.0 (ใช้เฉพาะในชุดทดสอบ ไม่รวมในไฟล์ที่ build)</h3>
+        <p>ข้อความสัญญาอนุญาตฉบับเต็มของทุกแพ็กเกจอยู่ในไฟล์ <a href="./THIRD_PARTY_LICENSES.txt">THIRD_PARTY_LICENSES.txt</a></p>
+      </section>
+      <p class="build-info" id="build-info"></p>
+    </main>
+  </body>
+</html>

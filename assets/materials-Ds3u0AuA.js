@@ -1,0 +1,1 @@
+import"./modulepreload-polyfill-B5Qt9EMX.js";const n={three:"0.180.0"},i={vite:"6.4.3"},e={dependencies:n,devDependencies:i},t=document.getElementById("build-info");t&&(t.textContent=`รุ่นที่ใช้ build: three ${e.dependencies.three} · vite ${e.devDependencies.vite} · โหลดหน้าเมื่อ ${new Date().toLocaleString("th-TH",{timeZone:"Asia/Bangkok"})}`);
