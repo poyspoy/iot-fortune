@@ -50,8 +50,24 @@ RUN = """(floor) => {
 }""" % SNAP
 
 
+# เงื่อนไขควบคุม (อนุมัติ 17 ต.ค. 2569): ปิดโหมดอัตโนมัติ · นาฬิกาตั้งเองเริ่มที่เวลาของตัวจำลอง (ไม่มีการไล่เวลา)
+# · พาลิฟต์ไปจอดชั้นเริ่มต้น ประตูเปิด ก่อนเริ่มเที่ยว — ใช้ได้ทั้ง build ใหม่ (ElevatorService) และ ddc56f0 (ตัวจำลองในฉาก)
+PREP = """(f) => { const a = window.__iotFortune.app, sc = a.scene; const sim = a.elevator ? a.elevator.sim : sc.lift.sim;
+  if (sc.manualNow == null) sc.setManualClock(sim.t);
+  sc.setLiftAuto(false);
+  const p = sc.elevatorProbe();
+  if (!(p.target === f && (p.phase === 'open' || p.phase === 'opening' || p.phase === 'closed'))) sc.requestElevator(f);
+  else if (p.phase === 'closed') sc.requestElevator(f);
+  for (let i = 0; i < 8000; i++) { const q = sc.elevatorProbe(); if (q.target === f && q.phase === 'open' && q.door === 1) return q; sc.debugStepLift(16); }
+  return sc.elevatorProbe(); }"""
+
+
+def prep(page, floor):
+    return page.evaluate(PREP, floor)
+
+
 def trip(page, floor, label):
-    page.evaluate('window.__iotFortune.app.scene.setManualClock(performance.now())')
+    page.evaluate("() => { const a = window.__iotFortune.app, sc = a.scene; if (sc.manualNow == null) sc.setManualClock((a.elevator ? a.elevator.sim : sc.lift.sim).t); sc.setLiftAuto(false); }")
     log = page.evaluate(RUN, floor)
     start = log[0]
     lv = log[-1]['levels']
@@ -110,22 +126,26 @@ with sync_playwright() as p:
     page.goto(f'{BASE}/?db=lift{random.randint(1000, 9999)}')
     page.wait_for_selector('[data-testid=lift-panel]', timeout=30000)
     page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe()?.visible", timeout=20000)
-    page.wait_for_function("() => { const p = window.__iotFortune.app.scene.detailProgress(); return p.ready === p.total; }", timeout=400000)
-    check('โหลดโมเดลห้องจาก Blender ครบทุกชั้นในมุมมองทั้งอาคาร', True, page.locator('[data-testid=model-state]').inner_text())
+    # Lazy Loading: มุมทั้งอาคารใช้โมเดลแบบเบา — เริ่มทดสอบลิฟต์ได้เมื่อโมเดลแบบเบาพร้อม (ไม่ต้องโหลดรายละเอียด 27 ชั้น)
+    page.wait_for_function("() => window.__iotFortune.app.scene.detailProgress().building === 'ready'", timeout=400000)
+    check('มุมทั้งอาคาร: โมเดลแบบเบาพร้อม เริ่มทดสอบลิฟต์ได้', True, page.locator('[data-testid=model-state]').inner_text())
     floors = page.evaluate('window.__iotFortune.app.scene.elevatorFloors()')
     cfg_floors = page.evaluate("window.__iotFortune.app.config.building.floors.map(f => f.id)")
     check('ปุ่มเลือกชั้นตรงกับชั้นจริงที่ลิฟต์จอด', page.locator('.lift-btn').all_inner_texts() == floors and all(f in cfg_floors for f in floors), ' '.join(floors))
-    st0 = page.evaluate('window.__iotFortune.app.scene.elevatorProbe()')
+    st0 = prep(page, floors[0])  # พาลิฟต์กลับชั้นล่างสุดด้วยนาฬิกาที่ควบคุมได้
     check('เริ่มต้นจอดชั้นล่างสุด ประตูเปิด พื้นห้องลิฟต์ตรงพื้นชั้น', st0['target'] == floors[0] and st0['door'] == 1 and abs(st0['carY'] - st0['levels'][floors[0]]) < 1e-6)
     page.click('[data-testid=lift-cut]')
     page.wait_for_timeout(1200)
     page.screenshot(path=os.path.join(OUT, '01-lift-view.png'), timeout=180000)
     top, mid = floors[-1], floors[len(floors) // 2]
+    prep(page, floors[0])
     trip(page, top, f'ขึ้น {floors[0]}→{top}')
     page.screenshot(path=os.path.join(OUT, '02-at-top.png'), timeout=180000)
     st = page.evaluate('window.__iotFortune.app.state')
     check('ลิฟต์ไม่เปลี่ยนมุมมอง: ยังดูทั้งอาคาร และไม่ตั้งชั้นที่เลือกค้างไว้', not st['isolated'])
+    prep(page, top)
     trip(page, floors[0], f'ลง {top}→{floors[0]}')
+    prep(page, floors[0])
     trip(page, mid, f'หยุดชั้นกลาง {floors[0]}→{mid}')
     page.screenshot(path=os.path.join(OUT, '03-at-middle.png'), timeout=180000)
     # กดชั้นเดิม: ไม่เดินทาง

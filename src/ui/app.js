@@ -1,4 +1,4 @@
-import { h, select, replaceChildren, confirmClick } from './dom.js';
+import { h, s, select, replaceChildren, confirmClick } from './dom.js';
 import { sevBadge, qualBadge, sourceBadge, systemLabel, valueText, ruleText, reasonText } from './format.js';
 import { renderPlan } from './plan2d.js';
 import { renderMetricChart } from './chart.js';
@@ -13,6 +13,8 @@ import { renderSettingsView } from './settingsView.js';
 import { Sound } from './sound.js';
 import { viewingFloorId, normalizeViewState } from '../domain/viewState.js';
 import { ElevatorPanel } from './elevatorPanel.js';
+import { ElevatorService } from '../domain/elevatorService.js';
+import { threeDToPlan } from '../domain/geometry.js';
 import { roomCard } from './roomCard.js';
 import { WaterPanel } from './waterPanel.js';
 import { Presenter } from './presenter.js';
@@ -55,6 +57,9 @@ export class App {
     this.sound = new Sound();
     this.scene = null;
     this.sceneError = null;
+    // ลิฟต์จำลองแยกจากฉาก 3D: ทำงานเหมือนกันทั้งโมเดล 3D และผัง 2D (รวมเครื่องที่แสดง 3D ไม่ได้)
+    this.elevator = new ElevatorService();
+    this.elevator.onChange((st) => { if (st) this.#onElevator(st); });
     this.trendSig = '';
     this.lastLive = 0;
     this.liveTimer = null;
@@ -262,25 +267,29 @@ export class App {
   }
 
   #mountLiftPanel() {
-    const floors = this.scene?.elevatorFloors() ?? [];
+    this.elevator.setBuilding(this.config.building.floors);
+    this.elevator.start();
+    const floors = this.elevator.floors();
     if (!floors.length) { this.liftPanel?.el.remove(); this.stageBody?.classList.remove('has-lift'); return; }
+    const is3d = !!this.scene && this.state.viewMode === '3d';
     if (!this.liftPanel || this.liftPanel.opts.floors.join() !== floors.join()) {
       this.liftPanel = new ElevatorPanel({
         floors, name: ELEVATOR_L1.name, note: ELEVATOR_L1.note,
         onRequest: (id) => this.liftTo(id),
-        onAuto: (on) => this.scene?.setLiftAuto(on),
-        onPause: (on) => this.scene?.setLiftPaused(on),
-        onReset: () => this.scene?.resetLift(), // กลับชั้น G เปิดประตู แล้วเริ่มวงรอบอัตโนมัติใหม่
+        onAuto: (on) => this.elevator.setAuto(on),
+        onPause: (on) => this.elevator.setPaused(on),
+        onReset: () => this.elevator.reset(), // กลับชั้น G เปิดประตู แล้วเริ่มวงรอบอัตโนมัติใหม่
         onCamera: () => this.focusLift(),
         onLiftView: (on) => { this.scene?.setLiftView(on); if (on) this.scene?.preset('lift'); },
         onOpenFloor: (id) => this.isolateFloor(id),
         onShowBuilding: () => { this.showBuilding(); requestAnimationFrame(() => this.scene?.preset('lift')); },
       });
-      this.scene.setLiftView(false);
-      const s0 = this.scene.elevatorStatus();
+      this.scene?.setLiftView(false);
+      const s0 = this.elevator.status();
       if (s0) this.liftPanel.update(s0);
     }
-    this.liftPanel.setIsolated(!!this.state.isolated);
+    this.liftPanel.setView3d?.(is3d); // ผัง 2D: ซ่อนปุ่มที่ต้องใช้ฉาก 3D (มุมกล้อง/เปิดปล่อง) — สั่งชั้น/อัตโนมัติ/หยุด/รีเซ็ตใช้ได้ครบ
+    this.liftPanel.setIsolated(is3d && !!this.state.isolated);
     this.liftSide.appendChild(this.liftPanel.el); // ลิฟต์ก่อน แล้วตามด้วยเซนเซอร์ระดับน้ำ
     this.#mountWater();
     this.stageBody.classList.add('has-lift');
@@ -294,8 +303,7 @@ export class App {
    */
   liftTo(floor) {
     // คำสั่งลิฟต์แยกจากการเลือกดูชั้น: ไม่เปลี่ยนมุมมองชั้นหรือกล้อง (ลิฟต์วิ่งเบื้องหลังแม้ดูชั้นเดียว)
-    if (!this.scene) return Promise.resolve('none');
-    const r = this.scene.requestElevator(floor);
+    const r = this.elevator.request(floor);
     if (r === 'same-floor') { this.liftPanel?.flash(`ลิฟต์อยู่ที่ชั้น ${floor} แล้ว`); return Promise.resolve('same-floor'); }
     if (r !== 'started') return Promise.resolve(r);
     return new Promise((res) => { this.liftWaiters = [...(this.liftWaiters ?? []), { floor, res }]; });
@@ -307,7 +315,7 @@ export class App {
     if (this.state.isolated) this.showBuilding();
     this.scene.setLayerVisible('elevator', true);
     this.setBuildingStyle('transparent', { temporary: true }); // เห็นรถลิฟต์วิ่งภายในอาคาร
-    if (!this.scene.liftView) { this.scene.setLiftView(true); if (this.liftPanel) { this.liftPanel.liftView = true; this.liftPanel.update(this.scene.elevatorStatus()); } }
+    if (!this.scene.liftView) { this.scene.setLiftView(true); if (this.liftPanel) { this.liftPanel.liftView = true; this.liftPanel.update(this.elevator.status()); } }
     if (this.state.detailsOpen) this.setState({ detailsOpen: false });
     requestAnimationFrame(() => this.scene?.preset('lift'));
   }
@@ -370,12 +378,13 @@ export class App {
   /** รีเซ็ตการสาธิต: ล้างข้อมูล/แจ้งเตือนจำลอง กลับสถานการณ์ปกติ ความเร็ว 1× และลิฟต์กลับชั้น G */
   async resetDemoAll() {
     await this.ctl.resetDemo();
-    this.scene?.resetLift();
+    this.elevator.reset();
   }
 
   /** สถานะลิฟต์จากฉาก (ตำแหน่งเดียวกับที่วาดห้องลิฟต์) → แผง และไฮไลต์ชั้นที่ลิฟต์ถึง */
   #onElevator(status) {
     this.liftPanel?.update(status);
+    this.#updatePlanLift(status);
     if (status.phase === 'open' && status.atFloor && this.liftWaiters?.length) {
       const done = this.liftWaiters.filter((w) => w.floor === status.atFloor);
       this.liftWaiters = this.liftWaiters.filter((w) => w.floor !== status.atFloor);
@@ -852,7 +861,7 @@ export class App {
           this.scene = new MallScene(this.sceneHost, {
             onSelect: (id) => this.select(id, { focus: false }),
             onDetail: (id) => { if (id === this.state.floorId || !this.state.isolated) this.#renderFloorBanner(); this.#renderLoading(); },
-            onElevator: (status) => this.#onElevator(status),
+            elevator: this.elevator, // บริการลิฟต์ร่วม (ฉากวาดตามสถานะ ไม่ได้เป็นเจ้าของตัวจำลอง)
             onRoom: (info) => this.#showRoom(info),
             onFloorPick: (id) => this.isolateFloor(id),
           });
@@ -887,7 +896,6 @@ export class App {
       if (this.roomCardEl) this.liftSide.prepend(this.roomCardEl);
     } else {
       this.fullOn = false; this.stageBody?.classList.remove('sb-full'); document.body.classList.remove('has-vp-full');
-      this.liftPanel?.el.remove(); this.stageBody?.classList.remove('has-lift');
       this.planHost = h('div.plan-host');
       this.sigs?.delete('plan');
       this.floorBannerEl?.remove(); this.refNoteEl?.remove(); this.refNoteEl = null;
@@ -895,9 +903,43 @@ export class App {
       replaceChildren(this.viewport,
         this.sceneError ? h('p.notice.warn', `แสดงโมเดล 3D ไม่ได้ (${this.sceneError}) — ใช้ผัง 2D และรายการจุดได้ครบทุกฟังก์ชัน`) : null,
         this.floorBannerEl, this.planHost, h('div.ref-badge', this.index.floors.get(st.floorId)?.plan.note ?? ''));
+      this.#mountLiftPanel(); // ลิฟต์จำลองใช้งานได้ในผัง 2D (สั่งชั้น อัตโนมัติ หยุด รีเซ็ต + ไอคอนบนผัง)
     }
     this.#updateSpatial();
     this.#renderFloorBanner();
+  }
+
+  /** ไอคอนลิฟต์บนผัง 2D ที่ตำแหน่งปล่อง (เฉพาะชั้นที่ลิฟต์จอด) — อัปเดตเฉพาะข้อความ/สถานะ ไม่วาดผังใหม่ */
+  #addPlanLift(floor) {
+    this.planLift = null;
+    const svg = this.planHost?.querySelector('svg.plan-svg');
+    if (!svg || !this.elevator.floors().includes(floor.id)) return;
+    const p = threeDToPlan(floor, { x: ELEVATOR_L1.x, z: ELEVATOR_L1.z });
+    if (!(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) return;
+    const W = floor.plan.width; const H = floor.plan.height;
+    const r = Math.max(W, H) * 0.0125;
+    const g = s('g', { class: 'plan-lift', 'data-testid': 'plan-lift', transform: `translate(${(p.x * W).toFixed(1)} ${(p.y * H).toFixed(1)})`, role: 'img' });
+    const title = s('title', { text: '' });
+    const box = s('rect', { x: -r * 1.1, y: -r * 1.1, width: r * 2.2, height: r * 2.2, rx: r * 0.3, class: 'pl-shaft' });
+    const label = s('text', { class: 'pl-text', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': r * 0.95, text: '' });
+    const tag = s('text', { class: 'pl-tag', 'text-anchor': 'middle', y: -r * 1.75, 'font-size': r * 0.8, text: ELEVATOR_L1.id });
+    g.append(title, box, label, tag);
+    svg.appendChild(g);
+    this.planLift = { g, title, label, floorId: floor.id };
+    this.#updatePlanLift(this.elevator.status());
+  }
+
+  #updatePlanLift(st) {
+    const L = this.planLift;
+    if (!L || !st || !L.g.isConnected) return;
+    const here = st.atFloor === L.floorId;
+    const passing = !here && st.phase === 'moving' && st.nearest === L.floorId;
+    const state = here ? 'here' : passing ? 'passing' : 'away';
+    L.g.setAttribute('class', `plan-lift pl-${state}`);
+    L.g.setAttribute('data-state', state);
+    L.label.textContent = here ? (st.doors === 'open' || st.doors === 'opening' ? '◧' : '■') : `${st.arrow || ''}${st.nearest}`;
+    const text = `${ELEVATOR_L1.name} (จำลอง · ไม่ใช่ข้อมูลจริง): ${st.headline} · ${st.doorText}`;
+    L.title.textContent = text; L.g.setAttribute('aria-label', text);
   }
 
   #updateSpatial() {
@@ -916,12 +958,14 @@ export class App {
         [['normal', 'ปกติ'], ['warning', 'เฝ้าระวัง'], ['critical', 'แจ้งเตือน'], ['unknown', 'ไม่มีข้อมูล / ไม่สดใหม่']].map(([k, t]) => h('span', { class: `lg-item lg-${k}` }, h('i', { 'aria-hidden': 'true' }), t)),
         h('span.lg-help', 'ลากเพื่อหมุน · คลิกขวาลาก/สองนิ้วเพื่อเลื่อน · ล้อ/ถ่างนิ้วเพื่อซูม · คลิกห้องหรือหมุดเพื่อดูข้อมูล'));
     } else if (this.planHost) {
+      this.#updateWater();
       const floor = this.index.floors.get(st.floorId);
       const onFloor = items.filter((it) => it.point.floorId === st.floorId && st.layers[it.point.system] !== false);
       const planSig = JSON.stringify([floor.id, st.selectedId, onFloor.map((it) => [it.point.id, it.severity, it.quality, it.point.plan.x, it.point.plan.y])]);
       if (!this.gate('plan', `${planSig}|${st.planZoom}`) && this.planHost.firstChild) return;
       const prevScroll = this.planHost.querySelector('.plan-wrap')?.scrollLeft ?? 0;
       replaceChildren(this.planHost, renderPlan({ floor, items: onFloor, selectedId: st.selectedId, zoom: st.planZoom, onSelect: (id) => this.select(id, { focus: false }) }));
+      this.#addPlanLift(floor);
       const wrap = this.planHost.querySelector('.plan-wrap');
       if (wrap) {
         wrap.scrollLeft = prevScroll;

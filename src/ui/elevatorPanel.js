@@ -63,6 +63,13 @@ export class ElevatorPanel {
 
   setIsolated(iso) { this.isolated = iso; this.#sync(); }
 
+  /** ผัง 2D: ซ่อนปุ่มที่ต้องใช้ฉาก 3D (มุมกล้องลิฟต์ / เปิดปล่อง) — ส่วนอื่นใช้งานได้เหมือนเดิม */
+  setView3d(on) {
+    this.view3d = !!on;
+    this.el.classList.toggle('lift-2d', !on);
+    for (const b of [this.camBtn, this.viewBtn]) b.hidden = !on;
+  }
+
   update(status) { this.status = status; this.#sync(); }
 
   #sync() {

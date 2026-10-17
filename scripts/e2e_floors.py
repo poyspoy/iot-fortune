@@ -141,6 +141,7 @@ with sync_playwright() as p:
     page.screenshot(path=f'{OUT}/a-floor31-empty.png')
 
     report = []
+    detail_rep = []
     for mode in ('3d', '2d'):
         page.locator(f'button[data-focus-key="vm-{mode}"]').click()
         page.wait_for_timeout(1200)
@@ -149,6 +150,16 @@ with sync_playwright() as p:
             select_floor(page, fid, 1500 if mode == '3d' else 600)
             s = page.evaluate(SNAP)
             probs = verify(s, fid, fname, cfg, mode)
+            if mode == '3d':  # โมเดลรายละเอียดของชั้นที่เลือก (Lazy Loading) — ตรวจครบทุกชั้น
+                try:
+                    page.wait_for_function(f"() => ['ready', 'none', 'error'].includes(window.__iotFortune.app.scene.detailState('{fid}'))", timeout=240000, polling=500)
+                except Exception:
+                    pass
+                d = page.evaluate(f"""() => {{ const sc = window.__iotFortune.app.scene; const g = sc.floorGroups.get('{fid}');
+                  return {{ state: sc.detailState('{fid}'), hasFile: !!g.floor.detail, model: !!g.detailObj, rooms: Array.isArray(g.rooms) ? g.rooms.length : null }}; }}""")
+                detail_rep.append({'floor': fid, **d})
+                if d['hasFile'] and not (d['state'] == 'ready' and d['model'] and (d['rooms'] or 0) > 0): probs.append(f"detail {d}")
+                if not d['hasFile'] and d['state'] != 'none': probs.append(f"detail {d}")
             exp = expected_points(cfg, fid)
             clicked = []
             for pid in exp:  # คลิกหมุดทุกจุดของชั้น แล้วตรวจรหัส ชั้น ชื่อ ค่า
@@ -175,6 +186,11 @@ with sync_playwright() as p:
                 page.screenshot(path=f'{OUT}/b-{mode}-floor-{fid}.png')
             if mode == '2d' and fid in ('G', '12'):
                 page.screenshot(path=f'{OUT}/b-{mode}-floor-{fid}.png')
+        if mode == '3d':
+            withf = [d for d in detail_rep if d['hasFile']]
+            okd = [d for d in withf if d['state'] == 'ready' and d['model'] and (d['rooms'] or 0) > 0]
+            check(f'3D: เลือกชั้นแล้วโหลดโมเดลรายละเอียด + ห้อง ครบ {len(withf)} ชั้นที่มีไฟล์ (ชั้นไม่มีไฟล์ใช้โมเดลแบบง่าย: {[d["floor"] for d in detail_rep if not d["hasFile"]]})',
+                  len(okd) == len(withf) == 27, f"{len(okd)}/{len(withf)} · ห้องรวม {sum(d['rooms'] or 0 for d in okd)}")
         bad = [r for r in report if r['mode'] == mode and r['problems']]
         check(f'{mode.upper()}: ทุก {len(floors)} ชั้น dropdown/ป้าย/โมเดล/หมุด/รายการ/รายละเอียดตรงกัน และคลิกหมุดได้ข้อมูลจริง', not bad,
               '; '.join(f"{r['floor']}: {r['problems'][:2]}" for r in bad[:4]))

@@ -30,7 +30,7 @@ export class Presenter {
         a.focusLift();
       }],
       ['ลิฟต์โดยสาร L1 วิ่งจากชั้น G ไปชั้น 3 — ประตูปิด → เคลื่อนที่ → หยุดตรงชั้น → ประตูเปิด', async () => {
-        if (a.scene?.elevatorStatus()?.atFloor !== 'G') await this.wait(a.liftTo('G'));
+        if (a.elevator?.status()?.atFloor !== 'G') await this.wait(a.liftTo('G'));
         await this.wait(a.liftTo('3'));
         await this.sleep(1500);
       }],

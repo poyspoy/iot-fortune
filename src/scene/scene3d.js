@@ -5,7 +5,7 @@ import { textSprite } from './textures.js';
 import { planTo3D, isolatedOffset, assembledOffset, markerPosition, detailTransform } from '../domain/geometry.js';
 import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
-import { ElevatorSim, ELEVATOR_DEMO_CONFIG } from '../domain/elevatorSim.js';
+import { ElevatorService } from '../domain/elevatorService.js';
 import { LayerManager } from './layers.js';
 import { MobilityLayers } from './mobilityLayers.js';
 import { ElevatorRig } from './elevator3d.js';
@@ -66,6 +66,10 @@ export class MallScene {
     this.onSelect = opts.onSelect;
     this.onDetail = opts.onDetail ?? (() => {});
     this.onElevator = opts.onElevator ?? (() => {});
+    // ลิฟต์จำลองอยู่ในบริการแยก (ไม่ผูกกับ WebGL) — แอปส่งบริการร่วมเข้ามา; ไม่ส่งมาก็สร้างเอง (ใช้แยกฉากเดี่ยว)
+    this.ownElevator = !opts.elevator;
+    this.elevator = opts.elevator ?? new ElevatorService();
+    if (this.ownElevator) this.elevator.onChange((st) => { if (st) this.onElevator(st); });
     this.onRoom = opts.onRoom ?? (() => {});
     this.onFloorPick = opts.onFloorPick ?? (() => {});
     this.roomSel = null; // { floorId, room, mesh }
@@ -390,37 +394,28 @@ export class MallScene {
   #buildElevator() {
     if (this.lift) { this.sceneLayers.release(this.lift.rig.group); this.root.remove(this.lift.rig.group); disposeTree(this.lift.rig.group); }
     const have = new Map(this.config.building.floors.map((f) => [f.id, f]));
-    const floors = ELEVATOR_L1.floors.filter((id) => have.has(id)).sort((a, b) => have.get(a).order - have.get(b).order);
+    this.elevator.setBuilding(this.config.building.floors); // ชั้นที่จอดเหมือนเดิม = ตัวจำลองเดิมเดินต่อ
+    const floors = this.elevator.floors().filter((id) => this.floorGroups.has(id));
     if (floors.length < 2) { this.lift = null; return; }
     const spec = { ...ELEVATOR_L1, floors };
     const levelOf = (id) => { const fg = this.floorGroups.get(id); return fg ? fg.group.position.y + fg.slabT : null; };
     const heightOf = (id) => have.get(id)?.model.height ?? 0.8;
     const rig = new ElevatorRig(spec, levelOf, heightOf, (id) => this.floorGroups.get(id)?.group.visible !== false);
-    // ตัวจำลองเดิมเดินต่อ (ไม่เริ่มใหม่ที่ G) เมื่อโหลดการตั้งค่าใหม่ ถ้าชั้นที่จอดยังเหมือนเดิม
-    const prev = this.lift?.sim;
-    const sim = prev && prev.floors.join() === floors.join() ? prev
-      : new ElevatorSim(floors, { config: this.liftConfig ?? ELEVATOR_DEMO_CONFIG, now: this.#now(), seed: (Date.now() & 0xffff) || 7 });
-    this.lift = { spec, rig, sim, sig: '' };
+    this.lift = { spec, rig, get sim() { return this.svc.sim; }, svc: this.elevator };
     this.sceneLayers.assign(rig.group, 'elevator');
     for (const o of rig.labelObjects()) this.sceneLayers.assign(o, 'labels');
     this.root.add(rig.group);
     this.#stepLift();
   }
 
-  /** สั่งลิฟต์จำลองไปชั้น (คำสั่งผู้ใช้มีสิทธิ์ก่อนโหมดอัตโนมัติ) — คืน 'started' | 'same-floor' | 'unknown-floor' | 'none' */
-  requestElevator(floorId) {
-    if (!this.lift) return 'none';
-    const r = this.lift.sim.request(floorId, this.#now());
-    this.#emitElevator(true);
-    return r === 'same-floor' || r === 'unknown-floor' ? r : 'started';
-  }
-
-  setLiftAuto(on) { if (!this.lift) return; this.lift.sim.setAuto(on); this.#emitElevator(true); }
-  setLiftPaused(on) { if (!this.lift) return; this.lift.sim.setPaused(on); this.#emitElevator(true); }
-  resetLift() { if (!this.lift) return; this.lift.sim.reset(this.#now()); this.#emitElevator(true); }
+  /** สั่งลิฟต์จำลองไปชั้น (ส่งต่อให้บริการลิฟต์) — คืน 'started' | 'same-floor' | 'unknown-floor' | 'none' */
+  requestElevator(floorId) { return this.lift ? this.elevator.request(floorId) : 'none'; }
+  setLiftAuto(on) { this.elevator.setAuto(on); }
+  setLiftPaused(on) { this.elevator.setPaused(on); }
+  resetLift() { this.elevator.reset(); }
 
   elevatorFloors() { return this.lift ? [...this.lift.spec.floors] : []; }
-  elevatorStatus() { return this.lift ? this.lift.sim.status() : null; }
+  elevatorStatus() { return this.lift ? this.elevator.status() : null; }
 
   /** ข้อมูลตรวจสอบ (ใช้ในการทดสอบเบราว์เซอร์): ความสูงพื้นห้องลิฟต์เทียบกับพื้นชั้น และระยะเปิดประตู */
   elevatorProbe() {
@@ -437,12 +432,12 @@ export class MallScene {
   }
 
   /** เวลาที่ใช้ขับลิฟต์ — ปกติเป็นเวลาจริง; การทดสอบ/บันทึกคลิปตั้งนาฬิกาเองได้ (เดินทีละเฟรมคงที่) */
-  #now() { return this.manualNow ?? performance.now(); }
-  setManualClock(t) { this.manualNow = t; }
+  #now() { return this.elevator.now(); }
+  setManualClock(t) { this.elevator.setManualClock(t); }
+  get manualNow() { return this.elevator.manualNow; } // ใช้อ่านเวลาในการทดสอบ/บันทึกคลิป (คงชื่อเดิม)
   /** ทดสอบ: เดินเวลาลิฟต์ไป ms มิลลิวินาที (ใช้นาฬิกาที่ตั้งเอง) แล้ววางห้องลิฟต์/ประตูทันทีโดยไม่ต้องรอเฟรม */
   debugStepLift(ms) {
-    if (this.manualNow == null) this.manualNow = performance.now();
-    this.manualNow += ms;
+    this.elevator.advance(ms);
     this.#stepLift();
   }
 
@@ -466,8 +461,9 @@ export class MallScene {
 
   #stepLift() {
     if (!this.lift) return;
-    const { sim, rig } = this.lift;
-    sim.step(this.#now()); // ตัวจำลองเดินเบื้องหลังเสมอ (รวมตอนดูชั้นเดียว)
+    const { rig } = this.lift;
+    const sim = this.elevator.step(); // ตัวจำลองอยู่ในบริการลิฟต์ (เดินต่อแม้ไม่มีฉาก) — ฉากเรียกทุกเฟรมเพื่อความลื่น
+    if (!sim) return;
     const iso = this.isolatedId;
     if (!iso) {
       rig.update(sim, null);
@@ -488,13 +484,10 @@ export class MallScene {
 
   setLiftView(on) { this.liftView = !!on; this.#applyMode(); }
 
-  #emitElevator(force = false) {
-    const st = this.lift.sim.status();
-    const sig = `${st.phase}|${st.target}|${st.nearest}|${st.direction}|${st.doors}|${st.mode}|${st.auto}|${st.paused}|${st.queue.join()}`;
-    this.lift.rig.setDisplay(st.phase === 'moving' || st.phase === 'closing' ? st.nearest : st.target, st.arrow);
-    if (!force && sig === this.lift.sig) return;
-    this.lift.sig = sig;
-    this.onElevator(st);
+  /** ป้ายชั้น/ลูกศรบนตัวลิฟต์ 3D (การแจ้งสถานะไปยังแผงเป็นหน้าที่ของบริการลิฟต์) */
+  #emitElevator() {
+    const st = this.elevator.status();
+    if (st) this.lift.rig.setDisplay(st.phase === 'moving' || st.phase === 'closing' ? st.nearest : st.target, st.arrow);
   }
 
   /** ฐานจาง ๆ ใต้ทาวเวอร์ (ชั้นล่างที่ไม่มีผัง) และป้ายทาวเวอร์ — แสดงเฉพาะมุมมองทั้งอาคาร */
@@ -1485,6 +1478,7 @@ export class MallScene {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
     this.simLayers?.dispose();
+    if (this.ownElevator) this.elevator.dispose(); // บริการที่แอปส่งมาไม่ถูกปิด — ลิฟต์เดินต่อในผัง 2D
     this.resizeObs.disconnect();
     this.visObs?.disconnect();
     this.controls.dispose();
