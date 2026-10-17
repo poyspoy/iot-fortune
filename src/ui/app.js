@@ -695,9 +695,29 @@ export class App {
   /** สวิตช์ "👤 คนจำลอง" / "🚗 รถจำลอง" — แยกกัน ค่าเริ่มต้นปิด · ปิด = จางหายแล้วหยุดประมวลผล */
   async setSim(kind, on) {
     this.setState({ [kind === 'people' ? 'simPeople' : 'simCars']: !!on }, { render: false });
+    this.#syncSimControls();
     this.#mountMobilityChip();
     try { await (kind === 'people' ? this.scene?.setSimPeople(!!on) : this.scene?.setSimCars(!!on)); } catch (e) { console.warn('โหลดโมเดลจำลองไม่สำเร็จ', e); }
     this.#mountMobilityChip();
+  }
+
+  /** ดูใกล้: คน → แยกดูชั้น G แล้วเลื่อนกล้องไปกลุ่มคน · รถ → กลับมุมทั้งอาคารแล้วเลื่อนกล้องไปที่รถ */
+  focusSim(kind) {
+    if (!this.scene) return;
+    if (kind === 'people') { if (!(this.state.isolated && this.state.floorId === 'G')) this.isolateFloor('G'); }
+    else if (this.state.isolated) this.showBuilding();
+    this.scene.focusSim(kind);
+  }
+
+  /** ปุ่มบนแถบเครื่องมือ และสวิตช์ในเมนู "ชั้นข้อมูล" ตรงกันเสมอ (อัปเดตในที่ ไม่ปิดเมนูที่เปิดอยู่) */
+  #syncSimControls() {
+    const on = { people: this.state.simPeople, cars: this.state.simCars };
+    const txt = { people: ['👤 ดูคนจำลอง', '👤 ซ่อนคนจำลอง'], cars: ['🚗 ดูรถจำลอง', '🚗 ซ่อนรถจำลอง'] };
+    for (const k of ['people', 'cars']) {
+      for (const el of document.querySelectorAll(`[data-testid="sim-${k}"]`)) el.checked = on[k];
+      for (const el of document.querySelectorAll(`[data-testid="sim-${k}-btn"]`)) { el.textContent = txt[k][on[k] ? 1 : 0]; el.setAttribute('aria-pressed', String(on[k])); el.classList.toggle('active', on[k]); }
+      for (const el of document.querySelectorAll(`[data-testid="sim-${k}-focus"]`)) el.hidden = !on[k];
+    }
   }
 
   #simCountText() {
@@ -784,6 +804,12 @@ export class App {
         is3d && !st.isolated ? h('label.inline', h('span', 'การแสดงผล'), select([['exterior', 'ภายนอก'], ['cutaway', 'ตัดชั้นบน']], st.sceneMode === 'exploded' ? 'exterior' : st.sceneMode, {
           'data-focus-key': 'scenemode', onchange: (e) => { this.setState({ sceneMode: e.target.value }, { render: false }); this.scene.setMode(e.target.value); },
         })) : null,
+        is3d ? h('div.sim-tools', { role: 'group', 'aria-label': 'การเคลื่อนไหวจำลอง' },
+          [['people', st.simPeople, '👤 ดูคนจำลอง', '👤 ซ่อนคนจำลอง'], ['cars', st.simCars, '🚗 ดูรถจำลอง', '🚗 ซ่อนรถจำลอง']].map(([k, on, a, b]) => h('span.sim-pair',
+            h('button', { type: 'button', class: `btn small ${on ? 'active' : ''}`, 'aria-pressed': String(!!on), 'data-testid': `sim-${k}-btn`, 'data-focus-key': `sim-${k}-btn`,
+              title: 'การเคลื่อนไหวจำลอง · ไม่ใช่ข้อมูลติดตามบุคคลจริง', onclick: () => this.setSim(k, !(k === 'people' ? this.state.simPeople : this.state.simCars)) }, on ? b : a),
+            h('button', { type: 'button', class: 'btn small ghost', hidden: on ? null : true, 'data-testid': `sim-${k}-focus`, title: k === 'people' ? 'เลื่อนกล้องไปยังพื้นที่ที่มีคน (ชั้น G)' : 'เลื่อนกล้องไปที่รถ',
+              onclick: () => this.focusSim(k) }, 'ดูใกล้')))) : null,
         h('details.layers-dd', h('summary', `ชั้นข้อมูล (${nOn}/${Object.keys(SYSTEMS).length})`),
           h('div.dd-panel', Object.entries(SYSTEMS).map(([k, v]) => h('label.check', h('input', {
             type: 'checkbox', checked: st.layers[k], 'data-focus-key': `layer-${k}`,

@@ -387,7 +387,10 @@ export class MallScene {
 
   /** วาดหนึ่งเฟรมทันที (ใช้กับนาฬิกาที่ตั้งเอง) — อ่านภาพจาก canvas ได้ในงานเดียวกันหลังเรียก */
   renderNow() {
-    if (this.#advanceFloors(performance.now())) this.#placeMarkers();
+    const now = performance.now(); const moving = this.#advanceFloors(now);
+    if (moving) this.#placeMarkers();
+    if (this.pendingSimFocus && !moving && !this.tween) this.#runSimFocus();
+    this.#stepTween(now);
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(performance.now());
     this.controls.update();
@@ -833,6 +836,25 @@ export class MallScene {
   /** สวิตช์ "🚗 รถจำลอง" (ค่าเริ่มต้นปิด) */
   async setSimCars(on) { if (!this.simLayers) return; await this.simLayers.setCars(on); this.#applyMobilityVis(); this.#kick(); }
   #kick() { if (this.paused) this.renderNow?.(); }
+  /** ดูใกล้: เลื่อนกล้องแบบสมูทไปยังจุดที่มีคน (กลุ่มคนหนาแน่นที่สุด) หรือรถ — รอให้ชั้นเลื่อน/กล้องเดิมจบก่อน */
+  focusSim(kind) { this.pendingSimFocus = kind; }
+  #runSimFocus() {
+    const kind = this.pendingSimFocus; this.pendingSimFocus = null;
+    const L = this.simLayers; let obj = null; let dist; let elev;
+    if (kind === 'people' && L?.people) {
+      const list = L.people.list; let best = 0; let bestN = -1;
+      list.forEach((p, i) => { const n = list.filter((o) => Math.hypot(o.agent.x - p.agent.x, o.agent.z - p.agent.z) < 1.2).length; if (n > bestN) { bestN = n; best = i; } });
+      obj = list[best]?.rig.root; dist = 1.5; elev = 0.85;
+    } else if (kind === 'cars' && L?.cars) { obj = L.cars.rig.root; dist = 2.4; elev = 0.6; }
+    if (!obj) return;
+    const t = new THREE.Vector3(); obj.getWorldPosition(t); t.y += 0.08;
+    const d = this.camera.position.clone().sub(this.controls.target); d.y = 0;
+    if (d.lengthSq() < 1e-6) d.set(0, 0, 1);
+    d.normalize().multiplyScalar(Math.cos(elev)); d.y = Math.sin(elev);
+    this.autoFit = false;
+    this.#tweenTo(t.clone().add(d.multiplyScalar(dist)), t);
+    this.tween.dur = 1400;
+  }
   simCounts() { return this.simLayers?.counts() ?? { people: 0, cars: 0, peopleOn: false, carsOn: false }; }
   stepMobility(ms) { if (!this.simLayers?.active) return; const n = Math.ceil(ms / 50); for (let i = 0; i < n; i++) this.simLayers.update(ms / n / 1000); this.#applyMobilityVis(); }
   mobilityProbe() { return this.simLayers ? this.simLayers.probe() : null; }
@@ -1212,6 +1234,16 @@ export class MallScene {
     else this.#tweenTo(pos, target);
   }
 
+  #stepTween(nowMs) {
+    if (!this.tween) return;
+    const tw = this.tween;
+    tw.t = Math.min(1, (nowMs - tw.start) / (tw.dur ?? 800));
+    const k = tw.t < 0.5 ? 2 * tw.t * tw.t : 1 - (-2 * tw.t + 2) ** 2 / 2;
+    this.camera.position.lerpVectors(tw.fromPos, tw.pos, k);
+    this.controls.target.lerpVectors(tw.fromTarget, tw.target, k);
+    if (tw.t >= 1) this.tween = null;
+  }
+
   #tweenTo(pos, target) {
     this.tween = { t: 0, start: performance.now(), fromPos: this.camera.position.clone(), fromTarget: this.controls.target.clone(), pos, target };
   }
@@ -1272,6 +1304,7 @@ export class MallScene {
     if (this.paused || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
     const nowMs = performance.now();
     const moving = this.#advanceFloors(nowMs);
+    if (this.pendingSimFocus && !moving && !this.tween) this.#runSimFocus();
     if (moving) this.#placeMarkers();
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(nowMs);
@@ -1282,14 +1315,7 @@ export class MallScene {
       const near = this.camera.position.distanceTo(this.towerCenter) < 10.5;
       if (near !== this.towerNear) { this.towerNear = near; this.#applyLabels(); }
     }
-    if (this.tween) {
-      const tw = this.tween;
-      tw.t = Math.min(1, (nowMs - tw.start) / 800);
-      const k = tw.t < 0.5 ? 2 * tw.t * tw.t : 1 - (-2 * tw.t + 2) ** 2 / 2;
-      this.camera.position.lerpVectors(tw.fromPos, tw.pos, k);
-      this.controls.target.lerpVectors(tw.fromTarget, tw.target, k);
-      if (tw.t >= 1) this.tween = null;
-    }
+    this.#stepTween(nowMs);
     // ปั๊มหมุนเฉพาะเมื่อได้รับสถานะ run ที่สดใหม่ (ไม่ใช่การยืนยันสภาพเครื่อง)
     if (this.pump && this.dynamic.pumpRunning === true) this.pump.fan.rotation.x += dt * 9;
     // น้ำในถังค่อย ๆ ขึ้น/ลงสู่ค่าล่าสุด (ไม่กระโดด)

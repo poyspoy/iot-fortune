@@ -755,6 +755,10 @@ body.presenting .toasts { bottom: 92px; }
 }
 
 /* คนและยานพาหนะจำลอง */
+.sim-tools { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.sim-pair { display: inline-flex; gap: 2px; }
+.sim-pair .btn[hidden] { display: none; }
+@media (max-width: 760px) { .sim-tools .btn.small { padding: 4px 8px; font-size: 0.78rem; } }
 .mob-count { display: block; font-weight: 600; font-size: 0.74rem; color: #2c5a5c; }
 .mob-count:empty { display: none; }
 @media (max-width: 760px) { .layers-dd .dd-panel { left: auto; right: 0; max-width: calc(100vw - 32px); max-height: 60vh; overflow-y: auto; } }
