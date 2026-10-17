@@ -7,6 +7,7 @@ import { severityRank } from '../domain/constants.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
 import { ElevatorSim, ELEVATOR_DEMO_CONFIG } from '../domain/elevatorSim.js';
 import { LayerManager } from './layers.js';
+import { MobilityLayers } from './mobilityLayers.js';
 import { ElevatorRig } from './elevator3d.js';
 import { prepareDetail } from './detailModel.js';
 import { pickRoom } from '../domain/rooms.js';
@@ -112,7 +113,7 @@ export class MallScene {
     this.controls.minDistance = 3;
     this.controls.maxDistance = 48;
     this.controls.target.set(0, 2, 0);
-    this.controls.addEventListener('start', () => { this.tween = null; this.autoFit = false; });
+    this.controls.addEventListener('start', () => { this.tween = null; this.autoFit = false; this.simFollow = null; });
 
     this.#buildRoom();
     this.root = new THREE.Group();
@@ -450,6 +451,11 @@ export class MallScene {
 
   /** วาดหนึ่งเฟรมทันที (ใช้กับนาฬิกาที่ตั้งเอง) — อ่านภาพจาก canvas ได้ในงานเดียวกันหลังเรียก */
   renderNow() {
+    const now = performance.now(); const moving = this.#advanceFloors(now);
+    if (moving) this.#placeMarkers();
+    if (this.pendingSimFocus && !moving && !this.tween) this.#runSimFocus();
+    this.#stepTween(now);
+    this.#stepSimFollow(now);
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(performance.now());
     this.controls.update();
@@ -879,6 +885,82 @@ export class MallScene {
   setLayerVisible(id, on) { const ok = this.sceneLayers.setVisible(id, on); this.shadowDirty = true; this.#placeMarkers(); return ok; }
   layerList() { return this.sceneLayers.list(); }
 
+  // ---------------------------------------------------------------- คนและยานพาหนะจำลอง (ชั้น G + ลานหน้าอาคาร)
+  /**
+   * เริ่มตัวจำลองคน/รถจากข้อมูลเส้นทาง — ภาพเป็น InstancedMesh ในเลเยอร์ "people"
+   * ดูชั้นอื่น: ซ่อนคนชั้น G (กลุ่มชั้นถูกซ่อน) และรถด้านนอก แต่ตัวจำลองเดินต่อ ไม่ลบสถานะ
+   */
+  setMobility(data) {
+    this.simLayers?.dispose(); this.simLayers = null;
+    if (!data) return;
+    const fg = this.floorGroups.get(data.floorId);
+    if (!fg) return;
+    const small = typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
+    const toLocal = ([x, y]) => { const p = planTo3D(fg.floor, { x, y }, 0); return [p.x, p.z]; };
+    this.simLayers = new MobilityLayers({ data, floorGroup: fg.group, floorY: fg.slabT, outdoor: this.root, toLocal, small, assign: (o) => this.sceneLayers.assign(o, 'people') });
+    this.#applyMobilityVis();
+  }
+  /** สวิตช์ "👤 คนจำลอง" (ค่าเริ่มต้นปิด) — เปิดครั้งแรกจึงโหลดโมเดล */
+  async setSimPeople(on) {
+    if (!this.simLayers) return;
+    await this.simLayers.setPeople(on);
+    if (on && this.simLayers?.people) await this.#compile(this.simLayers.people.group, 'sim-people', 1500); // คอมไพล์ shader ก่อนแสดง (ไม่สะดุดตอนเปิดครั้งแรก)
+    this.#applyMobilityVis(); this.#kick();
+  }
+  /** สวิตช์ "🚗 รถจำลอง" (ค่าเริ่มต้นปิด) */
+  async setSimCars(on) {
+    if (!this.simLayers) return;
+    await this.simLayers.setCars(on);
+    if (on && this.simLayers?.cars) await this.#compile(this.simLayers.cars.group, 'sim-cars', 1500);
+    this.#applyMobilityVis(); this.#kick();
+  }
+  #kick() { if (this.paused) this.renderNow?.(); }
+  /** ดูใกล้: เลื่อนกล้องแบบสมูทไปยังจุดที่มีคน (กลุ่มคนหนาแน่นที่สุด) หรือรถ — รอให้ชั้นเลื่อน/กล้องเดิมจบก่อน */
+  focusSim(kind) { this.pendingSimFocus = kind; }
+  #runSimFocus() {
+    const kind = this.pendingSimFocus; this.pendingSimFocus = null;
+    const L = this.simLayers; let obj = null; let dist; let elev;
+    if (kind === 'people' && L?.people) {
+      const list = L.people.list; let best = 0; let bestN = -1;
+      list.forEach((p, i) => { const n = list.filter((o) => Math.hypot(o.agent.x - p.agent.x, o.agent.z - p.agent.z) < 1.2).length; if (n > bestN) { bestN = n; best = i; } });
+      obj = list[best]?.rig.root; dist = 1.5; elev = 0.85;
+    } else if (kind === 'cars' && L?.cars) { obj = L.cars.rig.root; dist = 2.6; elev = 0.6; }
+    if (!obj) return;
+    const t = new THREE.Vector3(); obj.getWorldPosition(t); t.y += 0.08;
+    const d = this.camera.position.clone().sub(this.controls.target); d.y = 0;
+    if (d.lengthSq() < 1e-6) d.set(0, 0, 1);
+    d.normalize().multiplyScalar(Math.cos(elev)); d.y = Math.sin(elev);
+    this.autoFit = false;
+    d.multiplyScalar(dist);
+    this.#tweenTo(t.clone().add(d), t);
+    this.tween.dur = 1400;
+    this.simFollow = { obj, offset: d, last: null }; // หลังเลื่อนถึงแล้ว กล้องตามต่อแบบนุ่ม จนผู้ใช้หมุน/ซูมเอง
+  }
+
+  /** กล้องตามคน/รถจำลองหลังกด "ดูใกล้" — หยุดเมื่อผู้ใช้ลากกล้อง ใช้มุมกล้องอื่น หรือวัตถุจางหาย */
+  #stepSimFollow(now) {
+    const f = this.simFollow; if (!f || this.tween) { if (f) f.last = now; return; }
+    const o = f.obj;
+    let vis = !!o.parent; for (let x = o; x && vis; x = x.parent) vis = x.visible;
+    if (!vis) { this.simFollow = null; return; }
+    const dt = Math.min(0.2, f.last == null ? 0 : (now - f.last) / 1000); f.last = now;
+    const k = 1 - Math.exp(-dt * 3);
+    const t = new THREE.Vector3(); o.getWorldPosition(t); t.y += 0.08;
+    this.controls.target.lerp(t, k);
+    this.camera.position.copy(this.controls.target).add(f.offset);
+  }
+  simCounts() { return this.simLayers?.counts() ?? { people: 0, cars: 0, peopleOn: false, carsOn: false }; }
+  stepMobility(ms) { if (!this.simLayers?.active) return; const n = Math.ceil(ms / 50); for (let i = 0; i < n; i++) this.simLayers.update(ms / n / 1000); this.#applyMobilityVis(); }
+  mobilityProbe() { return this.simLayers ? this.simLayers.probe() : null; }
+  carWorld() { const r = this.simLayers?.cars?.rig.root; if (!r) return null; const v = new THREE.Vector3(); r.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z, h: r.rotation.y }; }
+  personWorld(i = 0) { const r = this.simLayers?.people?.list[i]?.rig.root; if (!r) return null; const v = new THREE.Vector3(); r.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z, h: r.rotation.y }; }
+
+  #applyMobilityVis() {
+    const L = this.simLayers; if (!L) return;
+    if (L.cars) L.cars.group.visible = !this.isolatedId; // ดูชั้นเดี่ยว: ซ่อนรถด้านนอก (ตัวจำลองเดินต่อ)
+    if (L.people) L.people.group.visible = !this.isolatedId || this.isolatedId === L.data.floorId; // ดูชั้นอื่น: ซ่อนคนชั้น G (สถานะเดินต่อ)
+  }
+
   // ---------------------------------------------------------------- รูปแบบอาคาร (ทึบ / โปร่งใส / โครงอาคาร)
   /**
    * เปลี่ยนรูปแบบการแสดงตัวอาคารโดยใช้โมเดลเดิม — วัสดุต้นฉบับเก็บไว้ที่ userData.styleOrig และสลับกลับได้เหมือนเดิมทุกประการ
@@ -1089,6 +1171,7 @@ export class MallScene {
       fg.isoLabel.visible = false; // ไม่แสดงป้ายชื่อชั้นลอยข้างโมเดล (ชื่อชั้นอยู่ที่ "กำลังดู" และปุ่มชั้น)
     }
     if (this.towerDeco) this.towerDeco.visible = !iso;
+    this.#applyMobilityVis();
     this.#applyLabels();
     if (this.lift) { if (!iso) this.lift.rig.group.visible = true; this.#stepLift(); } // ชั้นเดียว: แสดงรถลิฟต์เมื่อมาถึงชั้นนั้น
     if (this.roomSel && (iso ? this.roomSel.floorId !== iso : !this.floorGroups.get(this.roomSel.floorId)?.group.visible)) { this.selectRoom(null); this.onRoom(null); }
@@ -1188,6 +1271,7 @@ export class MallScene {
   }
 
   preset(name, { instant = false } = {}) {
+    this.simFollow = null;
     this.autoFit = name === 'fit' || name === 'all'; // มุมมาตรฐานปรับตามขนาดจอ; มุมอื่นหรือผู้ใช้หมุนเองไม่ปรับ
     const floors = this.config.building.floors;
     const sel = floors.find((f) => f.id === this.floorId) ?? floors[0];
@@ -1250,7 +1334,18 @@ export class MallScene {
     else this.#tweenTo(pos, target);
   }
 
+  #stepTween(nowMs) {
+    if (!this.tween) return;
+    const tw = this.tween;
+    tw.t = Math.min(1, (nowMs - tw.start) / (tw.dur ?? 800));
+    const k = tw.t < 0.5 ? 2 * tw.t * tw.t : 1 - (-2 * tw.t + 2) ** 2 / 2;
+    this.camera.position.lerpVectors(tw.fromPos, tw.pos, k);
+    this.controls.target.lerpVectors(tw.fromTarget, tw.target, k);
+    if (tw.t >= 1) this.tween = null;
+  }
+
   #tweenTo(pos, target) {
+    this.simFollow = null;
     this.tween = { t: 0, start: performance.now(), fromPos: this.camera.position.clone(), fromTarget: this.controls.target.clone(), pos, target };
   }
 
@@ -1280,14 +1375,9 @@ export class MallScene {
     if (this.autoFit && w > 10 && h > 10 && Math.abs(prevAspect - this.camera.aspect) > 1e-3) this.preset(this.isolatedId ? 'fit' : 'all', { instant: !this.tween }); // ขนาดพื้นที่เปลี่ยน → จัดกล้องใหม่จนกว่าผู้ใช้จะหมุน/ซูมเอง
   }
 
-  // ---------------------------------------------------------------- ลูปวาด
-  #frame() {
-    if (this.disposed) return;
-    this.raf = requestAnimationFrame(this.loopFn);
-    const dt = Math.min(this.clock.getDelta(), 0.1);
-    if (this.paused || this.compiling || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
+  /** เลื่อน/จางชั้นตามเวลา (ใช้ร่วมกันระหว่างลูปวาดและการวาดทีละเฟรมตอนบันทึกคลิป) */
+  #advanceFloors(nowMs) {
     let moving = false;
-    const nowMs = performance.now();
     for (const fg of this.floorGroups.values()) {
       if (!fg.anim) continue;
       const k = Math.min(1, (nowMs - fg.anim.start) / fg.anim.dur);
@@ -1304,23 +1394,30 @@ export class MallScene {
       for (const [m, o] of fd.mats) m.opacity = o.opacity * a;
       if (k >= 1) this.#endFade(fg);
     }
+    return moving;
+  }
+
+  // ---------------------------------------------------------------- ลูปวาด
+  #frame() {
+    if (this.disposed) return;
+    this.raf = requestAnimationFrame(this.loopFn);
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    if (this.paused || this.compiling || document.hidden || !this.container.isConnected || this.container.offsetParent === null) return;
+    const nowMs = performance.now();
+    const moving = this.#advanceFloors(nowMs);
+    if (this.pendingSimFocus && !moving && !this.tween) this.#runSimFocus();
     if (moving) this.#placeMarkers();
     this.#stepLift();
     if (this.styleAnim) this.#styleFrame(nowMs);
+    if (this.simLayers?.active) this.simLayers.update(dt); // คน/รถจำลอง: ทำงานเฉพาะเมื่อเปิดเลเยอร์ (ปิด = ไม่ประมวลผล)
     // ป้ายในฉาก: ซ่อนเมื่อกล้องไกลมาก (ระดับซูม = ระยะมาตรฐาน 22 / ระยะจริง) ไม่ให้ป้ายบังโมเดล
     this.sceneLayers.updateZoom(22 / Math.max(1, this.camera.position.distanceTo(this.controls.target)));
     if (this.towerCenter && !this.isolatedId) {
       const near = this.camera.position.distanceTo(this.towerCenter) < 10.5;
       if (near !== this.towerNear) { this.towerNear = near; this.#applyLabels(); }
     }
-    if (this.tween) {
-      const tw = this.tween;
-      tw.t = Math.min(1, (nowMs - tw.start) / 800);
-      const k = tw.t < 0.5 ? 2 * tw.t * tw.t : 1 - (-2 * tw.t + 2) ** 2 / 2;
-      this.camera.position.lerpVectors(tw.fromPos, tw.pos, k);
-      this.controls.target.lerpVectors(tw.fromTarget, tw.target, k);
-      if (tw.t >= 1) this.tween = null;
-    }
+    this.#stepTween(nowMs);
+    this.#stepSimFollow(nowMs);
     // ปั๊มหมุนเฉพาะเมื่อได้รับสถานะ run ที่สดใหม่ (ไม่ใช่การยืนยันสภาพเครื่อง)
     if (this.pump && this.dynamic.pumpRunning === true) this.pump.fan.rotation.x += dt * 9;
     // น้ำในถังค่อย ๆ ขึ้น/ลงสู่ค่าล่าสุด (ไม่กระโดด)
@@ -1387,6 +1484,7 @@ export class MallScene {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.simLayers?.dispose();
     this.resizeObs.disconnect();
     this.visObs?.disconnect();
     this.controls.dispose();

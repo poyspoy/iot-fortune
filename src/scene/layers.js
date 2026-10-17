@@ -13,7 +13,7 @@ export const LAYER_DEFS = Object.freeze([
   { id: 'elevator', name: 'ลิฟต์ (ปล่อง รถ ประตู ตำแหน่งชั้น)', channel: 7, renderOrder: 4, floorScope: 'all', minZoom: null, dataSource: 'elevator-sim → future-api:/elevators' },
   { id: 'alerts', name: 'สีเตือนและไฮไลต์', channel: 8, renderOrder: 7, floorScope: 'all', minZoom: null, dataSource: 'alarm-engine → future-api:/alarms' },
   { id: 'heatmap', name: 'สีอุณหภูมิ (Heatmap)', channel: 9, renderOrder: 5, floorScope: 'floor', minZoom: null, dataSource: 'future-api:/heatmap', future: true },
-  { id: 'people', name: 'การนับคน/คนจำลอง', channel: 10, renderOrder: 5, floorScope: 'floor', minZoom: null, dataSource: 'future-api:/people', future: true },
+  { id: 'people', name: 'คนและยานพาหนะ (จำลอง)', channel: 10, renderOrder: 5, floorScope: 'all', minZoom: null, dataSource: 'mobility/floor-G.json + mobility-sim → future-api:/people-counting' },
   { id: 'labels', name: 'ป้ายชื่อในฉาก', channel: 11, renderOrder: 10, floorScope: 'all', minZoom: 0.8, dataSource: 'config + elevator-sim' },
 ]);
 
