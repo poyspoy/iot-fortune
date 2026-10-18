@@ -183,6 +183,11 @@ with sync_playwright() as p:
     check('กดชั้นเดิมไม่เดินทางใหม่', all(x['phase'] == 'open' for x in log) and max(x['carY'] for x in log) - min(x['carY'] for x in log) < 1e-9)
     # ระหว่างเดินทาง กดชั้นอื่นไม่ได้ (ปุ่ม disabled)
     # ทดสอบด้วยเวลาจริง (ไม่ใช้นาฬิกาทดสอบ) — ลิฟต์ต้องถึงปลายทางเองตามปกติ
+    # นาฬิกาที่ควบคุมเดินล้ำหน้าเวลาจริงไปตามจำนวนก้าวที่จำลอง — ถ้าปล่อยกลับเวลาจริงทันที ตัวจำลองจะรอจนเวลาจริงตามทัน
+    # (ล้ำหน้าเท่าไรขึ้นกับความเร็วเครื่องทดสอบ ทำให้ผลไม่แน่นอน) จึงรอให้เวลาจริงถึงเวลาของตัวจำลองก่อนปล่อย
+    lead = page.evaluate("() => { const a = window.__iotFortune.app, sc = a.scene; const sim = a.elevator ? a.elevator.sim : sc.lift.sim; return sim.t - performance.now(); }")
+    print(f'NOTE นาฬิกาตัวจำลองล้ำหน้าเวลาจริง {lead / 1000:.1f} วิ — รอให้ตามทันก่อนทดสอบด้วยเวลาจริง', flush=True)
+    page.wait_for_function("() => { const a = window.__iotFortune.app, sc = a.scene; const sim = a.elevator ? a.elevator.sim : sc.lift.sim; return performance.now() >= sim.t; }", timeout=600000, polling=500)
     page.evaluate('window.__iotFortune.app.scene.setManualClock(null)')
     real_to = floors[1] if mid != floors[1] else floors[0]
     page.click(f'.lift-btn[data-floor="{real_to}"]')
