@@ -1,5 +1,7 @@
 # วิธีวัด Performance บนมือถือจริง — build `feature/adaptive-quality`
 
+> **สถานะ: Deferred by owner (18 ต.ค. 2569)** — ยังไม่ได้ทดสอบ ไม่ถือว่าผ่านหรือไม่ผ่าน และต้องทดสอบก่อน Production Release · เก็บคู่มือและ Bookmarklet ไว้สำหรับกลับมาทดสอบภายหลัง
+
 ผลในไฟล์ `IoT-Fortune-Performance-GPU.xlsx` แผ่น *Mobile Viewport Simulation* เป็นการจำลองขนาดจอบน GPU ของ Desktop **ไม่ใช่มือถือจริง** เอกสารนี้คือวิธีวัดบนอุปกรณ์จริงเพื่อตัดสินเกณฑ์ Mobile ≥ 30 FPS
 
 ## 1. ที่ทดสอบ (Preview แยก ไม่แตะ Demo/`main`/`gh-pages`)

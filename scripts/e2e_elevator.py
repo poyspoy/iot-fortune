@@ -23,6 +23,12 @@ def check(name, cond, detail=''):
     print(('PASS ' if cond else 'FAIL ') + name + (f' — {detail}' if detail else ''), flush=True)
 
 
+def na(name, reason):
+    """Obsolete/N/A — ผลคาดหวังตามข้อกำหนดเก่า หรือไม่เกี่ยวกับมุมทั้งอาคาร — ไม่นับ Pass/Fail"""
+    results.append((name, None, reason))
+    print(f'OBSOLETE/N/A {name} — {reason}', flush=True)
+
+
 SNAP = """() => {
   const sc = window.__iotFortune.app.scene;
   const p = sc.elevatorProbe();
@@ -79,8 +85,11 @@ def trip(page, floor, label):
     opening = [x for x in log if x['phase'] == 'opening' or (x['phase'] == 'open' and x['target'] == floor and x is not start)]
     first_open = next((x for x in log if x['phase'] == 'opening'), None)
     mf = log[-1].get('modelFloor', {}).get(floor)
-    check(f'{label}: พื้นห้องลิฟต์ตรงพื้นโมเดลห้องจาก Blender ของชั้น {floor}', mf is not None and abs(log[-1]['carY'] - mf) < 1e-6 and (first_open is None or abs(first_open['carY'] - mf) < 1e-6),
-          f"carY={round(log[-1]['carY'], 5)} พื้นโมเดล={mf if mf is None else round(mf, 5)}")
+    if mf is None:  # Lazy Loading (v1.8.1): มุมทั้งอาคารไม่มีโมเดลรายละเอียด — ตรวจแทนใน e2e_site (เลือกชั้นก่อน)
+        na(f'{label}: พื้นห้องลิฟต์ตรงพื้นโมเดลห้องจาก Blender ของชั้น {floor}', 'N/A — มุมทั้งอาคารใช้โมเดลแบบเบา ไม่มีโมเดลรายละเอียดของชั้นนี้ในหน่วยความจำ (ตรวจใน e2e_site)')
+    else:
+        check(f'{label}: พื้นห้องลิฟต์ตรงพื้นโมเดลห้องจาก Blender ของชั้น {floor}', abs(log[-1]['carY'] - mf) < 1e-6 and (first_open is None or abs(first_open['carY'] - mf) < 1e-6),
+              f"carY={round(log[-1]['carY'], 5)} พื้นโมเดล={round(mf, 5)}")
     check(f'{label}: เริ่มเปิดประตูหลังหยุดตรงชั้น {floor}', first_open is not None and abs(first_open['carY'] - tgt_y) < 1e-6,
           f"carY={first_open and round(first_open['carY'], 5)} พื้นชั้น={round(tgt_y, 5)}")
     moving = [x for x in log if x['phase'] == 'moving']
@@ -96,11 +105,14 @@ def trip(page, floor, label):
     vmax = max(vs) if vs else 0
     check(f'{label}: เคลื่อนที่ต่อเนื่อง ไม่กระโดด', vs and max_step < 0.03, f'ความเร็วสูงสุด {vmax:.2f} หน่วย/วินาที · ขยับสูงสุด {max_step:.4f} ชั้น ต่อ 16 ms · {len(moving)} ก้าว')
     if len(vs) >= 6:  # มีหลายก้าวเสมอเมื่อเดินเวลาทีละ 16 ms
-        n = max(1, len(vs) // 8)
-        check(f'{label}: ค่อย ๆ ออกตัวและชะลอก่อนหยุด', max(vs[:n]) < vmax * 0.6 and max(vs[-n:]) < vmax * 0.6,
+        # เกณฑ์เดิม "1/8 แรกของเที่ยว" ใช้กับค่าลิฟต์รุ่นก่อน — เที่ยวยาวกับค่าปัจจุบัน (เร่ง 0.75 ชั้น/วิ² ถึงความเร็วสูงสุดใน ~1.1 วิ)
+        # 1/8 ของเที่ยวยาวกว่าช่วงเร่ง จึงวัดช่วงเวลาคงที่ 0.3 วิ แรก/สุดท้ายของการเคลื่อนที่แทน (ไม่มีการกระโดดจาก 0 ไปความเร็วสูงสุด)
+        n = max(1, round(0.3 / 0.016))
+        check(f'{label}: ค่อย ๆ ออกตัวและชะลอก่อนหยุด (0.3 วิ แรก/สุดท้าย < 60% ความเร็วสูงสุด)', max(vs[:n]) < vmax * 0.6 and max(vs[-n:]) < vmax * 0.6,
               f'ต้น {max(vs[:n]):.2f} · กลาง {vmax:.2f} · ท้าย {max(vs[-n:]):.2f}')
     busy = [x for x in log if x['phase'] in ('closing', 'moving', 'opening')]
-    check(f'{label}: ปิดปุ่มเลือกชั้นระหว่างเดินทาง เปิดอีกครั้งเมื่อถึง', busy and all(all(x['disabled']) for x in busy) and not any(log[-1]['disabled']))
+    na(f'{label}: ปิดปุ่มเลือกชั้นระหว่างเดินทาง', 'Obsolete — ข้อกำหนดปัจจุบัน: ปุ่มกดได้ตลอด คำสั่งผู้ใช้มีสิทธิ์ก่อน')
+    check(f'{label}: ปุ่มเลือกชั้นกดได้ตลอดการเดินทาง (ข้อกำหนดปัจจุบัน)', busy and not any(any(x['disabled']) for x in busy) and not any(log[-1]['disabled']))
     arrows = {x['headline'] for x in moving}
     up = lv[floor] > from_y
     check(f'{label}: แสดงปลายทางและลูกศร{"ขึ้น" if up else "ลง"}', any(h.startswith('▲' if up else '▼') and h.endswith(f'ชั้น {floor}') for h in arrows), ' | '.join(sorted(arrows))[:120])
@@ -112,7 +124,8 @@ def trip(page, floor, label):
         if j != i + 1: worst = max(worst, runs); runs = 0
     check(f'{label}: สถานะบนแผงตรงกับห้องลิฟต์ในภาพ', worst <= 1, f'เฟรมไม่ตรงติดกันสูงสุด {worst}')
     last = log[-1]
-    check(f'{label}: แสดง "ถึงชั้น {floor}" และ "ประตูเปิด"', last['headline'] == f'ถึงชั้น {floor}' and last['doorText'] == 'ประตูเปิด', f"{last['headline']} · {last['doorText']}")
+    # ข้อความบนแผงปัจจุบันหลังจอด: "จอดชั้น X" (ข้อความเก่า "ถึงชั้น X")
+    check(f'{label}: แสดง "จอดชั้น {floor}" และ "ประตูเปิด"', last['headline'] == f'จอดชั้น {floor}' and last['doorText'] == 'ประตูเปิด', f"{last['headline']} · {last['doorText']}")
     return log
 
 
@@ -159,11 +172,12 @@ with sync_playwright() as p:
     real_to = floors[1] if mid != floors[1] else floors[0]
     page.click(f'.lift-btn[data-floor="{real_to}"]')
     page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe().phase === 'moving'", timeout=60000)
-    dis = page.evaluate("[...document.querySelectorAll('.lift-btn')].every(b => b.disabled)")
+    dis = page.evaluate("[...document.querySelectorAll('.lift-btn')].some(b => b.disabled)")
     tgt_before = page.evaluate("window.__iotFortune.app.scene.elevatorProbe().target")
     page.locator(f'.lift-btn[data-floor="{top}"]').click(force=True)
     tgt_after = page.evaluate("window.__iotFortune.app.scene.elevatorProbe().target")
-    check('ระหว่างเดินทางปุ่มถูกปิด และการกดซ้ำไม่เปลี่ยนปลายทาง', dis and tgt_before == tgt_after, f'ปลายทาง {tgt_after}')
+    na('ระหว่างเดินทางปุ่มถูกปิด', 'Obsolete — ข้อกำหนดปัจจุบัน: ปุ่มกดได้ตลอด')
+    check('ระหว่างเดินทางปุ่มกดได้ และการกดชั้นอื่นไม่ตัดเที่ยวที่กำลังวิ่ง (ข้อกำหนดปัจจุบัน)', not dis and tgt_before == tgt_after == real_to, f'ปลายทาง {tgt_before}→{tgt_after}')
     page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe().phase === 'open'", timeout=120000)
     pr = page.evaluate('window.__iotFortune.app.scene.elevatorProbe()')
     check('เวลาจริง: ถึงชั้นปลายทางเอง พื้นห้องลิฟต์ตรงพื้นชั้น ประตูเปิด', pr['target'] == real_to and abs(pr['carY'] - pr['levels'][real_to]) < 1e-6 and pr['door'] == 1)
@@ -192,7 +206,8 @@ with sync_playwright() as p:
     page.screenshot(path=os.path.join(OUT, '05-back.png'), timeout=180000)
     ctx.close(); browser.close()
 
-ok = sum(1 for r in results if r[1])
-print(f'\n{ok}/{len(results)} ผ่าน')
+scored = [r for r in results if r[1] is not None]
+ok = sum(1 for r in scored if r[1])
+print(f'\n{ok}/{len(scored)} ผ่าน · Obsolete/N/A {len(results) - len(scored)}')
 json.dump([{'check': n, 'pass': c, 'detail': d} for n, c, d in results], open(os.path.join(OUT, 'results.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-sys.exit(0 if ok == len(results) else 1)
+sys.exit(0 if ok == len(scored) else 1)

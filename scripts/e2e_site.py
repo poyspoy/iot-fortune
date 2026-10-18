@@ -178,8 +178,15 @@ with sync_playwright() as p:
     # เต็มจอ
     page.click('[data-testid=vp-full]')
     page.wait_for_timeout(1500)
-    full = page.evaluate("() => { const r = document.querySelector('.viewport').getBoundingClientRect(); return [r.width, r.height, innerWidth, innerHeight]; }")
-    check('ปุ่มเต็มจอขยายโมเดลเต็มหน้าจอ', abs(full[0] - full[2]) < 2 and abs(full[1] - full[3]) < 2, str(full))
+    # ข้อกำหนด v1.7 (85752e4): เต็มจอ = กล่องโมเดล + แผงข้าง (ลิฟต์/ห้อง) เต็มหน้าต่าง — ไม่ใช่กล่องโมเดลอย่างเดียว
+    full = page.evaluate("""() => { const sb = document.querySelector('.sb-full'); const vp = document.querySelector('.viewport');
+      if (!sb) return null; const r = sb.getBoundingClientRect(), v = vp.getBoundingClientRect();
+      return { box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], win: [innerWidth, innerHeight],
+               viewportInside: sb.contains(vp), viewportW: Math.round(v.width), viewportH: Math.round(v.height),
+               side: !!sb.querySelector('[data-testid=lift-panel]') }; }""")
+    okfull = bool(full and abs(full['box'][0]) < 2 and abs(full['box'][1]) < 2 and abs(full['box'][2] - full['win'][0]) < 2 and abs(full['box'][3] - full['win'][1]) < 2
+                  and full['viewportInside'] and full['viewportH'] >= full['win'][1] * 0.6)
+    check('ปุ่มเต็มจอ: กล่องโมเดลพร้อมแผงข้างขยายเต็มหน้าต่าง (ข้อกำหนด v1.7)', okfull, json.dumps(full, ensure_ascii=False))
     shot(page, '05-desktop-fullscreen.png')
     page.click('[data-testid=vp-full]')
     check('คอมพิวเตอร์: ไม่มี console error / ไฟล์โหลดไม่ได้', not errs, '; '.join(errs[:3]))
@@ -203,8 +210,24 @@ with sync_playwright() as p:
         mp.click('[data-focus-key=fc-2]')
         settle(mp)
         mp.wait_for_function("window.__iotFortune.app.scene.detailState('2') === 'ready'", timeout=120000)
-        rid, title = click_room(mp, '2', "rs => [...rs].filter(x => x.category === 'shop').sort((a, b) => b.area_m2 - a.area_m2)[1]")
-        check(f'{label}: แตะห้องแล้วแสดงข้อมูล', title is not None, f'{rid} → {title}')
+        # รอกล้องปรับมุมจบก่อนคำนวณตำแหน่งห้องบนจอ แล้วแตะกลางห้องร้านค้าที่ใหญ่ที่สุดด้วยการแตะ (touch)
+        # ห้องเล็กหรือหมุดที่ซ้อนบนจุดแตะอาจถูกเลือกแทน — ถือว่าถูกต้องถ้าเป็นห้องของชั้น 2 และการ์ดตรงกับห้องที่เลือก
+        settle(mp); mp.wait_for_timeout(1500); settle(mp)
+        sp = mp.evaluate("""() => { const sc = window.__iotFortune.app.scene; const rs = [...(sc.roomsOf('2') ?? [])].filter(x => x.category === 'shop').sort((a, b) => b.area_m2 - a.area_m2);
+          const r = rs[0]; return r ? { id: r.id, ...sc.roomScreenPos('2', r.id) } : null; }""")
+        tapped = None
+        if sp:
+            box = mp.locator('.scene-canvas').bounding_box()
+            mp.touchscreen.tap(box['x'] + sp['x'], box['y'] + sp['y'])
+            try:
+                mp.wait_for_selector('[data-testid=room-card] code', timeout=60000)
+            except Exception:
+                pass
+            tapped = mp.evaluate("""() => { const sc = window.__iotFortune.app.scene; const code = document.querySelector('[data-testid=room-card] code')?.textContent ?? null;
+              return { code, inFloor: !!(sc.roomsOf('2') ?? []).find(r => r.id === code), title: document.querySelector('[data-testid=room-title]')?.textContent ?? null,
+                       chip: document.querySelector('[data-testid=room-card] .rc-chip')?.textContent ?? null }; }""")
+        okt = bool(tapped and tapped['code'] and tapped['inFloor'] and tapped['title'] and tapped['chip'] and 'ชั้น 2' in tapped['chip'])
+        check(f'{label}: แตะห้องแล้วแสดงข้อมูลห้องของชั้นนั้น', okt, f"แตะที่ {sp and sp['id']} → {json.dumps(tapped, ensure_ascii=False)}")
         mp.wait_for_timeout(2500)
         shot(mp, f'07-{vp["width"]}-floor-2-room.png')
         check(f'{label}: ไม่มี console error', not merrs, '; '.join(merrs[:3]))

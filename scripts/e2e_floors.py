@@ -30,10 +30,16 @@ def check(name, cond, detail=''):
     print(('PASS ' if cond else 'FAIL ') + name + (f' — {detail}' if detail else ''), flush=True)
 
 
+def obsolete(name, reason):
+    """Obsolete/N/A — ผลคาดหวังตามข้อกำหนดเก่า ไม่นับ Pass/Fail"""
+    results.append((name, None, reason))
+    print(f'OBSOLETE/N/A {name} — {reason}', flush=True)
+
+
 # อ่านสถานะทุกส่วนของหน้าจอในครั้งเดียว (atomic)
 SNAP = r"""() => {
   const a = window.__iotFortune.app, st = a.state, sc = a.scene;
-  const idOf = (label) => (label || '').match(/\((P-[^)]+)\)/)?.[1] ?? null;
+  const idOf = (label) => (label || '').match(/\(([A-Z]+-[^)]+)\)/)?.[1] ?? null;  // รองรับ P-… และ WL-…
   const q = (s) => document.querySelector(s);
   const out = {
     floorId: st.floorId, isolated: st.isolated, viewMode: st.viewMode, viewing: a.viewingFloorId(), selectedId: st.selectedId,
@@ -257,7 +263,21 @@ with sync_playwright() as p:
     probs = verify(s, '12', 'ชั้น 12 (สำนักงาน)', cfg, '3d')
     check('สลับชั้นต่อเนื่องเร็ว ๆ ระหว่างข้อมูลอัปเดต → สถานะสุดท้ายตรงกันทั้งหมด', not probs, '; '.join(probs))
 
-    # รีเฟรชหน้า
+    # รีเฟรชหน้า — ข้อกำหนด Performance (v1.8.1 Lazy Loading): เปิดที่มุมทั้งอาคารเสมอ ไม่คืนชั้นเดี่ยวที่ดูค้างไว้
+    obsolete('รีเฟรชหน้า → กลับมาที่ชั้น 12 พร้อม P-007', 'ข้อกำหนดเก่า — ปัจจุบันรีเฟรชแล้วเปิดมุมทั้งอาคารเสมอ (ตรวจแทนด้วยข้อถัดไป)')
+    obsolete('รีเฟรชด้วยค่าที่บันทึกไม่สอดคล้อง (ชั้น 31 + P-007) → แสดงชั้น 31 และล้างการเลือก', 'ข้อกำหนดเก่า — ปัจจุบันไม่คืนชั้นที่บันทึกไว้ (ตรวจแทนด้วยข้อถัดไป)')
+    all_pts = sorted(p['id'] for p in cfg)
+
+    def building_probs(s):
+        pr = []
+        if s['viewing'] is not None: pr.append(f"viewing={s['viewing']}")
+        if s['sceneIso'] is not None: pr.append(f"scene={s['sceneIso']}")
+        if s['dropdown'] not in ('', None): pr.append(f"dropdown={s['dropdown']}")
+        if 'ทั้งอาคาร' not in s['banner']: pr.append('banner')
+        if s['markers3d'] != all_pts: pr.append(f"markers {s['markers3d']}≠{all_pts}")
+        if s['rows'] != all_pts: pr.append(f"rows {s['rows']}≠{all_pts}")
+        if s['selectedId'] and s['selectedId'] not in all_pts: pr.append(f"selected {s['selectedId']} ไม่มีอยู่")
+        return pr
     n = num('P-007')
     page.locator(f'.marker-layer .marker[aria-label^="{n}. "]').click()
     page.wait_for_timeout(400)
@@ -265,16 +285,16 @@ with sync_playwright() as p:
     page.wait_for_selector('.floor-banner')
     page.wait_for_timeout(2000)
     s = page.evaluate(SNAP)
-    probs = verify(s, '12', 'ชั้น 12 (สำนักงาน)', cfg, '3d')
-    check('รีเฟรชหน้า → กลับมาที่ชั้น 12 พร้อม P-007 และทุกส่วนตรงกัน', not probs and s['selectedId'] == 'P-007', '; '.join(probs))
-    # ค่าที่บันทึกไว้ไม่สอดคล้อง (เช่นจากรุ่นก่อน): ชั้น 31 + P-007
+    probs = building_probs(s)
+    check('รีเฟรชหน้า → เปิดมุมทั้งอาคาร หมุด/รายการครบทุกจุด ไม่ค้างชั้นเดิม (ข้อกำหนดปัจจุบัน)', not probs, '; '.join(probs))
+    # ค่าที่บันทึกไว้ไม่สอดคล้อง (เช่นจากรุ่นก่อน): ชั้น 31 + P-007 → ต้องไม่ค้าง/ไม่ error และเปิดมุมทั้งอาคาร
     page.evaluate('''async () => { const c = window.__iotFortune.ctl; await c.repo.putKV("ui", { ...c.ui, floorId: "31", isolated: true, viewMode: "3d", selectedId: "P-007", view: "overview" }); }''')
     page.reload()
     page.wait_for_selector('.floor-banner')
     page.wait_for_timeout(2000)
     s = page.evaluate(SNAP)
-    probs = verify(s, '31', 'ชั้น 31 (สำนักงาน)', cfg, '3d')
-    check('รีเฟรชด้วยค่าที่บันทึกไม่สอดคล้อง (ชั้น 31 + P-007) → ล้างการเลือกอัตโนมัติ', not probs and s['selectedId'] is None, '; '.join(probs))
+    probs = building_probs(s)
+    check('รีเฟรชด้วยค่าที่บันทึกไม่สอดคล้อง (ชั้น 31 + P-007) → เปิดมุมทั้งอาคารได้ปกติ ไม่ค้างค่าเก่า (ข้อกำหนดปัจจุบัน)', not probs, '; '.join(probs))
     page.screenshot(path=f'{OUT}/d-reload-inconsistent-fixed.png')
 
     cfg_after = page.evaluate('() => JSON.stringify(window.__iotFortune.ctl.config.points)')
@@ -286,11 +306,12 @@ with sync_playwright() as p:
 lines = ['| มุมมอง | ชั้น | ผัง | จุดที่ควรมี | หมุดที่แสดง | รายการ | คลิกตรวจ | ผล |', '|---|---|---|---|---|---|---|---|']
 for r in report:
     lines.append(f"| {r['mode'].upper()} | {r['name']} | {'ผังอ้างอิงร่วม' if r['shared'] else 'ผังชั้นนี้'} | {', '.join(r['expected']) or '—'} | "
-                 f"{', '.join(r['markers'] or []) or '—'} | {', '.join(r['rows']) or '—'} | {', '.join(r['clicked']) or '—'} | {'ผ่าน' if not r['problems'] else 'ไม่ผ่าน: ' + '; '.join(r['problems'][:2])} |")
-summary = [f"| {'ผ่าน' if ok else 'ไม่ผ่าน'} | {name} | {detail} |" for name, ok, detail in results]
+                 f"{', '.join(str(x) for x in (r['markers'] or [])) or '—'} | {', '.join(r['rows']) or '—'} | {', '.join(r['clicked']) or '—'} | {'ผ่าน' if not r['problems'] else 'ไม่ผ่าน: ' + '; '.join(r['problems'][:2])} |")
+summary = [f"| {'Obsolete/N/A' if ok is None else ('ผ่าน' if ok else 'ไม่ผ่าน')} | {name} | {detail} |" for name, ok, detail in results]
 md = '# ผลตรวจรายชั้น\n\n' + '\n'.join(lines) + '\n\n## เส้นทางอื่น\n\n| ผล | รายการ | หมายเหตุ |\n|---|---|---|\n' + '\n'.join(summary) + '\n'
 open(f'{OUT}/floor-check.md', 'w', encoding='utf-8').write(md)
 json.dump({'floors': report, 'checks': results}, open(f'{OUT}/floor-check.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-passed = sum(1 for r in results if r[1])
-print(f'\nสรุป: ผ่าน {passed}/{len(results)}  · ชั้นผ่าน {sum(1 for r in report if not r["problems"])}/{len(report)}')
-sys.exit(0 if passed == len(results) else 1)
+scored = [r for r in results if r[1] is not None]
+passed = sum(1 for r in scored if r[1])
+print(f'\nสรุป: ผ่าน {passed}/{len(scored)} · Obsolete/N/A {len(results) - len(scored)}  · ชั้นผ่าน {sum(1 for r in report if not r["problems"])}/{len(report)}')
+sys.exit(0 if passed == len(scored) else 1)
