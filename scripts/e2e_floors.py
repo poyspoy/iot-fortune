@@ -233,6 +233,7 @@ with sync_playwright() as p:
     page.wait_for_selector('.episode .open-floor')
     page.locator('.episode', has_text='P-008').first.locator('.open-floor').click()
     page.wait_for_timeout(1800)
+    settle(page)  # รอกล้องเลื่อนเข้าหาจุดจบก่อนวัด (เครื่องทดสอบวาดเฟรมช้า — 1.8 วิ อาจยังไม่ถึง)
     s = page.evaluate(SNAP)
     zoom = page.evaluate('''() => { const sc = window.__iotFortune.app.scene, o = sc.markerObjs.get("P-008"); const w = sc.root.localToWorld(o.sphere.position.clone());
       return { d: +sc.camera.position.distanceTo(w).toFixed(2), t: +sc.controls.target.distanceTo(w).toFixed(3) } }''')
