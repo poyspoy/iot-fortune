@@ -197,11 +197,16 @@ with sync_playwright() as p:
     pr = page.evaluate('window.__iotFortune.app.scene.elevatorProbe()')
     check('เวลาจริง: ถึงชั้นปลายทางเอง พื้นห้องลิฟต์ตรงพื้นชั้น ประตูเปิด', pr['target'] == real_to and abs(pr['carY'] - pr['levels'][real_to]) < 1e-6 and pr['door'] == 1)
     # โหมดแยกชั้น: ระดับพื้นเปลี่ยน ลิฟต์ยังจอดตรงชั้น
-    page.select_option('select[data-focus-key=scenemode]', 'exploded')
+    # โหมด "แยกชั้น" (exploded) ถูกถอดจากเมนูการแสดงผลแล้ว (ตัวเลือกปัจจุบัน: ภายนอก / ตัดชั้นบน) → Obsolete
+    # ตรวจแทนด้วยโหมด "ตัดชั้นบน" (cutaway) ซึ่งเป็นตัวเลือกปัจจุบันที่เปลี่ยนการแสดงชั้น
+    na('โหมดแยกชั้น (exploded): ห้องลิฟต์ยังตรงพื้นชั้นที่จอด', 'Obsolete — เมนูการแสดงผลปัจจุบันไม่มีโหมดแยกชั้น (มีเฉพาะ ภายนอก / ตัดชั้นบน)')
+    page.evaluate("() => { const a = window.__iotFortune.app, sc = a.scene; if (sc.manualNow == null) sc.setManualClock((a.elevator ? a.elevator.sim : sc.lift.sim).t); sc.setLiftAuto(false); }")
+    prep(page, real_to)
+    page.select_option('select[data-focus-key=scenemode]', 'cutaway')
     page.wait_for_function(SETTLED, timeout=60000)
     pr = page.evaluate('window.__iotFortune.app.scene.elevatorProbe()')
-    check('โหมดแยกชั้น: ห้องลิฟต์ยังตรงพื้นชั้นที่จอด', abs(pr['carY'] - pr['levels'][pr['target']]) < 1e-6)
-    trip(page, top, f'แยกชั้น {pr["target"]}→{top}')
+    check('โหมดตัดชั้นบน: ห้องลิฟต์ยังตรงพื้นชั้นที่จอด', abs(pr['carY'] - pr['levels'][pr['target']]) < 1e-6, f"carY={pr['carY']:.4f} พื้นชั้น={pr['levels'][pr['target']]:.4f}")
+    trip(page, top, f'ตัดชั้นบน {pr["target"]}→{top}')
     page.select_option('select[data-focus-key=scenemode]', 'exterior')
     page.wait_for_function(SETTLED, timeout=60000)
     trip(page, floors[0], f'กลับชั้นล่าง {top}→{floors[0]}')
