@@ -213,12 +213,18 @@ with sync_playwright() as p:
         # รอกล้องปรับมุมจบก่อนคำนวณตำแหน่งห้องบนจอ แล้วแตะกลางห้องร้านค้าที่ใหญ่ที่สุดด้วยการแตะ (touch)
         # ห้องเล็กหรือหมุดที่ซ้อนบนจุดแตะอาจถูกเลือกแทน — ถือว่าถูกต้องถ้าเป็นห้องของชั้น 2 และการ์ดตรงกับห้องที่เลือก
         settle(mp); mp.wait_for_timeout(1500); settle(mp)
+        # การกดปุ่มชั้นเลื่อนหน้ากลับขึ้นบน — กล่องโมเดลอยู่ล่างจอ (จุดแตะเกินขอบจอ 844 px) จึงเลื่อนกล่องโมเดลเข้าจอก่อนคำนวณตำแหน่งห้อง
+        mp.evaluate("() => document.querySelector('.scene-canvas').scrollIntoView({ block: 'center' })")
+        mp.wait_for_timeout(500); settle(mp)
         sp = mp.evaluate("""() => { const sc = window.__iotFortune.app.scene; const rs = [...(sc.roomsOf('2') ?? [])].filter(x => x.category === 'shop').sort((a, b) => b.area_m2 - a.area_m2);
           const r = rs[0]; return r ? { id: r.id, ...sc.roomScreenPos('2', r.id) } : null; }""")
         tapped = None
         if sp:
             box = mp.locator('.scene-canvas').bounding_box()
-            mp.touchscreen.tap(box['x'] + sp['x'], box['y'] + sp['y'])
+            tx, ty = box['x'] + sp['x'], box['y'] + sp['y']
+            if not (0 <= tx < vp['width'] and 0 <= ty < vp['height']):
+                print(f'NOTE จุดแตะอยู่นอกจอ ({tx:.0f}, {ty:.0f})', flush=True)
+            mp.touchscreen.tap(tx, ty)
             try:
                 mp.wait_for_selector('[data-testid=room-card] code', timeout=60000)
             except Exception:
