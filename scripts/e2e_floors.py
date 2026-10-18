@@ -19,7 +19,7 @@ results = []
 SETTLED = "() => { const sc = window.__iotFortune?.app?.scene; return !sc || ([...sc.floorGroups.values()].every(g => !g.anim) && !sc.tween); }"
 
 
-def settle(page, timeout=10000):
+def settle(page, timeout=60000):
     """รอให้การเคลื่อนย้ายชั้นและกล้องจบ (เครื่องทดสอบที่ไม่มี GPU วาดเฟรมช้า)"""
     page.wait_for_function(SETTLED, timeout=timeout)
     page.wait_for_timeout(150)
