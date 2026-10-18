@@ -186,14 +186,14 @@ with sync_playwright() as p:
     page.evaluate('window.__iotFortune.app.scene.setManualClock(null)')
     real_to = floors[1] if mid != floors[1] else floors[0]
     page.click(f'.lift-btn[data-floor="{real_to}"]')
-    page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe().phase === 'moving'", timeout=60000)
+    page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe().phase === 'moving'", timeout=60000, polling=100)  # โพลตามเวลา ไม่ผูกกับ rAF (เครื่องทดสอบวาดเฟรมช้า)
     dis = page.evaluate("[...document.querySelectorAll('.lift-btn')].some(b => b.disabled)")
     tgt_before = page.evaluate("window.__iotFortune.app.scene.elevatorProbe().target")
     page.locator(f'.lift-btn[data-floor="{top}"]').click(force=True)
     tgt_after = page.evaluate("window.__iotFortune.app.scene.elevatorProbe().target")
     na('ระหว่างเดินทางปุ่มถูกปิด', 'Obsolete — ข้อกำหนดปัจจุบัน: ปุ่มกดได้ตลอด')
     check('ระหว่างเดินทางปุ่มกดได้ และการกดชั้นอื่นไม่ตัดเที่ยวที่กำลังวิ่ง (ข้อกำหนดปัจจุบัน)', not dis and tgt_before == tgt_after == real_to, f'ปลายทาง {tgt_before}→{tgt_after}')
-    page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe().phase === 'open'", timeout=120000)
+    page.wait_for_function("() => window.__iotFortune.app.scene.elevatorProbe().phase === 'open'", timeout=120000, polling=100)
     pr = page.evaluate('window.__iotFortune.app.scene.elevatorProbe()')
     check('เวลาจริง: ถึงชั้นปลายทางเอง พื้นห้องลิฟต์ตรงพื้นชั้น ประตูเปิด', pr['target'] == real_to and abs(pr['carY'] - pr['levels'][real_to]) < 1e-6 and pr['door'] == 1)
     # โหมดแยกชั้น: ระดับพื้นเปลี่ยน ลิฟต์ยังจอดตรงชั้น
