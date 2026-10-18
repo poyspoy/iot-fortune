@@ -223,12 +223,25 @@ with sync_playwright() as p:
     page.wait_for_function("() => window.__iotFortune.app.state.isolated", timeout=30000, polling=200)
     page.wait_for_function(SETTLED, timeout=60000, polling=200)
     banner = page.locator('[data-testid=viewing]').inner_text()
+    # ข้อกำหนดปัจจุบัน (scene3d: "ชั้นเดียว: แสดงรถลิฟต์เมื่อมาถึงชั้นนั้น" — ทั้ง build ใหม่และ ddc56f0):
+    # มุมมองชั้นเดี่ยวแสดงห้องลิฟต์เฉพาะเมื่อลิฟต์อยู่ที่ชั้นนั้น (ข้อคาดหวังเดิม "ซ่อนลิฟต์เสมอ" = Obsolete)
+    na('แยกดูชั้นแล้วซ่อนลิฟต์เสมอ', 'Obsolete — ปัจจุบันแสดงห้องลิฟต์ในมุมชั้นเดี่ยวเมื่อลิฟต์จอดที่ชั้นนั้น')
+    at_floor = page.evaluate(f"() => {{ const p = window.__iotFortune.app.scene.elevatorProbe(); return p.target === '{floors[0]}' && p.phase === 'open'; }}")
+    try:  # การแสดงห้องลิฟต์อัปเดตในเฟรมถัดไป — รอได้ไม่เกิน 20 วิ (เครื่องทดสอบวาดเฟรมช้า)
+        page.wait_for_function(f"() => window.__iotFortune.app.scene.elevatorProbe().visible === {'true' if at_floor else 'false'}", timeout=20000, polling=200)
+    except Exception:
+        pass
     vis = page.evaluate('window.__iotFortune.app.scene.elevatorProbe().visible')
-    check(f'เลือกชั้น {floors[0]} ที่ลิฟต์จอด → มุมมองชั้นเดี่ยว และซ่อนลิฟต์ (Flow ปัจจุบัน)', banner.startswith('กำลังดู: ') and floors[0] in banner and not vis, f'{banner} · ลิฟต์แสดง={vis}')
+    check(f'เลือกชั้น {floors[0]} → มุมมองชั้นเดี่ยว · ห้องลิฟต์แสดงเพราะจอดที่ชั้นนี้ (Flow ปัจจุบัน)' if at_floor else f'เลือกชั้น {floors[0]} → มุมมองชั้นเดี่ยว · ห้องลิฟต์ซ่อนเพราะไม่ได้จอดที่ชั้นนี้ (Flow ปัจจุบัน)',
+          banner.startswith('กำลังดู: ') and floors[0] in banner and vis == at_floor, f'{banner} · ลิฟต์จอดชั้นนี้={at_floor} · แสดง={vis}')
     page.screenshot(path=os.path.join(OUT, '04-isolated.png'), timeout=180000)
     page.click('.lift-iso button')
     page.wait_for_function("() => !window.__iotFortune.app.state.isolated", timeout=30000, polling=200)
     page.wait_for_function(SETTLED, timeout=60000, polling=200)
+    try:
+        page.wait_for_function('() => window.__iotFortune.app.scene.elevatorProbe().visible', timeout=20000, polling=200)
+    except Exception:
+        pass
     check('กลับมาดูทั้งอาคารแล้วลิฟต์แสดงอีกครั้ง', page.evaluate('window.__iotFortune.app.scene.elevatorProbe().visible'))
     check('ไม่มีข้อผิดพลาดในคอนโซล', not errs, '; '.join(errs)[:200])
     page.screenshot(path=os.path.join(OUT, '05-back.png'), timeout=180000)
