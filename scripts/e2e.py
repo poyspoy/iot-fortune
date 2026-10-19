@@ -70,13 +70,14 @@ with sync_playwright() as p:
     page.screenshot(path=f'{SHOTS}/01-desktop-overview.png')
 
     # 1) เลือกจุดจากหมุด 3D และจากตาราง / สลับชั้นและ 2D/3D แล้วการเลือกยังอยู่
-    page.locator('.marker-layer .marker[aria-label^="1. "]').click()
+    # ลำดับเลขหมุดเรียงตามชั้น (ข้อกำหนดปัจจุบัน: 1 = P-003 ชั้น G) — เลือกหมุดด้วยรหัสจุดแทนเลขลำดับ
+    page.locator('.marker-layer .marker[aria-label*="(WL-001)"]').click()
     page.wait_for_timeout(300)
     check('1a เลือกจากหมุด 3D แล้วแผงรายละเอียดแสดงจุดนั้น', 'WL-001' in page.locator('.details .pid').first.inner_text())
     check('1b แถวในตารางถูกเลือกตาม', page.locator('tr[data-focus-key="row-WL-001"]').get_attribute('aria-selected') == 'true')
     page.locator('tr[data-focus-key="row-P-005"]').click()
     page.wait_for_timeout(300)
-    check('1c เลือกจากตาราง แล้วหมุดเดียวกันถูกเน้น', 'selected' in (page.locator('.marker-layer .marker[aria-label^="5. "]').get_attribute('class') or ''))
+    check('1c เลือกจากตาราง แล้วหมุดเดียวกันถูกเน้น', 'selected' in (page.locator('.marker-layer .marker[aria-label*="(P-005)"]').get_attribute('class') or ''))
     check('1d ชั้นเปลี่ยนตามจุดที่เลือก (ชั้น 3)', page.evaluate('() => window.__iotFortune.app.state.floorId') == '3')
     page.locator('button[data-focus-key="vm-2d"]').click()
     page.wait_for_selector('.plan-svg')
@@ -85,14 +86,14 @@ with sync_playwright() as p:
     page.screenshot(path=f'{SHOTS}/02-desktop-2d-plan.png')
     page.locator('select[data-focus-key="floor"]').select_option('G')
     page.wait_for_timeout(300)
-    page.locator('.plan-marker[aria-label^="1. "]').focus()
+    page.locator('.plan-marker[aria-label*="(WL-001)"]').focus()
     page.keyboard.press('Enter')
     page.wait_for_timeout(300)
     check('1f ผัง 2D: เลือกหมุดด้วยแป้นพิมพ์ (Tab/Enter)', 'WL-001' in page.locator('.details .pid').first.inner_text())
     page.locator('button[data-focus-key="vm-3d"]').click()
     page.wait_for_selector('.marker-layer .marker')
     page.wait_for_timeout(500)
-    check('1g กลับเป็น 3D แล้วยังเลือก WL-001', 'selected' in (page.locator('.marker-layer .marker[aria-label^="1. "]').get_attribute('class') or ''))
+    check('1g กลับเป็น 3D แล้วยังเลือก WL-001', 'selected' in (page.locator('.marker-layer .marker[aria-label*="(WL-001)"]').get_attribute('class') or ''))
     # คลิก vs ลาก
     box = page.locator('canvas.scene-canvas').bounding_box()
     cx, cy = box['x'] + 60, box['y'] + box['height'] - 60
@@ -134,6 +135,8 @@ with sync_playwright() as p:
         settle(page)
         st = page.evaluate(SCENE_STATE)
         banner = page.locator('.floor-banner').inner_text()
+        # ข้อกำหนดปัจจุบัน (มุมมองโมเดลเป็นหลัก): ข้อความ "ยังไม่มีจุดตรวจวัด" อยู่ในแผงรายการ/ป้ายชั้น (ป้ายย่อซ่อนไว้ในมุมมองภาพรวม)
+        empty_note = page.evaluate("() => (document.querySelector('.floor-banner')?.textContent ?? '').includes('ยังไม่มีจุดตรวจวัด') || [...document.querySelectorAll('.empty-floor')].some(e => e.offsetParent)")
         on = [p['id'] for p in pts if p['floor'] == f['id']]
         shown = sorted(k for k, v in st['markers'].items() if v['shown'])
         problems = []
@@ -141,7 +144,7 @@ with sync_playwright() as p:
         if st['groups'] != 1: problems.append(f"groups={st['groups']}")
         if f'กำลังดู: {f["name"]}' not in banner: problems.append('banner')
         if f['shared'] and 'ผังอ้างอิงร่วม' not in banner: problems.append('shared-label')
-        if not on and 'ยังไม่มีจุดตรวจวัด' not in banner: problems.append('empty-note')
+        if not on and not empty_note: problems.append('empty-note')
         if shown != sorted(on): problems.append(f'markers {shown} != {sorted(on)}')
         if not st['fit']: problems.append('camera-fit')
         if st.get('span', 0) < 1.0: problems.append(f"too-far span={st.get('span')}")
