@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/build-asset-manifest.mjs && vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "test": "node scripts/run-tests.mjs",
     "fixture": "node scripts/fixture-server.mjs",
