@@ -540,8 +540,11 @@ export class App {
     }
     this.clockEl = h('span.clock', { title: mode === 'demo' ? 'เวลาจำลองของเดโม' : 'เวลาปัจจุบัน (เวลาไทย)' }, clockText);
     replaceChildren(this.headerEl,
-      h('div.brand', h('span.brand-mark', 'NEXZA'), h('span.brand-sep', { 'aria-hidden': 'true' }, '|'), h('span.brand-sub', 'FORTUNE IoT')),
-      h('div.titles', h('h1', 'IoT ฟอร์จูน'), h('p.subtitle', 'ติดตามระบบอาคารตามจุด')),
+      // โลโก้ NEXZA จากไฟล์ต้นฉบับ (ไม่แก้ไข/ไม่วาดใหม่) — ความสูงตาม CSS กว้างอัตโนมัติ คงสัดส่วนเดิม
+      h('div.brand',
+        h('img', { class: 'brand-logo', src: './brand/nexza-logo.png', alt: 'NEXZA', width: 440, height: 108, decoding: 'async' }),
+        h('h1.brand-title', h('span.sr-only', 'NEXZA '), 'Digital Twin ', h('span.brand-sep', '|'), ' FORTUNE')),
+      h('p.subtitle', 'ติดตามระบบอาคารตามจุด · IoT ฟอร์จูน'),
       h('div.header-status',
         sourceBadge(mode),
         this.clockEl,
