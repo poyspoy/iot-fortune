@@ -6,7 +6,7 @@
 
 สร้างไฟล์ floor-check.md (ตารางผลรายชั้น) และ floor-check.json ในโฟลเดอร์ผลลัพธ์
 """
-import json, os, re, sys, random
+import json, os, re, sys, random, time
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:4173'
@@ -15,6 +15,15 @@ os.makedirs(OUT, exist_ok=True)
 RUN = f'floors{random.randint(1000, 9999)}'
 ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
 results = []
+WAITS = []  # (จุดที่รอ, วินาทีที่รอจริง, สำเร็จหรือไม่) — บันทึกเวลารอทุกครั้งเพื่อเป็นหลักฐาน
+
+def wait_until(page, pred, timeout, label):
+    """รอแบบมีเพดานจนสถานะ UI ตรงเงื่อนไข (ไม่ใช่รันซ้ำทั้งชุด) — หมดเวลา = คืน snapshot สุดท้ายให้ตรวจแล้วล้มตามจริง"""
+    t0 = time.time(); s = page.evaluate(SNAP)
+    while not pred(s) and time.time() - t0 < timeout:
+        page.wait_for_timeout(100); s = page.evaluate(SNAP)
+    ok = pred(s); WAITS.append((label, round(time.time() - t0, 2), ok))
+    return s
 
 SETTLED = "() => { const sc = window.__iotFortune?.app?.scene; return !sc || ([...sc.floorGroups.values()].every(g => !g.anim) && !sc.tween); }"
 
@@ -129,6 +138,9 @@ with sync_playwright() as p:
     logs = []
     page.on('console', lambda m: logs.append(f'{m.type}: {m.text}') if m.type == 'error' else None)
     page.on('pageerror', lambda e: logs.append(f'pageerror: {e}'))
+    net = []
+    page.on('requestfailed', lambda r: net.append(f'failed {r.url} {r.failure}'))
+    page.on('response', lambda r: net.append(f'{r.status} {r.url}') if r.status >= 400 else None)
     page.goto(f'{BASE}/?db={RUN}')
     page.wait_for_selector('.marker-layer .marker')
     page.wait_for_timeout(1200)
@@ -161,6 +173,12 @@ with sync_playwright() as p:
                     page.wait_for_function(f"() => ['ready', 'none', 'error'].includes(window.__iotFortune.app.scene.detailState('{fid}'))", timeout=240000, polling=500)
                 except Exception:
                     pass
+                try:  # รายการห้องสร้างหลังโมเดลพร้อม — รอได้ไม่เกิน 15 วินาที
+                    t0 = time.time()
+                    page.wait_for_function(f"() => {{ const g = window.__iotFortune.app.scene.floorGroups.get('{fid}'); return !g.floor.detail || Array.isArray(g.rooms); }}", timeout=15000, polling=200)
+                    WAITS.append((f'3d {fid} ห้อง', round(time.time() - t0, 2), True))
+                except Exception:
+                    WAITS.append((f'3d {fid} ห้อง', 15.0, False))
                 d = page.evaluate(f"""() => {{ const sc = window.__iotFortune.app.scene; const g = sc.floorGroups.get('{fid}');
                   return {{ state: sc.detailState('{fid}'), hasFile: !!g.floor.detail, model: !!g.detailObj, rooms: Array.isArray(g.rooms) ? g.rooms.length : null }}; }}""")
                 detail_rep.append({'floor': fid, **d})
@@ -175,7 +193,8 @@ with sync_playwright() as p:
                 else:
                     page.locator(f'.plan-host .plan-marker[aria-label^="{n}. "]').click()
                 page.wait_for_timeout(350)
-                s2 = page.evaluate(SNAP)
+                # ค่าในการ์ดรายละเอียดต้องตามค่าล่าสุดของ engine ทัน — ข้อมูลจำลองอัปเดตทุกวินาที จึงรอให้การ์ดอัปเดตได้ไม่เกิน 5 วินาที
+                s2 = wait_until(page, lambda x, pid=pid: x['selectedId'] == pid and value_matches(x), 5, f'{mode} {fid} {pid} ค่าในการ์ด')
                 pr = verify(s2, fid, fname, cfg, mode)
                 if s2['selectedId'] != pid: pr.append(f"clicked {pid} got {s2['selectedId']}")
                 if s2['detailsName'] != s2.get('selName'): pr.append('details-name')
@@ -249,7 +268,9 @@ with sync_playwright() as p:
     page.wait_for_selector('.toast:has-text("ELEC")', timeout=60000)
     page.locator('.toast:has-text("ELEC")').first.get_by_role('button', name='เปิดชั้นที่เกิดเหตุ').click()
     page.wait_for_timeout(1800)
-    s = page.evaluate(SNAP)
+    try: settle(page, 15000)
+    except Exception: pass
+    s = wait_until(page, lambda x: x['selectedId'] == 'P-007' and not verify(x, '12', 'ชั้น 12 (สำนักงาน)', cfg, '3d'), 10, 'toast → ชั้น 12 หมุด P-007')
     probs = verify(s, '12', 'ชั้น 12 (สำนักงาน)', cfg, '3d')
     check('กด "เปิดชั้นที่เกิดเหตุ" จาก toast → ชั้น 12 เลือก P-007', not probs and s['selectedId'] == 'P-007', '; '.join(probs))
     page.locator('select[data-focus-key="scenario"]').select_option('normal')
@@ -301,6 +322,10 @@ with sync_playwright() as p:
     cfg_after = page.evaluate('() => JSON.stringify(window.__iotFortune.ctl.config.points)')
     check('ข้อมูลจุดไม่ถูกย้าย/คัดลอกระหว่างการทดสอบ (การตั้งค่าเหมือนเดิมทุกไบต์)', cfg_before == cfg_after)
     check('ไม่มี console error', not logs, '; '.join(logs[:3]))
+    check('ไม่มี network error (request ล้มเหลว / HTTP ≥ 400)', not net, '; '.join(net[:3]))
+    slow = sorted(WAITS, key=lambda w: -w[1])[:5]
+    print('WAITS max:', slow, '· ทั้งหมด', len(WAITS), 'ครั้ง · ไม่สำเร็จ', sum(1 for w in WAITS if not w[2]), flush=True)
+    json.dump(WAITS, open(f'{OUT}/waits.json', 'w', encoding='utf-8'), ensure_ascii=False)
     browser.close()
 
 # ตารางผลรายชั้น

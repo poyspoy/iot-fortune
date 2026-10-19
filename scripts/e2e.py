@@ -42,11 +42,24 @@ def wait_until(page, js, timeout=20000, arg=None):
     page.wait_for_function(js, arg=arg, timeout=timeout)
 
 
+FAILWIN = {'on': False}  # ช่วงทดสอบ 4d–4e ที่ตั้งใจให้ fixture ตอบ 503 เท่านั้น
+FAILTAG = '[ช่วงจำลอง 503] '
+
+
 def watch(page, sink):
-    page.on('console', lambda m: sink.append(f'{m.type}: {m.text}') if m.type in ('error', 'warning') else None)
-    page.on('pageerror', lambda e: sink.append(f'pageerror: {e}'))
-    page.on('requestfailed', lambda r: sink.append(f'requestfailed: {r.url}'))
-    page.on('response', lambda r: sink.append(f'http {r.status}: {r.url}') if r.status >= 400 else None)
+    tag = lambda: FAILTAG if FAILWIN['on'] else ''
+    page.on('console', lambda m: sink.append(f'{tag()}{m.type}: {m.text}') if m.type in ('error', 'warning') else None)
+    page.on('pageerror', lambda e: sink.append(f'{tag()}pageerror: {e}'))
+    page.on('requestfailed', lambda r: sink.append(f'{tag()}requestfailed: {r.url}'))
+    page.on('response', lambda r: sink.append(f'{tag()}http {r.status}: {r.url}') if r.status >= 400 else None)
+
+
+def expected_503(line):
+    """ยกเว้นได้เฉพาะ: อยู่ในช่วงจำลอง 503 และเป็น HTTP 503 ของ {FIXTURE}/telemetry หรือข้อความ console ของ 503 นั้น"""
+    if not line.startswith(FAILTAG): return False
+    body = line[len(FAILTAG):]
+    if body.startswith('http 503: ') and body[len('http 503: '):].split('?')[0] == f'{FIXTURE}/telemetry': return True
+    return body.startswith('error: Failed to load resource: the server responded with a status of 503')
 
 
 def no_overflow(page):
@@ -327,6 +340,7 @@ with sync_playwright() as p:
     page.locator('tr[data-focus-key="row-WL-001"]').click()
     page.wait_for_timeout(500)
     page.screenshot(path=f'{SHOTS}/07-desktop-api-stale.png')
+    FAILWIN['on'] = True
     fixture('fail')
     wait_until(page, '() => window.__iotFortune.ctl.connection?.state === "retrying"', timeout=20000)
     st2 = page.evaluate('() => { const c = window.__iotFortune.ctl; return { mode: c.mode, q: c.engine.quality("WL-001","level"), v: c.engine.entry("WL-001","level").lastValid.value, err: c.connection.lastError } }')
@@ -335,6 +349,9 @@ with sync_playwright() as p:
     mtxt = page.locator('.modebar').inner_text()
     check('4e แถบสถานะแสดงข้อความการเชื่อมต่อล้มเหลว', 'เชื่อมต่อไม่ได้' in mtxt, mtxt.replace('\n', ' ')[:200])
     fixture('normal')
+    wait_until(page, '() => window.__iotFortune.ctl.connection?.state === "ok"', timeout=20000)  # ปิดช่วงยกเว้นเมื่อเชื่อมต่อกลับมาแล้ว
+    page.wait_for_timeout(300)
+    FAILWIN['on'] = False
 
     # 7) คีย์บอร์ด/โฟกัส, ไม่ล้นแนวนอน, ไม่มี error
     page.locator('button[data-focus-key="nav-points"]').focus()
@@ -347,8 +364,10 @@ with sync_playwright() as p:
     fv = page.evaluate('() => ({ fv: document.activeElement.matches(":focus-visible"), shadow: getComputedStyle(document.activeElement).boxShadow })')
     check('7b องค์ประกอบที่โฟกัสด้วยแป้นพิมพ์มีกรอบโฟกัส (:focus-visible)', fv['fv'] and '247, 201, 72' in fv['shadow'], json.dumps(fv))
     check('7c เดสก์ท็อป 1440 ไม่ล้นแนวนอน', no_overflow(page))
-    unexpected = [l for l in logs if '8787' not in l and 'Failed to load resource' not in l]
-    check('7d ไม่มี console error / request ล้มเหลว (ยกเว้น 503 ที่ตั้งใจจาก fixture)', not unexpected, '; '.join(unexpected[:5]))
+    excused = [l for l in logs if expected_503(l)]
+    unexpected = [l for l in logs if not expected_503(l)]
+    print(f'   7d รายการที่ยกเว้น (503 ตั้งใจ ช่วง 4d–4e): {len(excused)} · ตัวอย่าง: {excused[:2]}', flush=True)
+    check('7d ไม่มี console error / request ล้มเหลว (ยกเว้นเฉพาะ 503 ของ fixture /telemetry ในช่วง 4d–4e)', not unexpected, '; '.join(unexpected[:5]))
 
     # กลับเป็นโหมดเดโมเพื่อภาพมือถือ
     page.evaluate('() => window.__iotFortune.ctl.switchMode("demo")')
@@ -397,8 +416,12 @@ with sync_playwright() as p:
     mpg.goto(f'{BASE}/materials.html')
     mpg.wait_for_selector('#build-info:not(:empty)')
     bg = mpg.evaluate('getComputedStyle(document.body).backgroundColor')
+    # สีพื้นที่ควรได้ = ค่าที่ประกาศใน materials CSS ของ build ที่ทดสอบ (ใช้สคริปต์เดียวกันได้ทั้งธีมเดิมและธีมใหม่)
+    css_bg = mpg.evaluate('''async () => { for (const l of document.querySelectorAll('link[rel=stylesheet]')) { const t = await (await fetch(l.href)).text();
+        const m = t.match(/body\\s*\\{[^}]*?background:\\s*(#[0-9a-fA-F]{6})/); if (m) return m[1]; } return null; }''')
+    exp_bg = f'rgb({int(css_bg[1:3], 16)}, {int(css_bg[3:5], 16)}, {int(css_bg[5:7], 16)})' if css_bg else None
     lic = mpg.request.get(f'{BASE}/THIRD_PARTY_LICENSES.txt')
-    check('8 materials.html โหลด CSS/JS ถูกต้อง และไฟล์สัญญาอนุญาตเข้าถึงได้', bg == 'rgb(242, 245, 239)' and lic.ok and not mlogs, f'{bg} {lic.status} {mlogs[:2]}')
+    check('8 materials.html โหลด CSS/JS ถูกต้อง และไฟล์สัญญาอนุญาตเข้าถึงได้', exp_bg is not None and bg == exp_bg and lic.ok and not mlogs, f'{bg} (CSS {css_bg}) {lic.status} {mlogs[:2]}')
     mpg.screenshot(path=f'{SHOTS}/11-materials.png')
     browser.close()
 
