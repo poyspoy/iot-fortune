@@ -35,10 +35,10 @@ with sync_playwright() as p:
     db = f'data-layer-playground-e2e{random.randint(1000, 9999)}'
     ctx = b.new_context(viewport={'width': 1440, 'height': 900}, timezone_id='Asia/Bangkok')
     pg = ctx.new_page()
-    logs = []; net = []
+    logs = []; net = []; NAV = {'on': False}  # NAV: ช่วงรีโหลดหลังกดรีเซ็ต — request ที่เบราว์เซอร์ยกเลิกเพราะเปลี่ยนหน้า (ERR_ABORTED) ไม่ใช่ข้อผิดพลาด
     pg.on('console', lambda m: logs.append(f'{m.type}: {m.text}') if m.type == 'error' else None)
     pg.on('pageerror', lambda e: logs.append(f'pageerror: {e}'))
-    pg.on('requestfailed', lambda r: net.append(f'failed {r.url}'))
+    pg.on('requestfailed', lambda r: net.append(f"{'[รีโหลด] ' if NAV['on'] else ''}failed {r.url} {r.failure}"))
     pg.on('response', lambda r: net.append(f'{r.status} {r.url}') if r.status >= 400 else None)
     pg.goto(f'{BASE}/?db={db}')
     pg.wait_for_function(READY, timeout=300000, polling=500)
@@ -154,9 +154,11 @@ with sync_playwright() as p:
     # รีเซ็ต Playground
     r = pg.locator('[data-testid=pg-reset]')
     r.click()
+    NAV['on'] = True
     with pg.expect_navigation(timeout=60000):
         r.click()
     pg.wait_for_function(READY, timeout=300000, polling=500)
+    NAV['on'] = False
     pg.wait_for_timeout(2500)
     s3 = pg.evaluate(INFO)
     check('20 รีเซ็ต Playground → กลับค่าเริ่มต้น (สถานะ/ตำแหน่ง/ปั๊ม/รายการตรวจสอบ)',
@@ -164,7 +166,10 @@ with sync_playwright() as p:
           f"{s3['inst']} {s3['review']}")
     pg.screenshot(path=f'{OUT}/desktop-reset.png')
     check('21 Desktop: ไม่มี console error', not logs, '; '.join(logs[:3]))
-    check('22 Desktop: ไม่มี network error', not net, '; '.join(net[:3]))
+    aborted = [x for x in net if x.startswith('[รีโหลด] ') and x.endswith('net::ERR_ABORTED')]
+    real = [x for x in net if x not in aborted]
+    print('   ยกเว้น (ยกเลิกเพราะรีโหลดหลังรีเซ็ต):', aborted, flush=True)
+    check('22 Desktop: ไม่มี network error (ยกเว้นเฉพาะ request ที่ถูกยกเลิกเพราะรีโหลดหลังกดรีเซ็ต)', not real, '; '.join(real[:3]))
     ctx.close()
 
     # มือถือ
