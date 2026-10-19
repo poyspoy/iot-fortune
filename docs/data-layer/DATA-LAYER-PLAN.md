@@ -1,9 +1,10 @@
-# Data Layer กลาง — Architecture · รายการไฟล์ · แผน Migration (ฉบับแก้ไขครั้งที่ 2 — ส่งตรวจก่อนแก้โค้ด)
+# Data Layer กลาง — Architecture · รายการไฟล์ · แผน Migration (ฉบับแก้ไขครั้งที่ 3)
 
 สาขา `feature/data-layer` (ฐาน `7555525`) · ขอบเขต: `Point`, `Asset`, `Tank`, `Pump` · **ยังไม่แก้โค้ดแอปจนกว่าเอกสารนี้ได้รับอนุมัติ**
 ไม่รวม: Adaptive Governor, Mobility Optimization, Theme, Backend/DB จริง (ออกแบบไว้ใน `design/floor-plan-platform`) · ไม่แตะ Demo ปัจจุบัน, `main`, `gh-pages`
 
-ฉบับนี้แก้ตามคำตัดสิน 18 ต.ค. 2569 (2 ข้อความ) — สรุปการเปลี่ยนแปลงอยู่ที่ข้อ 8
+ฉบับนี้แก้ตามคำตัดสิน 18 ต.ค. 2569 (2 ข้อความ) และ 19 ต.ค. 2569 (5 ข้อ) — สรุปการเปลี่ยนแปลงอยู่ที่ข้อ 8 และ 9
+อนุมัติให้เริ่ม Commit 1–3 หลัง Baseline ของ `7555525` ผ่าน แล้วหยุดส่งผลก่อนเชื่อม 3D/2D/KPI/Alarm
 
 ## 1. ปัญหาของโค้ดปัจจุบัน
 
@@ -52,7 +53,11 @@
 - ทุก Entity (Floor, Point, Asset, Binding) มี `organizationId`, `projectId`, `buildingId` และ Point/Asset มี `floorId` (UUID ของชั้น) · ชั้นมี `floorCode` (`G`, `5`, `11` …) สำหรับแสดงผล ชื่อไฟล์ผัง/โมเดล และค่าใน dropdown เดิม
 - `SpatialDataService` รับ `Scope` ตอนสร้าง และ **ทุกฟังก์ชันค้นตรวจ scope** — Entity ที่ scope ไม่ตรงถูกปฏิเสธตั้งแต่ตอนโหลด (ไม่ใช่กรองตอนแสดง) · การค้นด้วยรหัสต้องเป็น `byCode(projectId, code)` ไม่มีฟังก์ชันค้นด้วยรหัสอย่างเดียว
 - ข้อมูลเข้า (telemetry) จับคู่ด้วย `(projectId, sourceKey)` ภายใน scope ปัจจุบัน
-- UUID ของข้อมูลที่ migrate มาใช้ **UUID v5 จาก namespace คงที่ + `projectCode:type:code`** สร้างครั้งเดียวแล้วเก็บไว้ → ได้ค่าเดียวกันทุกเครื่อง ทดสอบซ้ำได้ · หลังจากนั้นเปลี่ยน code ได้โดย UUID ไม่เปลี่ยน · ของที่สร้างใหม่ใช้ UUID v4
+- UUID ของข้อมูลที่ migrate มา: **UUID v5( namespace = `organization.namespaceId`, name = `${projectId}:${entityType}:${legacyCode}` )**
+  - `organization.namespaceId` = UUID ถาวรขององค์กร (สุ่มครั้งเดียว ไม่เปลี่ยนตลอดอายุ แยกจาก `organizationId` และไม่ใช้ชื่อ/รหัสองค์กร) → UUID ของคนละองค์กรไม่ชนกันแม้ใช้รหัสเดิมเหมือนกัน
+  - `projectId` = UUID ของโครงการ (ไม่ใช้ `projectCode` ที่อาจซ้ำหรือถูกเปลี่ยน) · `entityType` ∈ `floor`, `point`, `asset`, `binding` · `legacyCode` = รหัสเดิม (`P-003`, `G`, …)
+  - Fortune: `namespaceId`, `organizationId`, `projectId`, `buildingId` เป็นค่าคงที่ที่สร้างครั้งเดียวและ commit ในค่าเริ่มต้น → migration ได้ UUID เดียวกันทุกเครื่อง ทดสอบซ้ำได้
+  - UUID ที่สร้างแล้วถูกเก็บถาวร ไม่คำนวณใหม่ → เปลี่ยน code ภายหลังได้โดย UUID ไม่เปลี่ยน · ของที่สร้างใหม่ใช้ UUID v4
 - เมื่อได้รหัสอุปกรณ์จริง: แก้เฉพาะ `assetCode` — Point/Binding/ประวัติยังเชื่อมด้วย UUID เดิม (มี Unit Test)
 
 ### 2.2 ระบบพิกัดกลางและเวอร์ชัน
@@ -60,7 +65,10 @@
 - Building CRS: `x` ขวา, `z` ใต้ (ตามผัง), `y` ขึ้น · หน่วย = หน่วยโมเดลของแอป (เป็นการจับคู่เชิงแผนภาพเหมือนเดิม ไม่ใช่พิกัดสำรวจ)
 - `building.coordinateSystem = { version: coordinateSystemVersion, axes, unit }`
 - ทุกชั้นมี `FloorFrame`: `planTransform = affine2d [a, b, c, d, e, f]` (`x = a·u + b·v + c`, `z = d·u + e·v + f`), `elevation`, **`floorPlanVersion`** และ **`modelVersion`** (ทั้งโมเดลเบาและโมเดลรายละเอียด)
-- Fortune: `a = width, b = 0, c = cx − width/2, d = 0, e = depth, f = cz − depth/2` — **เท่ากับ `planTo3D` เดิมทุกตัว** (ทดสอบ ≤ 1e-12) · เวอร์ชันเริ่มต้นได้จากค่าแฮชของ URL+ขนาดไฟล์ผัง/โมเดลในปัจจุบัน
+- Fortune: `a = width, b = 0, c = cx − width/2, d = 0, e = depth, f = cz − depth/2` — **เท่ากับ `planTo3D` เดิมทุกตัว** (ทดสอบ ≤ 1e-12)
+- **เวอร์ชันมาจากเนื้อหาไฟล์ ไม่ใช่ชื่อ/ขนาด**: ขั้น build สร้าง `asset-manifest.json` (SHA-256 ของไฟล์ผัง `.webp`, โมเดลเบา `fortune.glb`, โมเดลรายละเอียด `floor-*.glb`, `rooms-*.json`) — `floorPlanVersion = sha256:<ผัง>` · `modelVersion = sha256:<โมเดลรายละเอียด>` (ชั้นที่ไม่มีโมเดลรายละเอียดใช้โมเดลเบา) · เมื่อมี Backend/Import Job ใช้ Revision ID ที่ออกเมื่อเนื้อหาเปลี่ยนแทน
+  - ไฟล์ใหม่ที่ชื่อและขนาดเท่าเดิมแต่เนื้อหาต่าง → แฮชต่าง → จุดเข้า `needs_remapping` (มี Unit Test)
+  - แอปอ่าน manifest ที่ build สร้าง ไม่คำนวณแฮชจากการดาวน์โหลดไฟล์ระหว่างใช้งาน (ไม่เพิ่มภาระโหลด) · manifest เป็นไฟล์ใหม่ใน `dist` ไม่กระทบภาพหรือ Flow
 - ตำแหน่งของ Point/Asset เก็บ `resolvedAgainst = { coordinateSystemVersion, floorPlanVersion, modelVersion }` — เวอร์ชันที่ใช้วางจุดนั้น
 - ตรวจตอนโหลด: เวอร์ชันปัจจุบันของชั้น ≠ `resolvedAgainst` → จุดนั้นเป็น `needs_remapping` พร้อมเหตุผล (`plan-changed` / `model-changed` / `crs-changed`) — แสดงที่ตำแหน่งเดิม ไม่ลบ ไม่ซ่อน
 - โมเดลรายละเอียด Blender (`detailTransform`) ไม่เปลี่ยนสูตร
@@ -75,6 +83,13 @@
 
 - **ความสัมพันธ์ Point–Asset อยู่ใน Binding เท่านั้น** — ไม่มี `point.assetId`, `asset.levelPoint`, `asset.runPoint` (ไม่มีข้อมูลซ้ำให้ขัดกัน) · Service สร้างดัชนีทั้งสองทิศจาก Binding
 - Unique: `(projectId, pointCode)`, `(projectId, assetCode)`, `(assetId, role)` สำหรับบทบาทเดี่ยว (`level`, `run`) · Binding ต้องอ้าง Point/Asset ใน scope เดียวกันและชั้นเดียวกัน (ต่างชั้น = ข้อผิดพลาดตรวจสอบ)
+- **การจับคู่ Telemetry (ต้องไม่คลุมเครือ)**: ข้อมูลเข้าระบุด้วย `(projectId, sourceKey, metricSourceKey)` → ได้ `(pointId, metricId)` เพียงหนึ่งเดียว
+  - `sourceKey` = รหัสอุปกรณ์/ช่องสัญญาณที่ส่งข้อมูล (ของ Point) · `metricSourceKey` = คีย์ของค่าวัดในข้อมูลที่ส่ง (ของ Metric)
+  - อุปกรณ์หนึ่งตัวส่งหลายค่าได้: Point หลายจุดใช้ `sourceKey` เดียวกันได้ ถ้า `metricSourceKey` ไม่ซ้ำกัน (เช่น Gateway `GW-01` ส่ง `ch1_level` → WL-001, `ch2_temp` → P-005)
+  - **Unique**: `(projectId, sourceKey, metricSourceKey)` ในบรรดาจุดที่ยังใช้งาน (ไม่ใช่ `rejected`/`decommissioned`/`archived`) — ซ้ำ = การตั้งค่าไม่ผ่านการตรวจ (ไม่เลือกตัวใดตัวหนึ่งให้เอง)
+  - ปัจจุบัน `indexConfig` ใช้ `Map(sourceKey → point)` ซึ่ง **ตัวหลังทับตัวแรกเงียบ ๆ** ถ้ารหัสซ้ำ — แทนด้วยดัชนีคู่ที่ตรวจซ้ำก่อนสร้าง
+  - ไม่พบคู่ใน scope → ปฏิเสธ `unknown-point` / `unknown-metric` + บันทึก audit (ไม่ตกไปหาโครงการอื่น ไม่เดา)
+  - Unit Test: อุปกรณ์เดียวหลายค่าเข้าคนละจุดถูกต้อง · คีย์ซ้ำถูกปฏิเสธตอนตรวจการตั้งค่า · รหัสเดียวกันต่างโครงการไม่ปนกัน · ข้อมูลของจุด retired ไม่เข้าจุดใหม่ที่ใช้รหัสเดิมย้อนหลัง · สุ่มข้อมูลจำนวนมากแล้วทุกค่าเข้าจุดที่คาดไว้เท่านั้น
 - **Tank / Pit** = Asset `type: 'tank' | 'pit'` + Binding `role: 'level'` → ภาพถัง 3D และเกจ 2D อ่านจาก Asset เดียวกัน (ช่วงเกจอยู่ใน metric ของ Point ตามเดิม)
 - **Pump** = Asset `type: 'pump'` + Binding `role: 'run'` (และ `current` ถ้ามี) → ใบพัดหมุนเฉพาะค่า `run` สดใหม่เหมือนเดิม — **ไม่มี `'P-003'` ในโค้ด**
 - `equipmentId` เดิมคงไว้อ่านย้อนหลังเท่านั้น ไม่ใช้ตัดสินความสัมพันธ์
@@ -111,7 +126,19 @@
 - Fortune ทุกจุดเริ่มเป็น `unanchored` (วางจากผัง ยังไม่ผูกวัตถุในโมเดล — ปกติ ไม่ขึ้นรายการ)
 - `needs_remapping` **ไม่ลบ ไม่ซ่อน**: แสดงที่ตำแหน่งล่าสุดที่รู้ด้วยสัญลักษณ์เฉพาะ + ข้อความ "ต้องตรวจตำแหน่ง" · ถ้าติดตั้งแล้วยังรับค่า/แจ้งเตือนตามปกติ
 - **แท็บ `ตำแหน่งที่ต้องตรวจสอบ`** ในหน้า "ตั้งค่า" (เฉพาะ Admin/Editor): Point/Asset (code + ชื่อ) · ชั้นและพื้นที่ · สถานะ Anchor · สาเหตุ · Plan/Model Version (ที่วางไว้ เทียบกับปัจจุบัน) · ปุ่มเปิดดูใน 2D / 3D · รวมรายการ `status-mismatch`
-- สิทธิ์: Fortune Demo ยังไม่มีระบบผู้ใช้ — ใช้ `RoleGate` เดียวในโค้ด (บทบาทปัจจุบันของเครื่อง = Admin เหมือนวันนี้ที่ทุกคนเข้าหน้า "ตั้งค่า" ได้) เพื่อให้ต่อกับ Access Control จริงได้ · **การซ่อนเมนูไม่ใช่ความปลอดภัย** การตรวจสิทธิ์จริงต้องอยู่ฝั่ง Server ตามเอกสาร Platform
+- สิทธิ์: Fortune Demo ยังไม่มีระบบผู้ใช้ — ใช้ `RoleGate` เดียวในโค้ด (บทบาทปัจจุบันของเครื่อง = Admin เหมือนวันนี้ที่ทุกคนเข้าหน้า "ตั้งค่า" ได้) เพื่อให้ต่อกับ Access Control จริงได้
+
+### 2.6.1 ขอบเขตด้านความปลอดภัยของรอบนี้ (ข้อจำกัดที่ต้องรู้)
+
+> **Scope และ RoleGate ฝั่ง Frontend ในรอบนี้ช่วยป้องกันข้อมูลปนกันโดยไม่ตั้งใจ (โค้ดผิด/ตั้งค่าผิด) เท่านั้น — ยังไม่ใช่ความปลอดภัยของระบบหลายโครงการจริง**
+> ทุกอย่างที่อยู่ในเบราว์เซอร์ผู้ใช้แก้หรือข้ามได้ (DevTools, แก้ IndexedDB, เรียก API ตรง) การซ่อนเมนูไม่ใช่การควบคุมสิทธิ์
+>
+> **ก่อน Production ต้องมีครบ** (ออกแบบไว้ใน `design/floor-plan-platform`):
+> 1. Authentication (ผู้ใช้จริง, session ปลอดภัย)
+> 2. Server-side Authorization ตรวจ Project Membership + Role ทุกคำขอ — ไม่เชื่อ `organizationId`/`projectId` ที่ส่งมาจาก Frontend
+> 3. Database บังคับขอบเขต (Row-Level Security / composite FK) ตรวจ `organizationId`/`projectId` ทุกคำขอ
+> 4. Device Token จำกัดเฉพาะอุปกรณ์และโครงการ · Service Key อยู่ฝั่ง Server เท่านั้น
+> 5. ทดสอบ IDOR/BOLA อัตโนมัติ (ผู้ใช้โครงการ A อ่าน/แก้/ดาวน์โหลด/เดา URL ของโครงการ B ไม่ได้) พร้อม Audit การปฏิเสธ
 
 ### 2.7 รูปแบบหมุด
 
@@ -133,6 +160,7 @@
 | `src/data/entities.js` | Point, Asset, Binding — validate, unique (projectId, code) |
 | `src/data/spatialData.js` | `SpatialDataService` |
 | `src/data/ingestAudit.js` | บันทึกข้อมูลที่ถูกปฏิเสธ |
+| `scripts/build-asset-manifest.mjs` | สร้าง `public/asset-manifest.json` (SHA-256 ของผัง/โมเดล) ก่อน build — เรียกจาก `npm run build` · มี `--check` ตรวจว่า manifest ตรงกับไฟล์จริง |
 | `src/ui/positionReview.js` | แท็บ `ตำแหน่งที่ต้องตรวจสอบ` |
 | `tests/ids.test.js`, `tests/coords.test.js`, `tests/lifecycle.test.js`, `tests/spatial-data.test.js`, `tests/migrate-v6.test.js`, `tests/ingest-audit.test.js` | Unit + Migration |
 | `scripts/e2e_data_layer.py` | Regression ของ Data Layer (2D/3D ตรงกัน, ถัง/ปั๊ม, lifecycle, scope, ย้อนกลับ) |
@@ -142,6 +170,7 @@
 
 | ไฟล์ | การแก้ |
 |---|---|
+| `package.json` | `build` เรียกสร้าง asset manifest ก่อน `vite build` (ไม่เพิ่ม dependency) |
 | `src/domain/constants.js` | `SCHEMA_VERSION = 6` |
 | `src/domain/migrate.js` | v5 → v6 (ข้อ 4) |
 | `src/domain/defaultConfig.js` | ค่าเริ่มต้น v6 = ผล migration ของค่าเริ่มต้น v5 |
@@ -190,11 +219,28 @@
 | Ingestion | จุด draft/proposed/pending/approved → `not-installed` ในผล ingest + บันทึก audit · Demo ไม่สร้างค่า · KPI/Alarm ไม่นับ · Asset retired ยับยั้ง |
 | Regression (เบราว์เซอร์) | e2e, e2e_site, e2e_elevator, e2e_floors, e2e_2d_fallback, e2e_lift_switch — build ใหม่และ `7555525`/`ddc56f0` · Unit ทั้งหมด |
 | ภาพ + พิกัดก่อน–หลัง | ฉากหยุดเวลา มุมเดียวกัน: ทึบ / โปร่งใส / โครงอาคาร × ทั้งอาคาร + ชั้น G, 3, 4, 11 × 3D · ผัง 2D G, 4 · แผงเกจ · Desktop + Mobile — เกณฑ์ 0 พิกเซล · พิกัดหมุด/ถัง/บ่อ/ปั๊มทุกตัวก่อน–หลังต่าง ≤ 1e-9 |
-| Performance | Desktop GPU จริง (ทึบ / โปร่งใส+ลิฟต์ / หนักสุด) ไม่ช้ากว่า `7555525` |
+| Performance | Desktop GPU จริง เทียบ `7555525` — เกณฑ์ตัวเลขในข้อ 5.1 |
+
+### 5.1 เกณฑ์ Performance Regression (ตัวเลข)
+
+เงื่อนไขเดียวกันทั้งสอง build: เครื่องเดียวกัน (Intel Iris Xe, ANGLE D3D11), เบราว์เซอร์เดียวกัน, `?dpr=1.25`, ขนาดหน้าต่างเดียวกัน, หน้าต่างอยู่ด้านหน้าและมีโฟกัสตลอด (rAF ≈ 60 Hz ตรวจก่อนวัด), warm-up 2–3 วิ แล้ววัด 10 วิ, กรณี ทึบ / โปร่งใส + ลิฟต์ / หนักสุด (โปร่งใส + คน + รถ + ลิฟต์ + สถานการณ์ทั้งสอง), วัดกรณีละ 3 รอบสลับ build แล้วใช้ค่ากลาง · ช่วงที่เสียโฟกัส/ถูกซ่อน ไม่นำมาใช้
+
+| ตัวชี้วัด | เกณฑ์ผ่าน (build ใหม่ เทียบ `7555525`) |
+|---|---|
+| FPS เฉลี่ย | ลดลงไม่เกิน **5%** |
+| p95 frame time | เพิ่มขึ้นไม่เกิน **10%** |
+| เฟรม > 50 ms | เพิ่มขึ้นไม่เกิน **10%** หรือไม่เกิน 2 เฟรม/10 วิ (ใช้ค่าที่มากกว่า) |
+| GPU time ค่ากลาง | เพิ่มขึ้นไม่เกิน **10%** |
+| Draw Calls, Triangles | **ต้องเท่าเดิม** — ถ้าต่างต้องมีคำอธิบายรายการต่อรายการและได้รับอนุมัติ (Fortune ไม่ควรต่างเพราะภาพไม่เปลี่ยน) |
+| Textures / Geometries / Programs | เท่าเดิม หรือมีคำอธิบาย |
+| JS Heap หลังใช้งาน 10 นาที | ไม่เพิ่มต่อเนื่อง (เกณฑ์ Stability เดิม) |
+| Console Error | 0 |
+
+ไม่ผ่านข้อใดข้อหนึ่ง = Performance Regression ต้องแก้หรือรายงานก่อนรวม
 
 ## 6. ลำดับ Commit ย่อย
 
-1. `src/data/ids.js`, `scope.js`, `coords.js` + Unit (ยังไม่มีผลต่อแอป)
+1. `src/data/ids.js`, `scope.js`, `coords.js`, asset manifest + Unit (ยังไม่มีผลต่อแอป)
 2. `lifecycle.js`, `entities.js`, `spatialData.js`, `ingestAudit.js` + Unit
 3. Migration v6 + ฐานข้อมูลแยก + สำรอง/ย้อนกลับ + Migration Test
 4. ต่อ engine/normalize/kpi/demo เข้ากติกา lifecycle (Fortune ผลเท่าเดิม)
@@ -221,3 +267,13 @@
 | สำรอง/ย้อนกลับ | ใช้ `?db=` | ฐานข้อมูล `@v6` แยก + สำเนา v5 + ทดสอบย้อนกลับ |
 | ค่าเริ่มต้นจุดใหม่ | เสนอ installed | `defaultPointInstallStatus` ใน Project Configuration (Fortune = installed, แพลตฟอร์ม = proposed) |
 | รายการตรวจสอบ | ส่วนในหน้า "ตั้งค่า" | แท็บ `ตำแหน่งที่ต้องตรวจสอบ` เฉพาะ Admin/Editor พร้อมคอลัมน์ตามที่กำหนด |
+
+## 9. การเปลี่ยนแปลงในฉบับที่ 3 (ตามคำตัดสิน 19 ต.ค. 2569)
+
+| ข้อ | ฉบับที่ 2 | ฉบับที่ 3 |
+|---|---|---|
+| UUID v5 | namespace คงที่ + `projectCode:type:code` | namespace ถาวรขององค์กร + Project UUID + Entity Type + Legacy Code |
+| เวอร์ชันผัง/โมเดล | แฮชของ URL + ขนาดไฟล์ | SHA-256 ของเนื้อหาไฟล์จาก Build Manifest (ภายหลัง: Revision ID จาก Backend) |
+| การจับคู่ Telemetry | `(projectId, sourceKey)` | `(projectId, sourceKey, metricSourceKey)` unique ในจุดที่ใช้งาน · อุปกรณ์เดียวหลายค่า · ซ้ำ = ตั้งค่าไม่ผ่าน · Unit Test ไม่เข้าผิดจุด |
+| ความปลอดภัย | กล่าวถึงสั้น ๆ | ข้อ 2.6.1: Scope/RoleGate ฝั่ง Frontend ป้องกันแค่ข้อมูลปนโดยไม่ตั้งใจ · รายการที่ต้องมีก่อน Production |
+| Performance | "ไม่ช้ากว่า" | เกณฑ์ตัวเลข ข้อ 5.1 (FPS −5%, p95 +10%, Draw Calls/Triangles เท่าเดิม ฯลฯ) |
