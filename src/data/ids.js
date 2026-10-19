@@ -79,7 +79,7 @@ export function uuidv5(namespace, name) {
   return hex(b);
 }
 
-export const ENTITY_TYPES = Object.freeze(['organization', 'project', 'building', 'floor', 'area', 'point', 'asset', 'binding']);
+export const ENTITY_TYPES = Object.freeze(['organization', 'project', 'building', 'floor', 'area', 'point', 'asset', 'binding', 'rule']);
 
 /**
  * UUID ของข้อมูลที่ย้ายจากรุ่นก่อน — namespace ถาวรขององค์กร + Project UUID + ชนิด + รหัสเดิม
