@@ -7,6 +7,18 @@ import { defaultSettings, makeBackup, validateBackup } from '../domain/backup.js
 import { DemoAdapter, DEMO_BACKFILL_MS } from '../adapters/demoAdapter.js';
 import { HttpPoller, validateEndpoint } from '../adapters/httpPoller.js';
 import { systemClock } from '../domain/time.js';
+import { SpatialRuntime, OVERLAY_KEY, emptyOverlay } from '../data/runtime.js';
+import { IngestAudit } from '../data/ingestAudit.js';
+import { isKnownInstallStatus, MAPPING_STATUSES } from '../data/lifecycle.js';
+import { playgroundConfig, playgroundOverlay, PLAYGROUND_SEED_KEY, PLAYGROUND_VERSION } from '../data/playground.js';
+
+/** อ่าน asset manifest (SHA-256 ของผัง/โมเดล จากขั้น build) — อ่านไม่ได้ = ไม่ทราบเวอร์ชัน (ไม่ตัดสินว่าเปลี่ยน) */
+export async function loadManifest(url = './asset-manifest.json') {
+  try {
+    const r = await fetch(url, { cache: 'no-cache' });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
 
 const browserScheduler = {
   setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
@@ -24,8 +36,17 @@ function makeIdGen() {
  * เปลี่ยนแหล่งข้อมูล = dispose อะแดปเตอร์/engine เดิม แล้วสร้างใหม่ (ไม่ใช้ค่าเดิมเป็นค่าปัจจุบัน)
  */
 export class Controller {
-  constructor({ dbName, idb } = {}) {
+  /**
+   * @param {object} o
+   * @param {boolean} [o.playground]  เปิดข้อมูลทดลองของ Data Layer (ตัดสินที่ main.js จาก build + ชื่อฐานข้อมูล + โดเมน)
+   * @param {object|null} [o.manifest]  asset manifest (ทดสอบ) — ไม่ส่ง = โหลดจาก ./asset-manifest.json
+   */
+  constructor({ dbName, idb, playground = false, manifest } = {}) {
     this.repo = new IdbRepo({ name: dbName, ...(idb ?? {}) });
+    this.playground = !!playground;
+    this.manifestInput = manifest;
+    this.spatial = null;
+    this.audit = new IngestAudit({ now: () => this.now(), maxEntries: 2000 });
     this.memoryOnly = !!idb;
     this.listeners = new Set();
     this.engine = null;
@@ -41,6 +62,7 @@ export class Controller {
 
   async init() {
     await this.repo.open();
+    if (this.playground && !(await this.repo.getKV(PLAYGROUND_SEED_KEY))) await this.#seedPlayground();
     let config = await this.repo.getKV('config');
     if (!config) {
       config = createDefaultConfig();
@@ -61,6 +83,9 @@ export class Controller {
     }
     this.config = config;
     this.index = indexConfig(config);
+    const manifest = this.manifestInput !== undefined ? this.manifestInput : await loadManifest();
+    this.spatial = new SpatialRuntime(config, { manifest, overlay: await this.repo.getKV(OVERLAY_KEY) });
+    if (this.spatial.error) this.configWarning = `ข้อมูลเชิงพื้นที่ (Data Layer) สร้างไม่ได้: ${this.spatial.error} — ใช้กติกาเดิม (รับทุกจุด)`;
     const saved = await this.repo.getKV('settings');
     const d = defaultSettings();
     this.settings = saved ? { ...d, ...saved, api: { ...d.api, ...saved.api }, demo: { ...d.demo, ...saved.demo }, retention: { ...d.retention, ...saved.retention } } : d;
@@ -86,12 +111,15 @@ export class Controller {
       if (p.scenario !== 'normal' && p.scenarioStartedAt == null) p.scenarioStartedAt = simStart;
       demo = new DemoAdapter({
         params: p, simStart, lastEmittedAt, realClock: systemClock, scheduler: browserScheduler,
+        accept: (code) => this.decisionOf(code).accept, // จุดยังไม่ติดตั้ง/ปลดระวาง เดโมไม่สร้างค่าให้
         onPayload: (payload, meta) => this.#onPayload(token, payload, meta),
       });
       clock = { now: () => demo.now() };
     }
     const engine = new MonitorEngine({
       repo: this.repo, config: this.config, source: mode, clock, idGen: makeIdGen(), retention: this.settings.retention,
+      decide: (code) => this.decisionOf(code),
+      onRejected: (list, at) => this.#auditRejected(list, at, mode),
     });
     await engine.init();
     if (token !== this.adapterToken) { engine.dispose(); demo?.dispose(); return; }
@@ -119,6 +147,98 @@ export class Controller {
     }
     this.tickTimer = setInterval(() => { if (this.engine) { this.engine.tick(); this.emit({ type: 'tick' }); } }, 1000);
     this.emit({ type: 'source' });
+  }
+
+  /** กติกา Lifecycle เดียวของทั้งแอป (รับข้อมูล · คุณภาพ · KPI · แจ้งเตือน · เดโม) */
+  decisionOf(code) { return this.spatial ? this.spatial.decisionByCode(code) : { accept: true, reason: null }; }
+
+  #auditRejected(list, receivedAt, source) {
+    const s = this.spatial?.scope ?? {};
+    for (const r of list) {
+      const p = r.pointId ? this.spatial?.pointByCode(r.pointId) : null;
+      this.audit.record({
+        organizationId: s.organizationId, projectId: s.projectId, buildingId: s.buildingId,
+        pointId: p?.id ?? null, pointCode: r.pointId ?? null, sourceKey: r.raw?.pointId ?? null, metricKey: r.raw?.metricId ?? null,
+        observedAt: r.raw?.observedAt ?? null, receivedAt, reason: r.reason, source,
+      });
+    }
+  }
+
+  // ---------- Data Layer (สถานะติดตั้ง / ตำแหน่ง) ----------
+  /** แก้สถานะได้เฉพาะ Playground ในรอบนี้ (ไม่มีระบบผู้ใช้/สิทธิ์จริง — RoleGate ฝั่งหน้าจอไม่ใช่ความปลอดภัย) */
+  get canEditSpatial() { return this.playground; }
+
+  async #saveOverlay(label) {
+    const r = await this.#persist(OVERLAY_KEY, this.spatial.overlay, label);
+    if (!r.ok) return r;
+    this.spatial.rebuild(this.config);
+    if (this.spatial.error) return { ok: false, error: this.spatial.error };
+    this.emit({ type: 'config' });
+    return { ok: true };
+  }
+
+  /** @param {'point'|'asset'} kind  @param {string} id UUID  @param {string} status */
+  async setInstallStatus(kind, id, status) {
+    if (!this.canEditSpatial) return { ok: false, error: 'แก้ได้เฉพาะ Playground ข้อมูลทดลอง' };
+    if (!isKnownInstallStatus(status)) return { ok: false, error: `สถานะไม่รู้จัก: ${status}` };
+    const e = kind === 'asset' ? this.spatial.service.asset(id) : this.spatial.service.point(id);
+    if (!e) return { ok: false, error: 'ไม่พบรายการ' };
+    this.spatial.setOverlayEntry(kind, id, { installation: status });
+    return this.#saveOverlay(`บันทึกสถานะ ${kind === 'asset' ? e.assetCode : e.pointCode}`);
+  }
+
+  /**
+   * ตั้ง/ยืนยันตำแหน่ง: 'needs_remapping' (พร้อมเหตุผล) หรือ 'confirm' = ยืนยันตำแหน่งกับผัง/โมเดลปัจจุบัน
+   * (เก็บเวอร์ชันปัจจุบันเป็น resolvedAgainst และสถานะกลับเป็นตามที่วางจากผัง)
+   */
+  async setMapping(kind, id, action, reasons = ['manual']) {
+    if (!this.canEditSpatial) return { ok: false, error: 'แก้ได้เฉพาะ Playground ข้อมูลทดลอง' };
+    const svc = this.spatial.service;
+    const e = kind === 'asset' ? svc.asset(id) : svc.point(id);
+    if (!e) return { ok: false, error: 'ไม่พบรายการ' };
+    if (action === 'confirm') {
+      const f = svc.floor(e.floorId);
+      this.spatial.setOverlayEntry(kind, id, {
+        mapping: { status: 'unanchored', reasons: [] },
+        resolvedAgainst: { coordinateSystemVersion: svc.doc.building.coordinateSystem?.version ?? null, floorPlanVersion: f?.floorPlanVersion ?? null, modelVersion: f?.modelVersion ?? null },
+      });
+    } else if (MAPPING_STATUSES.includes(action)) {
+      this.spatial.setOverlayEntry(kind, id, { mapping: { status: action, reasons } });
+    } else return { ok: false, error: `คำสั่งไม่รู้จัก: ${action}` };
+    return this.#saveOverlay(`บันทึกตำแหน่ง ${kind === 'asset' ? e.assetCode : e.pointCode}`);
+  }
+
+  // ---------- Playground ----------
+  async #seedPlayground() {
+    await this.repo.replaceAll({ config: playgroundConfig(), settings: defaultSettings(), samples: [], episodes: [] });
+    await this.repo.putKV(OVERLAY_KEY, playgroundOverlay());
+    await this.repo.putKV(PLAYGROUND_SEED_KEY, { version: PLAYGROUND_VERSION, at: Date.now() });
+  }
+
+  /** รีเซ็ตข้อมูลทดลองกลับค่าเริ่มต้น (ล้างค่าวัด เหตุการณ์ การตั้งค่า และสถานะทั้งหมดในฐานข้อมูล Playground นี้) */
+  async resetPlayground() {
+    if (!this.playground) return { ok: false, error: 'ไม่ใช่ Playground' };
+    this.stopSource();
+    try {
+      await this.#seedPlayground();
+      this.config = await this.repo.getKV('config');
+      this.index = indexConfig(this.config);
+      this.settings = defaultSettings();
+      this.ui = {};
+      await this.repo.putKV('ui', {});
+      this.spatial.overlay = playgroundOverlay();
+      this.spatial.rebuild(this.config);
+      this.audit = new IngestAudit({ now: () => this.now(), maxEntries: 2000 });
+      this.storageNotice = { ok: true, text: 'รีเซ็ตข้อมูลทดลองกลับค่าเริ่มต้นแล้ว', at: Date.now() };
+      return { ok: true };
+    } catch (e) {
+      this.storageNotice = { ok: false, text: `รีเซ็ตไม่สำเร็จ: ${e.message}`, at: Date.now() };
+      return { ok: false, error: e.message };
+    } finally {
+      await this.startSource();
+      this.emit({ type: 'config' });
+      this.emit({ type: 'notice' });
+    }
   }
 
   #onPayload(token, payload, meta) {
@@ -209,6 +329,7 @@ export class Controller {
     if (!r.ok) return { ok: false, errors: [r.error] };
     this.config = config;
     this.index = indexConfig(config);
+    this.spatial?.rebuild(config);
     await this.engine?.applyConfig(config);
     this.emit({ type: 'config' });
     return { ok: true };
@@ -251,6 +372,7 @@ export class Controller {
       this.config = data.config;
       this.index = indexConfig(data.config);
       this.settings = settings;
+      if (this.spatial) { this.spatial.overlay = emptyOverlay(); this.spatial.rebuild(data.config); } // การนำเข้าล้าง overlay (ไฟล์สำรองยังไม่มีข้อมูล Data Layer)
       this.storageNotice = { ok: true, text: `นำเข้าแล้ว: ${data.samples.length.toLocaleString('th-TH')} ค่าวัด, ${data.episodes.length} เหตุการณ์`, at: Date.now() };
       return { ok: true };
     } catch (e) {

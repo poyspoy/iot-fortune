@@ -19,6 +19,8 @@ export const QUALITY = {
   stale: { label: 'ข้อมูลเก่า', rank: 2 },
   nodata: { label: 'ยังไม่มีข้อมูล', rank: 1 },
   invalid: { label: 'ข้อมูลไม่ถูกต้อง', rank: 3 },
+  // สถานะติดตั้งยังไม่รับข้อมูล (Data Layer: ร่าง/เสนอ/รออนุมัติ/อนุมัติแล้ว หรือไม่อนุมัติ/ปลดระวาง) — ไม่ใช่คุณภาพของค่าวัด
+  'not-installed': { label: 'ยังไม่ติดตั้ง', rank: -1 },
 };
 
 export const SEVERITY = {

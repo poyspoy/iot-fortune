@@ -1,20 +1,26 @@
 import './style.css';
 import { Controller } from './app/controller.js';
 import { App } from './ui/app.js';
+import { playgroundEnabled, PLAYGROUND_DB } from './data/playground.js';
+
+/* global __DL_PLAYGROUND__ */
+const DL_PLAYGROUND_BUILD = typeof __DL_PLAYGROUND__ !== 'undefined' && __DL_PLAYGROUND__ === true;
 
 async function boot() {
   const root = document.getElementById('app');
   // ใช้ฐานข้อมูลแยกได้ด้วย ?db=ชื่อ (สำหรับทดสอบ ไม่ปนกับข้อมูลใช้งาน)
-  const dbParam = new URLSearchParams(location.search).get('db');
+  // build ของ Preview Data Layer: ไม่ระบุ ?db= = เปิด Playground ข้อมูลทดลอง (ไม่ใช้ฐานข้อมูลปกติ)
+  const dbParam = new URLSearchParams(location.search).get('db') ?? (DL_PLAYGROUND_BUILD ? PLAYGROUND_DB : null);
   const dbName = dbParam && /^[\w-]{1,40}$/.test(dbParam) ? `iot-fortune-${dbParam}` : undefined;
-  let ctl = new Controller({ dbName });
+  const playground = playgroundEnabled({ buildFlag: DL_PLAYGROUND_BUILD, dbParam, hostname: location.hostname });
+  let ctl = new Controller({ dbName, playground });
   try {
     try {
       await ctl.init();
     } catch (e) {
       // เบราว์เซอร์/กรอบที่ปิด IndexedDB (เช่นโหมดส่วนตัวบางแบบ) → ใช้ฐานข้อมูลในหน่วยความจำ ข้อมูลหายเมื่อปิดหน้า
       const { IDBFactory, IDBKeyRange } = await import('fake-indexeddb');
-      ctl = new Controller({ dbName, idb: { indexedDB: new IDBFactory(), IDBKeyRange } });
+      ctl = new Controller({ dbName, playground, idb: { indexedDB: new IDBFactory(), IDBKeyRange } });
       await ctl.init();
       ctl.configWarning = `บันทึกลงเครื่องไม่ได้ในหน้านี้ (${e.message}) — ใช้หน่วยความจำชั่วคราว ข้อมูลและการตั้งค่าจะหายเมื่อปิดหรือรีเฟรชหน้า`;
     }

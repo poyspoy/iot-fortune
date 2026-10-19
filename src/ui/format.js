@@ -6,7 +6,7 @@ export function sevBadge(sev) {
   return h('span', { class: `badge sev-${sev}` }, h('span.badge-icon', { 'aria-hidden': 'true' }, sev === 'critical' ? '!!' : sev === 'warning' ? '!' : '✓'), SEVERITY[sev].label);
 }
 export function qualBadge(q) {
-  const icon = { fresh: '●', stale: '◷', nodata: '○', invalid: '✕' }[q];
+  const icon = { fresh: '●', stale: '◷', nodata: '○', invalid: '✕', 'not-installed': '◌' }[q];
   return h('span', { class: `badge q-${q}` }, h('span.badge-icon', { 'aria-hidden': 'true' }, icon), QUALITY[q].label);
 }
 export function sourceBadge(source) {

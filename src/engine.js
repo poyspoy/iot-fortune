@@ -4,14 +4,26 @@ import { metricQuality } from './domain/quality.js';
 import { AlarmEvaluator, isEpisodeActive } from './domain/alarms.js';
 import { computeKpis, pointStatus } from './domain/kpi.js';
 
+/** เหตุผลจากกติกา Lifecycle (ข้อมูลถูกปฏิเสธเพราะสถานะติดตั้ง — ส่งให้ audit) */
+export const LIFECYCLE_REASONS = new Set(['not-installed', 'point-retired', 'asset-retired']);
+const ACCEPT_ALL = () => ({ accept: true, reason: null });
+
 /**
  * MonitorEngine — ประสานการรับข้อมูล → ตรวจ → บันทึก → ประเมินการแจ้งเตือน
  * ผูกกับแหล่งข้อมูลเดียว (demo หรือ api) เปลี่ยนแหล่งให้สร้าง engine ใหม่ ประวัติจึงไม่ปนกัน
  * ไม่พึ่ง DOM/WebGL — ทดสอบได้ใน Node
  */
 export class MonitorEngine {
-  constructor({ repo, config, source, clock, idGen, retention }) {
+  /**
+   * @param {object} o
+   * @param {(pointId: string) => { accept: boolean, reason: string|null }} [o.decide]  กติกา Lifecycle เดียว
+   *   (lifecycle.telemetryDecision ผ่าน SpatialDataService) ใช้ทั้งรับข้อมูล คุณภาพ KPI และการแจ้งเตือน — ไม่ส่ง = รับทุกจุดตามเดิม
+   * @param {(rejected: object[], receivedAt: number) => void} [o.onRejected]  ข้อมูลที่ถูกปฏิเสธตามกติกา Lifecycle (บันทึก audit)
+   */
+  constructor({ repo, config, source, clock, idGen, retention, decide = ACCEPT_ALL, onRejected = null }) {
     this.repo = repo;
+    this.decide = decide;
+    this.onRejected = onRejected;
     this.source = source;
     this.clock = clock;
     this.retention = retention;
@@ -54,17 +66,25 @@ export class MonitorEngine {
 
   entry(pointId, metricId) { return this.entries.get(`${pointId}|${metricId}`) ?? null; }
 
+  /** จุดนี้รับข้อมูล/นับ KPI/แจ้งเตือนได้ตามกติกา Lifecycle หรือไม่ */
+  accepts(pointId) { return this.decide(pointId).accept; }
+
   quality(pointId, metricId) {
     const m = this.index.metric(pointId, metricId);
     if (!m) return 'nodata';
+    if (!this.accepts(pointId)) return 'not-installed';
     return metricQuality(this.entry(pointId, metricId), m, this.now());
   }
 
   episodes() { return [...this.evaluator.episodes.values()]; }
   activeEpisodesFor(pointId) { return this.episodes().filter((e) => e.pointId === pointId && isEpisodeActive(e)); }
 
-  pointStatus(point) { return pointStatus(point, (p, m) => this.quality(p, m), this.episodes()); }
-  kpis() { return computeKpis(this.config.points, (p, m) => this.quality(p, m), this.episodes()); }
+  pointStatus(point) {
+    if (!this.accepts(point.id)) return { severity: 'normal', quality: 'not-installed', attention: false, decision: this.decide(point.id) };
+    return pointStatus(point, (p, m) => this.quality(p, m), this.episodes());
+  }
+  /** KPI นับเฉพาะจุดที่กติกา Lifecycle ยอมรับ (ติดตั้งแล้ว/ส่งมอบแล้ว) — จุดยังไม่ติดตั้งไม่นับ และเหตุการณ์ของจุดนั้นไม่นับ */
+  kpis() { return computeKpis(this.config.points.filter((p) => this.accepts(p.id)), (p, m) => this.quality(p, m), this.episodes()); }
 
   /** รับชุดข้อมูลจากอะแดปเตอร์ (เรียงคิว ไม่ประมวลผลซ้อน) */
   ingest(payload, meta) {
@@ -75,7 +95,9 @@ export class MonitorEngine {
 
   async #ingest(payload, { receivedAt }) {
     if (this.disposed) return null;
-    const res = normalizeBatch(payload, { index: this.index, source: this.source, receivedAt, latest: this.latest });
+    const res = normalizeBatch(payload, { index: this.index, source: this.source, receivedAt, latest: this.latest, decide: this.decide });
+    const lifecycleRejected = res.rejected.filter((r) => LIFECYCLE_REASONS.has(r.reason));
+    if (lifecycleRejected.length && this.onRejected) { try { this.onRejected(lifecycleRejected, receivedAt); } catch { /* audit ห้ามทำให้การรับข้อมูลล้ม */ } }
     const d = this.diag;
     d.lastBatchAt = receivedAt;
     d.accepted += res.accepted.length;

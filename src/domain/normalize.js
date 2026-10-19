@@ -35,6 +35,10 @@ export const REJECT_REASONS = {
   'invalid-sequence': 'sequence ต้องเป็นจำนวนเต็มไม่ติดลบ',
   'out-of-order': 'มาช้ากว่าค่าล่าสุด (ไม่เขียนทับ)',
   conflict: 'เวลาเดียวกับค่าล่าสุดแต่ค่าต่างกัน',
+  // กติกา Lifecycle (src/data/lifecycle.js telemetryDecision) — จุด/อุปกรณ์ยังไม่ติดตั้งหรือปลดระวาง
+  'not-installed': 'จุดยังไม่ติดตั้ง (ร่าง/เสนอ/รออนุมัติ/อนุมัติแล้ว)',
+  'point-retired': 'จุดไม่อนุมัติหรือปลดระวางแล้ว',
+  'asset-retired': 'อุปกรณ์ที่ผูกอยู่ไม่อนุมัติหรือปลดระวางแล้ว',
 };
 
 /** เหตุผลที่ทำให้ค่าวัดนั้นถูกแสดงเป็น "ข้อมูลไม่ถูกต้อง" */
@@ -58,7 +62,9 @@ export function sampleId(source, pointId, metricId, observedAt) {
 /**
  * @param {any} payload
  * @param {{ index: ReturnType<import('./config.js').indexConfig>, source: 'demo'|'api', receivedAt: number,
- *           latest: Map<string, {observedAt:number, sequence:number|null, value:any}>, futureToleranceMs?: number }} ctx
+ *           latest: Map<string, {observedAt:number, sequence:number|null, value:any}>, futureToleranceMs?: number,
+ *           decide?: (pointId: string) => { accept: boolean, reason: string|null } }} ctx
+ *   `decide` = กติกา Lifecycle เดียว (ไม่ส่งมา = รับทุกจุด active ตามพฤติกรรมเดิม)
  *   `latest` = ค่าล่าสุดที่ยอมรับแล้วต่อค่าวัด (คีย์ pointId|metricId) จะถูกอัปเดตในฟังก์ชันนี้
  */
 export function normalizeBatch(payload, ctx) {
@@ -85,6 +91,8 @@ export function normalizeBatch(payload, ctx) {
     const point = typeof raw.pointId === 'string' ? index.bySourceKey.get(raw.pointId) : null;
     if (!point) { reject('unknown-point', raw); continue; }
     if (point.status !== 'active') { reject('archived-point', raw, { pointId: point.id }); continue; }
+    const dec = ctx.decide ? ctx.decide(point.id) : null;
+    if (dec && !dec.accept) { reject(dec.reason ?? 'not-installed', raw, { pointId: point.id }); continue; }
     const metric = typeof raw.metricId === 'string' ? index.metricBySourceKey(point, raw.metricId) : null;
     if (!metric) { reject('unknown-metric', raw, { pointId: point.id }); continue; }
     const ids = { pointId: point.id, metricId: metric.id };

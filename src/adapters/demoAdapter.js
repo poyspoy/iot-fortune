@@ -70,12 +70,16 @@ export function demoValuesAt(t, { seed, scenario, scenarioStartedAt, lossPointId
   return out.filter(([p]) => p !== lost);
 }
 
-/** สร้างชุดข้อมูลตามสัญญา HTTP สำหรับช่วงเวลา (from, to] */
-export function demoPayloadBetween(fromExclusive, toInclusive, params) {
+/**
+ * สร้างชุดข้อมูลตามสัญญา HTTP สำหรับช่วงเวลา (from, to]
+ * @param {(pointId: string) => boolean} [accept]  กติกา Lifecycle — จุดที่ยังไม่ติดตั้ง/ปลดระวาง เดโมไม่สร้างค่าให้
+ */
+export function demoPayloadBetween(fromExclusive, toInclusive, params, accept = null) {
   const samples = [];
   let t = Math.floor(fromExclusive / DEMO_STEP_MS) * DEMO_STEP_MS + DEMO_STEP_MS;
   for (; t <= toInclusive; t += DEMO_STEP_MS) {
     for (const [pointId, metricId, value, unit] of demoValuesAt(t, params)) {
+      if (accept && !accept(pointId)) continue;
       samples.push({ pointId, metricId, value, unit, observedAt: new Date(t).toISOString(), quality: 'good', sequence: t / DEMO_STEP_MS });
     }
   }
@@ -87,8 +91,9 @@ export function demoPayloadBetween(fromExclusive, toInclusive, params) {
  * นาฬิกาจำลองเป็นแหล่งเวลาเดียวของโหมดเดโม (ความสดใหม่ ฯลฯ คิดจากเวลาจำลอง)
  */
 export class DemoAdapter {
-  constructor({ params, simStart, lastEmittedAt, realClock, scheduler, onPayload, tickMs = 1000 }) {
+  constructor({ params, simStart, lastEmittedAt, realClock, scheduler, onPayload, tickMs = 1000, accept = null }) {
     this.kind = 'demo';
+    this.accept = accept;
     this.params = { ...params };
     this.simNow = simStart;
     this.lastEmittedAt = lastEmittedAt ?? simStart - DEMO_BACKFILL_MS;
@@ -116,7 +121,7 @@ export class DemoAdapter {
   }
   emit() {
     if (this.simNow <= this.lastEmittedAt) return;
-    const payload = demoPayloadBetween(this.lastEmittedAt, this.simNow, this.params);
+    const payload = demoPayloadBetween(this.lastEmittedAt, this.simNow, this.params, this.accept);
     this.lastEmittedAt = Math.floor(this.simNow / DEMO_STEP_MS) * DEMO_STEP_MS;
     if (payload.samples.length) this.onPayload(payload, { receivedAt: this.simNow });
   }
