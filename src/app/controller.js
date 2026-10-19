@@ -208,6 +208,25 @@ export class Controller {
     return this.#saveOverlay(`บันทึกตำแหน่ง ${kind === 'asset' ? e.assetCode : e.pointCode}`);
   }
 
+  /**
+   * Playground: ส่งค่าทดสอบ 1 ค่าเข้าทุกจุดที่กติกาไม่รับ (เหมือนอุปกรณ์/API ส่งมาก่อนติดตั้ง) → ต้องถูกปฏิเสธพร้อมเหตุผลและเข้า Audit
+   * ค่าไม่ถูกบันทึกเป็นข้อมูลจุด (ถูกปฏิเสธที่ขั้นตรวจ)
+   */
+  async injectRejectedTest() {
+    if (!this.playground || !this.engine) return { ok: false, error: 'ใช้ได้เฉพาะ Playground' };
+    const at = this.now();
+    const samples = [];
+    for (const p of this.config.points) {
+      if (p.status !== 'active' || this.decisionOf(p.id).accept) continue;
+      const m = p.metrics[0];
+      const value = m.kind === 'numeric' ? (m.plausible ? (m.plausible.min + m.plausible.max) / 2 : 1) : m.states[0].value;
+      samples.push({ pointId: p.sourceKey || p.id, metricId: m.sourceKey || m.id, value, unit: m.kind === 'numeric' ? m.unit : '', observedAt: new Date(at).toISOString(), quality: 'good' });
+    }
+    const r = await this.engine.ingest({ schemaVersion: 1, samples }, { receivedAt: at });
+    this.emit({ type: 'notice' });
+    return { ok: true, sent: samples.length, accepted: r?.accepted.length ?? 0, rejected: r?.rejected.length ?? 0 };
+  }
+
   // ---------- Playground ----------
   async #seedPlayground() {
     await this.repo.replaceAll({ config: playgroundConfig(), settings: defaultSettings(), samples: [], episodes: [] });

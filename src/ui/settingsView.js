@@ -6,14 +6,21 @@ import { floorBounds, validatePos3d, planTo3D } from '../domain/geometry.js';
 import { validEndpointText } from './validators.js';
 import { createDefaultConfig } from '../domain/defaultConfig.js';
 import { fmtDateTime } from '../domain/time.js';
+import { settingsTabs, spatialSection, reviewSection } from './dataLayerView.js';
 
 const num = (v) => (v === '' || v === null || v === undefined ? NaN : Number(v));
 
 export function renderSettingsView(app, { live = false } = {}) {
   if (live) return; // ไม่รีเฟรชฟอร์มขณะผู้ใช้กรอก
   const el = app.viewEl;
+  const tab = app.state.settingsTab ?? 'points';
+  const head = h('div.card-head', h('h2', 'ตั้งค่าจุด'), h('p.muted.small', 'การตั้งค่าทั้งหมดบันทึกใน IndexedDB ของเบราว์เซอร์นี้เท่านั้น'));
+  // แท็บ "ข้อมูลเชิงพื้นที่" / "ตำแหน่งที่ต้องตรวจสอบ" (Data Layer) — แท็บแรกคือหน้าตั้งค่าเดิมทุกส่วน
+  if (tab === 'spatial') { replaceChildren(el, h('section.settings-view', head, settingsTabs(app, tab), spatialSection(app))); return; }
+  if (tab === 'review') { replaceChildren(el, h('section.settings-view', head, settingsTabs(app, tab), reviewSection(app))); return; }
   replaceChildren(el, h('section.settings-view',
-    h('div.card-head', h('h2', 'ตั้งค่าจุด'), h('p.muted.small', 'การตั้งค่าทั้งหมดบันทึกใน IndexedDB ของเบราว์เซอร์นี้เท่านั้น')),
+    head,
+    settingsTabs(app, 'points'),
     sourceSection(app),
     pointsSection(app),
     rulesOverview(app),

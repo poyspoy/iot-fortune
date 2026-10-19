@@ -3,7 +3,7 @@ import { h } from './dom.js';
 // แผงเซนเซอร์ระดับน้ำ (WL-001 บ่อสูบน้ำ, WL-002 ถังเก็บน้ำ) — เกจแสดงปริมาณน้ำเป็นภาพ + ค่า + สถานะ + เวลาล่าสุด
 // สร้าง DOM ครั้งเดียว อัปเดตเฉพาะค่า (เกจเลื่อนนุ่มด้วย CSS transition)
 
-const SEV = { normal: 'ปกติ', warning: 'เฝ้าระวัง', critical: 'วิกฤต', unknown: 'ไม่มีข้อมูล' };
+const SEV = { normal: 'ปกติ', warning: 'เฝ้าระวัง', critical: 'วิกฤต', unknown: 'ไม่มีข้อมูล', preinstall: 'ยังไม่ติดตั้ง' };
 
 export class WaterPanel {
   /** @param {{ ids:string[], onSelect:(id:string)=>void }} opts */
@@ -35,14 +35,14 @@ export class WaterPanel {
     for (const r of rows) {
       const c = this.cards.get(r.id);
       if (!c) continue;
-      const sev = r.value === null ? 'unknown' : r.severity;
+      const sev = r.preinstall ? 'preinstall' : r.value === null ? 'unknown' : r.severity; // preinstall: Data Layer — ไม่มีข้อมูล Sensor
       c.card.className = `wp-card sev-${sev}${r.selected ? ' selected' : ''}`;
       c.card.dataset.severity = sev;
       c.card.setAttribute('aria-label', `${r.id} ${r.name} ${r.value === null ? 'ไม่มีข้อมูล' : `${r.value} ${r.unit}`} สถานะ${SEV[sev]}`);
       c.title.textContent = `${r.id} · ${r.name} · ${r.floorName}`;
       c.value.textContent = r.value === null ? '—' : `${r.value.toFixed(r.decimals)} ${r.unit}`;
       c.status.textContent = SEV[sev];
-      c.time.textContent = r.observedAt ? `ล่าสุด ${new Date(r.observedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (เวลาจำลอง)` : 'ยังไม่มีข้อมูล';
+      c.time.textContent = r.preinstall ? 'ไม่มีข้อมูล Sensor (ยังไม่ติดตั้ง)' : r.observedAt ? `ล่าสุด ${new Date(r.observedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (เวลาจำลอง)` : 'ยังไม่มีข้อมูล';
       c.fill.style.height = `${Math.round(Math.max(0, Math.min(1, r.frac ?? 0)) * 1000) / 10}%`;
       const sig = JSON.stringify(r.thresholds);
       if (sig !== c.sig) {

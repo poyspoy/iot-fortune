@@ -157,7 +157,7 @@ test('Service: snapshot แก้ไม่ได้ · ถัง/ปั๊มห
   const [pump] = s.pumps();
   assert.equal(pump.point.pointCode, 'P-1');
   assert.equal(pump.metricId, 'run');
-  assert.deepEqual(s.assetsOfPoint(fid('point', 'P-1')).map((a) => a.assetCode), ['DEMO-PUMP-1', 'DEMO-PUMP-1']);
+  assert.deepEqual(s.assetsOfPoint(fid('point', 'P-1')).map((a) => a.assetCode), ['DEMO-PUMP-1']); // ไม่ซ้ำ แม้ผูก 2 บทบาท (Binding ยังมี 2)
   assert.equal(s.bindingsOfAsset(fid('asset', 'DEMO-PUMP-1')).length, 2);
 });
 

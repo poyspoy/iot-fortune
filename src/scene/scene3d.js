@@ -72,6 +72,8 @@ export class MallScene {
     if (this.ownElevator) this.elevator.onChange((st) => { if (st) this.onElevator(st); });
     this.onRoom = opts.onRoom ?? (() => {});
     this.onFloorPick = opts.onFloorPick ?? (() => {});
+    // Data Layer (SpatialRuntime) — แหล่งเดียวของถัง/บ่อ/ปั๊ม (ส่งเป็นฟังก์ชันเพื่ออ่านค่าล่าสุดเสมอ)
+    this.spatialOf = opts.spatial ?? (() => null);
     this.roomSel = null; // { floorId, room, mesh }
     this.liftView = false; // มุมมองเปิดปล่อง: ซ่อนผนัง/กระจกแบบง่ายของห้าง ให้เห็นห้องลิฟต์ในปล่อง
     this.detailCache = new Map(); // src → Promise<THREE.Object3D> (โหลดครั้งเดียว ใช้ซ้ำ)
@@ -214,7 +216,7 @@ export class MallScene {
     for (const fg of this.floorGroups.values()) this.sceneLayers.assign(fg.group, 'building');
     if (this.towerDeco) this.sceneLayers.assign(this.towerDeco, 'building');
     for (const t of this.tanks.values()) this.sceneLayers.assign(t.group, 'assets');
-    if (this.pump) this.sceneLayers.assign(this.pump.group, 'assets');
+    for (const pm of this.pumps) this.sceneLayers.assign(pm.group, 'assets');
     if (this.isolatedId && !this.floorGroups.has(this.isolatedId)) this.isolatedId = null;
     if (!this.floorId) this.floorId = config.building.floors[0]?.id;
     this.#applyMode(true);
@@ -512,23 +514,32 @@ export class MallScene {
     this.towerCenter = new THREE.Vector3(m.cx, BASE_Y + (m.elevation + top.elevation + top.height) / 2, m.cz);
   }
 
+  /**
+   * ถัง/บ่อ/ปั๊มจาก Data Layer (Asset + Binding ใน SpatialDataService) — ไม่มีรหัสจุดในโค้ด
+   * ตำแหน่ง = ตำแหน่งของ Asset ใน Building CRS (FloorFrame เดียวกับผัง 2D) + ระยะเลื่อนของแบบภาพ (visual.offset)
+   * แสดงเฉพาะ Asset ที่สถานะแสดงได้ (ไม่รวมไม่อนุมัติ/ปลดระวาง) · ข้อมูลยังไม่ติดตั้ง = ไม่มีระดับน้ำ/ใบพัดไม่หมุน
+   */
   #buildEquipment() {
     this.equipment?.forEach((e) => { e.parent?.remove(e); disposeTree(e); });
     this.equipment = [];
-    const pumpPoint = this.config.points.find((p) => p.id === 'P-003' && p.status === 'active');
-    // ถังแสดงระดับน้ำ (เซนเซอร์ระดับน้ำจำลอง) — วางข้างหมุดของจุดนั้น น้ำค่อย ๆ ขึ้น/ลงตามค่า
     this.tanks = new Map();
-    // ทุกจุดที่มีค่าวัดกำหนด gauge (จากการตั้งค่า/ API ในอนาคต) ได้ภาพถังบนโมเดล — ไม่ผูกรหัสจุดในโค้ดหน้าจอ
-    for (const pt of this.config.points.filter((p) => p.status === 'active')) {
-      const gm = pt.metrics.find((m) => m.gauge);
-      if (!gm || !this.floorGroups.get(pt.floorId)) continue;
-      const id = pt.id; const kind = gm.gauge.visual === 'pit' ? 'pit' : 'tank';
-      const fg = this.floorGroups.get(pt.floorId);
-      const p = planTo3D(fg.floor, pt.plan, 0);
+    this.pumps = [];
+    const sp = this.spatialOf();
+    const svc = sp?.service;
+    const floorCodeOf = (asset) => svc?.floor(asset.floorId)?.code ?? null;
+    const activeCode = (code) => this.config.points.some((p) => p.id === code && p.status === 'active');
+    // ถังแสดงระดับน้ำ (Asset tank/pit + Binding level) — วางที่ตำแหน่งของอุปกรณ์ น้ำค่อย ๆ ขึ้น/ลงตามค่า
+    for (const t of sp ? sp.tanks() : []) {
+      const code = t.pointCode; const fid = floorCodeOf(t.asset);
+      const fg = fid && this.floorGroups.get(fid);
+      if (!code || !fg || !activeCode(code)) continue;
+      const id = code; const kind = t.asset.type === 'pit' ? 'pit' : 'tank';
+      const p = t.position.building; const off = t.asset.visual?.offset ?? { x: 0, z: 0 };
       const R = 0.17; const H = 0.38;
       const g = new THREE.Group();
       g.name = `water-${id}`;
       g.userData.keepOpaque = true; // ถังเซนเซอร์ไม่โปร่งตามรูปแบบอาคาร
+      g.userData.assetId = t.asset.id;
       const shell = kind === 'pit' ? new THREE.BoxGeometry(R * 2.2, H, R * 2.2, 1, 1, 1) : new THREE.CylinderGeometry(R, R, H, 32, 1, true);
       const glass = new THREE.Mesh(shell, new THREE.MeshStandardMaterial({ color: '#d7ebe8', transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false }));
       glass.position.y = H / 2;
@@ -546,16 +557,20 @@ export class MallScene {
       const surf = new THREE.Mesh(kind === 'pit' ? new THREE.PlaneGeometry(R * 2.08, R * 2.08) : new THREE.CircleGeometry(R * 0.93, 32), surfMat);
       surf.rotation.x = -Math.PI / 2;
       g.add(glass, water, edges, surf);
-      g.position.set(p.x + 0.42, SLAB_T, p.z);
+      g.position.set(p.x + off.x, SLAB_T, p.z + (off.z ?? 0));
       fg.group.add(g);
-      this.tanks.set(id, { group: g, water, waterMat, surf, surfMat, H, cur: 0, target: null, last: null, floorId: pt.floorId, metricId: gm.id, phase: Math.random() * 6 });
+      this.tanks.set(id, { group: g, water, waterMat, surf, surfMat, H, cur: 0, target: null, last: null, floorId: fid, metricId: t.metricId, assetId: t.asset.id, phase: Math.random() * 6 });
       this.equipment.push(g);
     }
     this.tank = null;
-    if (pumpPoint) {
-      const fg = this.floorGroups.get(pumpPoint.floorId);
-      const p = planTo3D(fg.floor, pumpPoint.plan, 0);
+    // ปั๊ม (Asset pump + Binding run) — ใบพัดหมุนตามค่า run ที่สดใหม่ของจุดที่ผูก
+    for (const pm of sp ? sp.pumps() : []) {
+      const fid = floorCodeOf(pm.asset);
+      const fg = fid && this.floorGroups.get(fid);
+      if (!fg || (pm.pointCode && !activeCode(pm.pointCode))) continue;
+      const p = pm.position.building; const off = pm.asset.visual?.offset ?? { x: 0, z: 0 };
       const g = new THREE.Group();
+      g.userData.assetId = pm.asset.id;
       const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.42, 20), new THREE.MeshStandardMaterial({ color: '#6f7f86', metalness: 0.4, roughness: 0.5 }));
       motor.rotation.z = Math.PI / 2;
       motor.position.y = 0.18;
@@ -569,12 +584,31 @@ export class MallScene {
       const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.9, 12), new THREE.MeshStandardMaterial({ color: '#3a8fb7' }));
       pipe.rotation.x = Math.PI / 2; pipe.position.set(-0.3, 0.12, 0.2);
       g.add(motor, fan, pipe);
-      g.position.set(p.x - 0.6, SLAB_T, p.z);
+      g.position.set(p.x + off.x, SLAB_T, p.z + (off.z ?? 0));
       fg.group.add(g);
       g.userData.keepOpaque = true;
-      this.pump = { group: g, fan, floorId: pumpPoint.floorId };
+      this.pumps.push({ group: g, fan, floorId: fid, assetId: pm.asset.id });
       this.equipment.push(g);
-    } else this.pump = null;
+    }
+    this.pump = this.pumps[0] ?? null;
+  }
+
+  /** สถานะติดตั้ง/อุปกรณ์ใน Data Layer เปลี่ยน (การตั้งค่าจุดเดิม) → สร้างถัง/ปั๊มใหม่โดยไม่สร้างอาคารใหม่ */
+  refreshEquipment() {
+    if (!this.config) return;
+    this.#buildEquipment();
+    for (const t of this.tanks.values()) this.sceneLayers.assign(t.group, 'assets');
+    for (const pm of this.pumps) this.sceneLayers.assign(pm.group, 'assets');
+    this.#applyMode(true);
+    if (this.dynamic) this.setDynamic({ water: this.lastWater ?? {}, pumpRunning: this.dynamic.pumpRunning });
+  }
+
+  /** ตำแหน่ง (world) ของถัง/ปั๊มที่วาดอยู่ — ใช้ตรวจว่า 3D ตรงกับตำแหน่งใน Data Layer */
+  equipmentPositions() {
+    const out = [];
+    for (const t of this.tanks?.values() ?? []) out.push({ assetId: t.assetId, kind: 'tank', local: { x: t.group.position.x, z: t.group.position.z }, floorId: t.floorId });
+    for (const pm of this.pumps ?? []) out.push({ assetId: pm.assetId, kind: 'pump', local: { x: pm.group.position.x, z: pm.group.position.z }, floorId: pm.floorId });
+    return out;
   }
 
   /** ค่าที่ขับภาพเคลื่อนไหว — ใช้เฉพาะค่าที่ได้รับและยังสดใหม่ */
@@ -584,6 +618,7 @@ export class MallScene {
    */
   setDynamic({ water = {}, pumpRunning }) {
     this.dynamic = { pumpRunning };
+    this.lastWater = water;
     for (const [id, t] of this.tanks ?? []) {
       const w = water[id];
       t.target = w && typeof w.frac === 'number' ? Math.max(0, Math.min(1, w.frac)) : null;
@@ -627,7 +662,8 @@ export class MallScene {
       o.item = it;
       const color = it.quality !== 'fresh' && it.severity === 'normal' ? COLORS.unknown : COLORS[it.severity];
       o.sphere.material.color.set(color);
-      o.btn.className = `marker sev-${it.severity} q-${it.quality}`;
+      o.btn.className = `marker sev-${it.severity} q-${it.quality}${it.cls ? ` ${it.cls}` : ''}`; // cls: สถานะ Data Layer (ยังไม่ติดตั้ง/ต้องตรวจตำแหน่ง)
+      if (it.dl?.tag) o.btn.dataset.dl = it.dl.tag; else delete o.btn.dataset.dl;
       o.btn.textContent = String(it.number);
       o.btn.setAttribute('aria-label', it.label);
       o.btn.title = it.label;
@@ -1157,7 +1193,7 @@ export class MallScene {
       if (cut) fg.shellMat.opacity = Math.min(fg.shellMat.opacity, 0.06);
       // โมเดลห้องของผู้ใช้: ตัดหน้าตัดด้านหน้าปล่องออก (ระนาบตัด) ให้เห็นห้องลิฟต์ — ไม่เปลี่ยนสีหรือรูปทรง
       if (fg.detailObj) this.#setClip(fg.detailObj, cut ? this.#cutPlane() : null);
-      if (this.pump && this.pump.floorId === f.id) this.pump.group.visible = !showDetail;
+      for (const pm of this.pumps ?? []) if (pm.floorId === f.id) pm.group.visible = !showDetail;
       for (const t of this.tanks?.values() ?? []) if (t.floorId === f.id) t.group.visible = true; // ถังระดับน้ำแสดงบนโมเดลห้องด้วย
       fg.edges.material.color.set(isSel ? '#0f6f69' : '#8fa79f');
       fg.edges.material.opacity = isSel ? 0.95 : (f.kind === 'tower' ? 0.3 : 0.5);
@@ -1412,7 +1448,11 @@ export class MallScene {
     this.#stepTween(nowMs);
     this.#stepSimFollow(nowMs);
     // ปั๊มหมุนเฉพาะเมื่อได้รับสถานะ run ที่สดใหม่ (ไม่ใช่การยืนยันสภาพเครื่อง)
-    if (this.pump && this.dynamic.pumpRunning === true) this.pump.fan.rotation.x += dt * 9;
+    // pumpRunning: { [assetId]: true|false|null } (หรือค่าเดียวใช้กับทุกปั๊ม)
+    for (const pm of this.pumps ?? []) {
+      const run = this.dynamic.pumpRunning;
+      if ((run && typeof run === 'object' ? run[pm.assetId] : run) === true) pm.fan.rotation.x += dt * 9;
+    }
     // น้ำในถังค่อย ๆ ขึ้น/ลงสู่ค่าล่าสุด (ไม่กระโดด)
     for (const t of this.tanks?.values() ?? []) {
       const goal = t.target ?? t.last;

@@ -19,6 +19,9 @@ import { roomCard } from './roomCard.js';
 import { WaterPanel } from './waterPanel.js';
 import { Presenter } from './presenter.js';
 import { ELEVATOR_L1 } from '../domain/elevator.js';
+import { INSTALL_LABEL, RETIRED, LIVE } from '../data/lifecycle.js';
+import { REMAP_TEXT, playgroundBar } from './dataLayerView.js';
+import { buildingToPlan } from '../data/coords.js';
 
 const VIEWS = [
   ['overview', 'ภาพรวม'],
@@ -80,7 +83,22 @@ export class App {
   get engine() { return this.ctl.engine; }
   get index() { return this.ctl.index; }
 
-  activePoints() { return this.config.points.filter((p) => p.status === 'active').sort((a, b) => a.id.localeCompare(b.id)); }
+  /** จุดที่แสดงบน 2D/3D/รายการ: active และสถานะติดตั้งแสดงได้ (ไม่อนุมัติ/ปลดระวาง อยู่ในหน้า "ข้อมูลเชิงพื้นที่" เท่านั้น) */
+  activePoints() { return this.config.points.filter((p) => p.status === 'active' && !RETIRED.includes(this.ctl.spatial?.installStatusByCode(p.id))).sort((a, b) => a.id.localeCompare(b.id)); }
+
+  /**
+   * ข้อมูลจาก Data Layer ของจุด (สถานะติดตั้ง/ตำแหน่ง) — จุดติดตั้งแล้วและตำแหน่งปกติ: cls = '' (หมุดเหมือนเดิมทุกประการ)
+   * @returns {{ install: string|null, installLabel: string, preinstall: boolean, remap: string[]|null, cls: string, tag: string }}
+   */
+  dataLayerInfo(code) {
+    const sp = this.ctl.spatial;
+    const install = sp?.installStatusByCode(code) ?? null;
+    const m = sp?.mappingByCode(code) ?? null;
+    const preinstall = !!install && !LIVE.includes(install);
+    const remap = m?.status === 'needs_remapping' ? m.reasons : null;
+    const cls = [preinstall ? 'dl-pre' : '', remap ? 'dl-remap' : ''].filter(Boolean).join(' ');
+    return { install, installLabel: install ? INSTALL_LABEL[install] : '', preinstall, remap, cls, tag: preinstall ? INSTALL_LABEL[install].split(' ·')[0] : '' };
+  }
   numberOf(id) { const i = this.activePoints().findIndex((p) => p.id === id); return i < 0 ? null : i + 1; }
   floorName(id) { return this.index.floors.get(id)?.name ?? id; }
   areaName(id) { return this.index.areas.get(id)?.name ?? '—'; }
@@ -93,7 +111,9 @@ export class App {
   items() {
     return this.activePoints().map((p, i) => {
       const st = this.status(p);
-      return { point: p, number: i + 1, ...st, label: `${i + 1}. ${p.name} (${p.id}) — ${SEVERITY[st.severity].label} · ${QUALITY[st.quality].label}` };
+      const dl = this.dataLayerInfo(p.id);
+      const extra = `${dl.preinstall ? ` (${dl.installLabel})` : ''}${dl.remap ? ' · ต้องตรวจตำแหน่ง' : ''}`;
+      return { point: p, number: i + 1, ...st, dl, cls: dl.cls, label: `${i + 1}. ${p.name} (${p.id}) — ${SEVERITY[st.severity].label} · ${QUALITY[st.quality].label}${extra}` };
     });
   }
 
@@ -341,7 +361,8 @@ export class App {
       const rule = this.config.rules.find((r) => r.pointId === p.id && r.metricId === m.id && r.enabled);
       const thr = rule ? [['warning', rule.warning], ['critical', rule.critical]].filter(([, x]) => typeof x === 'number').map(([level, x]) => ({ level, frac: (x - g.min) / (g.max - g.min) })) : [];
       return { id: p.id, name: p.name, floorName: this.floorName(p.floorId), unit: m.unit, decimals: m.decimals ?? 1, value: typeof v === 'number' ? v : null,
-        frac: ws[p.id]?.frac ?? null, severity: ws[p.id]?.severity ?? 'normal', observedAt: e?.lastValid?.observedAt ?? null, thresholds: thr, selected: this.state.selectedId === p.id };
+        frac: ws[p.id]?.frac ?? null, severity: ws[p.id]?.severity ?? 'normal', observedAt: e?.lastValid?.observedAt ?? null, thresholds: thr, selected: this.state.selectedId === p.id,
+        ...(this.engine && !this.engine.accepts(p.id) ? { preinstall: true } : {}) };
     });
     this.waterPanel.update(rows);
   }
@@ -444,6 +465,8 @@ export class App {
       this.#scheduleLive();
     } else if (e.type === 'source' || e.type === 'config') {
       this.trendSig = '';
+      // สถานะใน Data Layer เปลี่ยน (การตั้งค่าจุดเดิม) → สร้างถัง/ปั๊มใหม่ · การตั้งค่าเปลี่ยน → ฉากสร้างใหม่ทั้งหมดตอน render
+      if (e.type === 'config' && this.scene && this.sceneConfig === this.config) this.scene.refreshEquipment();
       this.render();
     } else {
       this.#scheduleLive();
@@ -610,6 +633,8 @@ export class App {
   #renderNotices() {
     const out = [];
     const ctl = this.ctl;
+    // Playground ข้อมูลทดลองของ Data Layer (Preview สาขา feature/data-layer เท่านั้น) — สร้างครั้งเดียว ไม่ถูกแทนที่ตอนข้อความแจ้งเปลี่ยน
+    if (ctl.playground && !this.pgBarEl?.isConnected) { this.pgBarEl = playgroundBar(this); this.noticeEl.before(this.pgBarEl); }
     if (ctl.configWarning) out.push(h('div.notice.warn', ctl.configWarning));
     const se = this.engine?.lastSaveError;
     if (se) out.push(h('div.notice.error', `${se.quota ? 'พื้นที่จัดเก็บเต็ม' : 'บันทึกข้อมูลไม่สำเร็จ'}: ${se.message} — ค่าที่แสดงล่าสุดอาจไม่ได้ถูกบันทึกในอุปกรณ์นี้`));
@@ -864,6 +889,7 @@ export class App {
             elevator: this.elevator, // บริการลิฟต์ร่วม (ฉากวาดตามสถานะ ไม่ได้เป็นเจ้าของตัวจำลอง)
             onRoom: (info) => this.#showRoom(info),
             onFloorPick: (id) => this.isolateFloor(id),
+            spatial: () => this.ctl.spatial, // Data Layer: ถัง/บ่อ/ปั๊มจาก Asset + Binding
           });
           this.scene.setConfig(this.config);
           this.scene.setFloor(st.floorId);
@@ -950,21 +976,23 @@ export class App {
       this.scene.setPoints(items);
       this.scene.setSelected(st.selectedId);
       this.scene.setLayers(st.layers);
-      const run = this.#freshValue('P-003', 'run');
-      this.scene.setDynamic({ water: this.#waterState(), pumpRunning: run === null ? null : run === 'run' });
+      this.scene.setDynamic({ water: this.#waterState(), pumpRunning: this.#pumpState() });
       this.#updateWater();
+      const anyPre = items.some((it) => it.dl.preinstall); const anyRemap = items.some((it) => it.dl.remap);
       replaceChildren(this.legendEl,
         h('span.lg-title', 'สถานะจุดตรวจวัด'),
-        [['normal', 'ปกติ'], ['warning', 'เฝ้าระวัง'], ['critical', 'แจ้งเตือน'], ['unknown', 'ไม่มีข้อมูล / ไม่สดใหม่']].map(([k, t]) => h('span', { class: `lg-item lg-${k}` }, h('i', { 'aria-hidden': 'true' }), t)),
+        [['normal', 'ปกติ'], ['warning', 'เฝ้าระวัง'], ['critical', 'แจ้งเตือน'], ['unknown', 'ไม่มีข้อมูล / ไม่สดใหม่'],
+          ...(anyPre ? [['preinstall', 'ยังไม่ติดตั้ง (ไม่มีข้อมูล Sensor)']] : []), ...(anyRemap ? [['remap', 'ต้องตรวจตำแหน่ง']] : [])].map(([k, t]) => h('span', { class: `lg-item lg-${k}` }, h('i', { 'aria-hidden': 'true' }), t)),
         h('span.lg-help', 'ลากเพื่อหมุน · คลิกขวาลาก/สองนิ้วเพื่อเลื่อน · ล้อ/ถ่างนิ้วเพื่อซูม · คลิกห้องหรือหมุดเพื่อดูข้อมูล'));
     } else if (this.planHost) {
       this.#updateWater();
       const floor = this.index.floors.get(st.floorId);
       const onFloor = items.filter((it) => it.point.floorId === st.floorId && st.layers[it.point.system] !== false);
-      const planSig = JSON.stringify([floor.id, st.selectedId, onFloor.map((it) => [it.point.id, it.severity, it.quality, it.point.plan.x, it.point.plan.y])]);
+      const planAssets = this.ctl.playground ? this.planAssets(floor.id) : null;
+      const planSig = JSON.stringify([floor.id, st.selectedId, onFloor.map((it) => [it.point.id, it.severity, it.quality, it.cls, it.point.plan.x, it.point.plan.y]), planAssets]);
       if (!this.gate('plan', `${planSig}|${st.planZoom}`) && this.planHost.firstChild) return;
       const prevScroll = this.planHost.querySelector('.plan-wrap')?.scrollLeft ?? 0;
-      replaceChildren(this.planHost, renderPlan({ floor, items: onFloor, selectedId: st.selectedId, zoom: st.planZoom, onSelect: (id) => this.select(id, { focus: false }) }));
+      replaceChildren(this.planHost, renderPlan({ floor, items: onFloor, selectedId: st.selectedId, zoom: st.planZoom, onSelect: (id) => this.select(id, { focus: false }), assets: planAssets }));
       this.#addPlanLift(floor);
       const wrap = this.planHost.querySelector('.plan-wrap');
       if (wrap) {
@@ -980,9 +1008,48 @@ export class App {
     }
   }
 
-  /** จุดที่มีเกจ (ค่าวัดที่กำหนด gauge ในการตั้งค่า) → [{ point, metric }] — ใช้ทั้งแผงเกจและภาพถังบนโมเดล */
+  /**
+   * ถัง/บ่อจาก Data Layer (Asset tank/pit + Binding level) → [{ point, metric, asset }] — แหล่งเดียวของแผงเกจ 2D และภาพถัง 3D
+   * ช่วงเกจอยู่ใน metric ของ Point ตามเดิม
+   */
   gaugePoints() {
-    return this.activePoints().map((p) => ({ point: p, metric: p.metrics.find((m) => m.gauge) })).filter((x) => x.metric);
+    const shown = new Set(this.activePoints().map((p) => p.id));
+    return (this.ctl.spatial?.tanks() ?? []).filter((t) => shown.has(t.pointCode)).map((t) => {
+      const point = this.index.points.get(t.pointCode);
+      return { point, metric: point?.metrics.find((m) => m.id === t.metricId), asset: t.asset };
+    }).filter((x) => x.point && x.metric?.gauge);
+  }
+
+  /**
+   * อุปกรณ์ของชั้นบนผัง 2D (Playground) — ตำแหน่งเดียวกับภาพ 3D: ตำแหน่ง Asset + ระยะเลื่อนของแบบภาพ แปลงกลับเป็นพิกัดผังด้วย FloorFrame เดียวกัน
+   * @returns {Array<{code, kind, u, v, label, preinstall}>}
+   */
+  planAssets(floorCode) {
+    const sp = this.ctl.spatial; const svc = sp?.service;
+    if (!svc) return [];
+    const out = [];
+    for (const [kind, list] of [['tank', sp.tanks()], ['pump', sp.pumps()]]) {
+      for (const x of list) {
+        const f = svc.floor(x.asset.floorId);
+        if (f?.code !== floorCode) continue;
+        const off = x.asset.visual?.offset ?? { x: 0, z: 0 };
+        const b = x.position.building;
+        const { u, v } = buildingToPlan(f.frame, { x: b.x + off.x, z: b.z + (off.z ?? 0) });
+        const k = kind === 'tank' ? x.asset.type : 'pump';
+        out.push({ code: x.asset.assetCode, kind: k, u: +u.toFixed(5), v: +v.toFixed(5), preinstall: !LIVE.includes(x.asset.installation?.status), label: `${x.asset.assetCode} · ${x.asset.name} (${INSTALL_LABEL[x.asset.installation?.status] ?? '—'})` });
+      }
+    }
+    return out;
+  }
+
+  /** สถานะเดินของปั๊มทุกตัว (Asset pump + Binding run) — เฉพาะค่าที่สดใหม่ { [assetId]: true|false|null } */
+  #pumpState() {
+    const out = {};
+    for (const pm of this.ctl.spatial?.pumps() ?? []) {
+      const run = pm.pointCode ? this.#freshValue(pm.pointCode, pm.metricId) : null;
+      out[pm.asset.id] = run === null ? null : run === 'run';
+    }
+    return out;
   }
 
   /** ระดับ (สัดส่วนของช่วงเกจ) และสถานะของทุกจุดที่มีเกจ */
@@ -1173,6 +1240,7 @@ export class App {
       h('div.badges', sevBadge(status.severity), qualBadge(status.quality), sourceBadge(this.ctl.mode)),
       p.status === 'archived' ? h('p.notice.warn', 'จุดนี้ถูกเก็บถาวร ไม่ได้ติดตามแล้ว') : null,
       p.example ? h('p.example-note', 'จุดตัวอย่าง — ไม่ใช่อุปกรณ์จริงที่ยืนยันแล้ว ตำแหน่งรอยืนยัน') : null,
+      this.#dataLayerNotes(p),
       h('dl.meta',
         h('dt', 'ตำแหน่ง'), h('dd', `${f?.name ?? p.floorId} · ${this.areaName(p.areaId)}`),
         h('dt', 'ระบบ'), h('dd', systemLabel(p.system)),
@@ -1220,6 +1288,16 @@ export class App {
     }
     replaceChildren(el, head, open ? this.accBody : null);
     if (!p) el.dataset.empty = 'true'; else delete el.dataset.empty;
+  }
+
+  /** ข้อความจาก Data Layer (เฉพาะเมื่อมีเรื่องต้องแจ้ง — จุดติดตั้งแล้วตำแหน่งปกติไม่มีข้อความเพิ่ม) */
+  #dataLayerNotes(p) {
+    const dl = this.dataLayerInfo(p.id);
+    const out = [];
+    if (dl.preinstall) out.push(h('p.notice.dl-install', { 'data-testid': 'dl-install-note' }, `ยังไม่ติดตั้ง — ไม่มีข้อมูล Sensor · สถานะ: ${dl.installLabel} · ไม่นับใน KPI และไม่แจ้งเตือน`));
+    else if (dl.install === 'commissioned') out.push(h('p.dl-status', `สถานะติดตั้ง: ${dl.installLabel}`));
+    if (dl.remap) out.push(h('p.notice.warn.dl-remap-note', { 'data-testid': 'dl-remap-note' }, `ต้องตรวจตำแหน่ง — ${dl.remap.map((r) => REMAP_TEXT[r] ?? r).join(', ')} · แสดงที่ตำแหน่งล่าสุดที่รู้ (ยังรับข้อมูลตามสถานะติดตั้ง)`));
+    return out.length ? out : null;
   }
 
   #detailsLive(p) {

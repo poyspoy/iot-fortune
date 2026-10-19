@@ -74,7 +74,7 @@ test('กติกาเดียว: Asset ปลดระวางยับย
   assert.deepEqual(sp.decisionByCode('P-003'), { accept: false, reason: 'asset-retired' });
   assert.deepEqual(sp.decisionByCode('P-004'), { accept: true, reason: null });
   const review = sp.service.reviewList();
-  assert.ok(review.some((x) => x.issue === 'status-mismatch' && x.code === 'P-004'));
+  assert.equal(review.filter((x) => x.issue === 'status-mismatch' && x.code === 'P-004').length, 1, 'AHU ผูก 2 บทบาท (chws/chwr) ต้องขึ้นรายการครั้งเดียว');
   assert.ok(review.some((x) => x.issue === 'status-mismatch' && x.code === 'P-003'));
   // ปั๊มที่ปลดระวางไม่แสดงภาพ (pumps() เฉพาะที่แสดงได้)
   assert.equal(sp.pumps().length, 0);

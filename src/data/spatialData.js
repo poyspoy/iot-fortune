@@ -85,7 +85,8 @@ export class SpatialDataService {
 
   bindingsOfAsset(assetId) { return this.#idx.bindingsByAsset.get(assetId) ?? []; }
   bindingsOfPoint(pointId) { return this.#idx.bindingsByPoint.get(pointId) ?? []; }
-  assetsOfPoint(pointId) { return this.bindingsOfPoint(pointId).map((b) => this.asset(b.assetId)); }
+  /** อุปกรณ์ที่ผูกกับจุด (ไม่ซ้ำ — จุดหนึ่งผูกอุปกรณ์เดียวได้หลายบทบาท เช่น AHU น้ำเย็นจ่าย/กลับ) */
+  assetsOfPoint(pointId) { return [...new Set(this.bindingsOfPoint(pointId).map((b) => b.assetId))].map((id) => this.asset(id)); }
   /** Binding ของอุปกรณ์ตามบทบาท (เช่น 'level', 'run') */
   binding(assetId, role) { return this.bindingsOfAsset(assetId).find((b) => b.role === role) ?? null; }
 

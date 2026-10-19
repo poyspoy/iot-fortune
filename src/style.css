@@ -779,3 +779,47 @@ body.presenting .toasts { bottom: 92px; }
 .plan-lift.pl-passing .pl-shaft { fill: #e3f1ef; stroke-dasharray: 6 4; }
 .plan-lift.pl-away { opacity: 0.85; }
 .lift-panel.lift-2d .lift-actions:not(:has(button:not([hidden]))) { display: none; }
+
+/* ===== Data Layer: สถานะติดตั้ง / ตำแหน่งที่ต้องตรวจ (คลาสใหม่ทั้งหมด — หมุดที่ติดตั้งแล้วไม่ได้รับคลาสเหล่านี้) ===== */
+.badge.q-not-installed { background: #fff; color: #3d4a50; border: 1px dashed #5d6b72; }
+.num.q-not-installed { background: #fff; color: #3d4a50; border: 2px dashed #5d6b72; box-shadow: none; border-radius: 8px; }
+.marker.q-not-installed { background: #fff; color: #3d4a50; border: 2px dashed #3d4a50; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.marker.dl-pre[data-dl]::after {
+  content: attr(data-dl); position: absolute; left: 50%; top: calc(100% + 3px); transform: translateX(-50%);
+  background: #fff; color: #3d4a50; border: 1px dashed #5d6b72; border-radius: 6px; padding: 0 5px;
+  font-size: 0.68rem; font-weight: 700; white-space: nowrap; line-height: 1.4;
+}
+.marker.dl-remap { box-shadow: 0 0 0 3px #b45f00, 0 2px 6px rgba(0,0,0,0.45); }
+.marker.dl-remap::before {
+  content: '!'; position: absolute; right: -9px; top: -9px; width: 16px; height: 16px; border-radius: 50%;
+  background: #b45f00; color: #fff; font-size: 0.7rem; line-height: 16px; text-align: center; border: 1.5px solid #fff;
+}
+.marker.stacked.dl-pre::after, .marker.stacked.dl-remap::before { display: none; }
+.plan-marker.q-not-installed .dot { fill: #fff; stroke: #3d4a50; stroke-width: 3; stroke-dasharray: 6 4; }
+.plan-marker.q-not-installed text { fill: #3d4a50; }
+.plan-marker .dl-tag { fill: #3d4a50; font-weight: 700; paint-order: stroke; stroke: #fff; stroke-width: 4px; }
+.plan-marker .dl-remap-badge circle { fill: #b45f00; stroke: #fff; stroke-width: 2; }
+.plan-marker .dl-remap-badge text { fill: #fff; }
+.plan-marker.dl-remap .dot { stroke: #b45f00; stroke-width: 4; }
+.plan-asset rect { fill: #e8f1f5; stroke: #2a6f8f; stroke-width: 2.5; }
+.plan-asset text { fill: #1d4b5f; font-weight: 700; pointer-events: none; }
+.plan-asset.dl-pre rect { fill: #fff; stroke: #5d6b72; stroke-dasharray: 5 3; }
+.plan-asset.dl-pre text { fill: #5d6b72; }
+.lg-preinstall i { background: #fff; border: 2px dashed #3d4a50; border-radius: 3px; }
+.lg-remap i { background: #fff; box-shadow: 0 0 0 3px #b45f00; }
+.notice.dl-install { background: #f4f5f5; border: 1px dashed #5d6b72; color: #2b3a3f; }
+.dl-status { margin: 4px 0; font-size: 0.85rem; color: #2b3a3f; }
+.wp-card.sev-preinstall .wp-gauge { border-style: dashed; opacity: 0.7; }
+.wp-card.sev-preinstall .wp-status { color: #3d4a50; }
+.settings-tabs { margin: 0 0 10px; }
+.settings-tabs .count { margin-left: 6px; background: #b45f00; color: #fff; border-radius: 99px; padding: 0 6px; font-size: 0.75rem; }
+.dl-view .card + .card, .dl-view > .card { margin-top: 10px; }
+.dl-table td { vertical-align: top; }
+.dl-table tr.dl-off td { color: #52616a; }
+.dl-yes { color: var(--ok); font-weight: 700; }
+.dl-no { color: #7a3b00; font-weight: 700; }
+.dl-remap-txt { color: #7a3b00; font-weight: 700; }
+.dl-limits { font-size: 0.85rem; }
+.dl-review .actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.pg-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border: 2px dashed #6b4e00; background: #fff8dc; }
+.inst { font-weight: 600; }

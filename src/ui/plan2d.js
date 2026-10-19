@@ -5,7 +5,7 @@ import { s, h } from './dom.js';
  * หมุดเข้าถึงด้วยแป้นพิมพ์ได้ (Tab แล้ว Enter/Space)
  * โหมดวางตำแหน่ง: คลิกบนผังเพื่อได้พิกัดปกติ 0–1 (ไม่ใช่พิกัดสำรวจจริง)
  */
-export function renderPlan({ floor, items = [], selectedId, onSelect, placing = false, onPlace, placeMark = null, compact = false, zoom = 1 }) {
+export function renderPlan({ floor, items = [], selectedId, onSelect, placing = false, onPlace, placeMark = null, compact = false, zoom = 1, assets = null }) {
   const W = floor.plan.width; const H = floor.plan.height;
   const r = (Math.max(W, H) * (compact ? 0.016 : 0.0125)) / Math.max(1, zoom * 0.8);
   const svg = s('svg', {
@@ -34,7 +34,7 @@ export function renderPlan({ floor, items = [], selectedId, onSelect, placing = 
     const cx = it.point.plan.x * W; const cy = it.point.plan.y * H;
     const sel = it.point.id === selectedId;
     const g = s('g', {
-      class: `plan-marker sev-${it.severity} q-${it.quality}${sel ? ' selected' : ''}${placing ? ' muted' : ''}`,
+      class: `plan-marker sev-${it.severity} q-${it.quality}${it.cls ? ` ${it.cls}` : ''}${sel ? ' selected' : ''}${placing ? ' muted' : ''}`,
       transform: `translate(${cx.toFixed(1)} ${cy.toFixed(1)})`,
       role: placing ? null : 'button', tabindex: placing ? null : 0,
       'aria-label': it.label, 'aria-pressed': placing ? null : String(sel), 'data-focus-key': `plan-${it.point.id}`,
@@ -44,12 +44,28 @@ export function renderPlan({ floor, items = [], selectedId, onSelect, placing = 
     g.appendChild(s('circle', { r, class: 'dot' }));
     if (it.quality !== 'fresh') g.appendChild(s('circle', { r: r * 1.25, class: 'qring' }));
     g.appendChild(s('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': r * 1.15, text: String(it.number) }));
+    // Data Layer: ยังไม่ติดตั้ง = ป้ายข้อความใต้หมุด · ต้องตรวจตำแหน่ง = สัญลักษณ์ ! มุมบนขวา (ไม่ใช้สีอย่างเดียว)
+    if (it.dl?.tag) g.appendChild(s('text', { class: 'dl-tag', 'text-anchor': 'middle', y: r * 2.1, 'font-size': r * 0.85, text: it.dl.tag }));
+    if (it.dl?.remap) {
+      const b = s('g', { class: 'dl-remap-badge', transform: `translate(${(r * 0.95).toFixed(1)} ${(-r * 0.95).toFixed(1)})` });
+      b.appendChild(s('circle', { r: r * 0.55 }));
+      b.appendChild(s('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': r * 0.8, text: '!' }));
+      g.appendChild(b);
+    }
     if (!placing) {
       const act = (e) => { e.stopPropagation(); onSelect?.(it.point.id); };
       g.addEventListener('click', act);
       g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(e); } });
     }
     svg.appendChild(g);
+  }
+  // อุปกรณ์จาก Data Layer (ถัง/บ่อ/ปั๊ม) ที่ตำแหน่งเดียวกับภาพ 3D — แสดงเฉพาะเมื่อส่งมา (Playground)
+  for (const a of assets ?? []) {
+    const g = s('g', { class: `plan-asset kind-${a.kind}${a.preinstall ? ' dl-pre' : ''}`, transform: `translate(${(a.u * W).toFixed(1)} ${(a.v * H).toFixed(1)})`, 'data-asset': a.code });
+    g.appendChild(s('title', { text: a.label }));
+    g.appendChild(s('rect', { x: -r * 0.75, y: -r * 0.75, width: r * 1.5, height: r * 1.5, rx: a.kind === 'tank' ? r * 0.75 : r * 0.2 }));
+    g.appendChild(s('text', { 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': r * 0.8, text: a.kind === 'pump' ? 'P' : a.kind === 'pit' ? 'บ' : 'ถ' }));
+    svg.insertBefore(g, svg.querySelector('.plan-marker'));
   }
   if (placeMark) {
     const g = s('g', { class: 'place-mark', transform: `translate(${(placeMark.x * W).toFixed(1)} ${(placeMark.y * H).toFixed(1)})` });
