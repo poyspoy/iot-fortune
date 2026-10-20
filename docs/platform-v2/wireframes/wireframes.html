@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><title>Wireframes · Project Hierarchy + Photo View</title>
+<style>
+:root{--ink:#1d282c;--mut:#5d6b72;--line:#c9d3d6;--bg:#f4f6f5;--card:#fff;--acc:#0f6f69;--ok:#1f8a5c;--warn:#c98400;--crit:#c8423a;--pre:#5d6b72;--remap:#b45f00}
+*{box-sizing:border-box}body{margin:0;background:#e9ecea;font:14px/1.45 Tahoma,"Noto Sans Thai",Arial,sans-serif;color:var(--ink)}
+.screen{background:var(--bg);margin:24px;border:1px solid #aab;position:relative;overflow:hidden}
+.d{width:1440px;height:900px}.m{width:390px;height:844px}
+.tag{position:absolute;right:8px;top:6px;background:#222;color:#fff;font-size:11px;padding:2px 8px;border-radius:4px;z-index:5}
+.top{height:48px;background:#1f282c;color:#fff;display:flex;align-items:center;gap:16px;padding:0 16px}
+.top b{color:#7fd3c5}.crumb{font-size:13px;color:#cfd8da}.crumb span{color:#fff}
+.box{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+.row{display:flex;gap:12px}.col{display:flex;flex-direction:column;gap:12px}
+h3{margin:0 0 8px;font-size:15px}.mut{color:var(--mut);font-size:12px}
+.tree{font-size:13px}.tree div{padding:3px 0;white-space:nowrap}.tree .sel{background:#dcefea;border-radius:4px;font-weight:700}
+.i0{padding-left:0}.i1{padding-left:16px}.i2{padding-left:32px}.i3{padding-left:48px}.i4{padding-left:64px}.i5{padding-left:80px}.i6{padding-left:96px}
+.pill{display:inline-block;border-radius:99px;padding:0 7px;font-size:11px;font-weight:700;border:1px solid var(--line);margin-left:4px}
+.ok{background:#e3f3ec;color:var(--ok);border-color:#a8d5cb}.warn{background:#fff3d6;color:#7a5200;border-color:#e6c75a}.crit{background:#fde7e5;color:var(--crit);border-color:#e9a39c}
+.pre{background:#fff;color:var(--pre);border:1px dashed var(--pre)}.remap{background:#fff;color:var(--remap);border:1px solid var(--remap)}
+.kpis{display:flex;gap:8px}.kpi{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff}.kpi b{font-size:20px;display:block}
+.btn{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:#fff;font-size:12px;margin:2px 4px 2px 0}.btn.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid #e2e7e8;padding:5px 6px;text-align:left}th{color:var(--mut);font-weight:600}
+.photo{position:relative;background:repeating-linear-gradient(135deg,#d9dedd 0 14px,#d2d8d7 14px 28px);border:1px solid #9aa;border-radius:6px;overflow:hidden}
+.photo .lbl{position:absolute;left:10px;top:8px;background:rgba(255,255,255,.85);padding:2px 8px;border-radius:4px;font-size:12px}
+.shape{position:absolute;background:#bcc5c4;border:1px solid #8c9897}
+.hs{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px}
+.hs i{width:16px;height:16px;border-radius:50%;background:var(--ok);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.hs.w i{background:var(--warn)}.hs.c i{background:var(--crit)}.hs.pr i{background:#fff;border:2px dashed var(--pre);border-radius:4px}
+.hs.rm i{box-shadow:0 0 0 3px var(--remap)}
+.hs span{background:#fff;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12px;font-weight:700;white-space:nowrap}
+.hs.pr span{border-style:dashed;color:var(--pre)}.hs.rm span{border-color:var(--remap);color:var(--remap)}
+.rect{position:absolute;border:2px solid var(--acc);background:rgba(15,111,105,.08);border-radius:4px}
+.chart{height:110px;border:1px solid var(--line);border-radius:6px;background:linear-gradient(transparent 49%,#eef1f1 50%,transparent 51%),#fff;position:relative}
+.chart svg{position:absolute;inset:0}
+.thumbs{display:flex;gap:8px}.thumbs div{width:120px;height:72px;border:1px solid #9aa;border-radius:4px;background:repeating-linear-gradient(135deg,#d9dedd 0 10px,#d2d8d7 10px 20px);font-size:11px;padding:4px}
+.thumbs .on{outline:3px solid var(--acc)}
+.note{position:absolute;background:#fffbe6;border:1px solid #e6c75a;border-radius:6px;padding:6px 8px;font-size:12px;max-width:260px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.note:before{content:'✎ ';color:#7a5200}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.2);padding:12px 14px}
+.grab{width:40px;height:4px;border-radius:2px;background:#bbb;margin:0 auto 8px}
+.tabs{display:flex;border-bottom:1px solid var(--line)}.tabs div{flex:1;text-align:center;padding:8px 0;font-size:13px}.tabs .on{border-bottom:3px solid var(--acc);font-weight:700}
+.legend{font-size:11px;display:flex;gap:10px;flex-wrap:wrap}
+.flow{display:flex;align-items:center;gap:18px}.flow .box{width:300px}
+.arrow{font-size:28px;color:var(--acc)}
+</style></head><body>
+
+<!-- W1 Desktop: Project Hierarchy -->
+<section class="screen d" id="w1"><div class="tag">W1 · Desktop · ลำดับชั้นโครงการ</div>
+ <div class="top"><b>NEXZA | Floor Plan Platform</b><div class="crumb">Fortune Demo Organization › <span>IoT ฟอร์จูน (FRT)</span> › ฟอร์จูนทาวน์ › อาคาร › ชั้น G › พื้นที่บริการ ชั้น G</div></div>
+ <div class="row" style="padding:12px;height:852px">
+  <div class="box tree" style="width:360px;overflow:hidden">
+   <h3>ลำดับชั้น</h3>
+   <input style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px" value="ค้นหา: รหัส/ชื่อ (เช่น P-005, ห้องปั๊ม)">
+   <div class="i0">▾ 🏢 Fortune Demo Organization</div>
+   <div class="i1">▾ 📁 IoT ฟอร์จูน · FRT <span class="pill">8 จุด</span></div>
+   <div class="i2">▾ 📍 ไซต์ ฟอร์จูนทาวน์</div>
+   <div class="i3">▾ 🏬 อาคาร ฟอร์จูนทาวน์ (โพเดียม + ทาวเวอร์)</div>
+   <div class="i4">▾ ชั้น G <span class="pill ok">3 ปกติ</span><span class="pill pre">1 ยังไม่ติดตั้ง</span></div>
+   <div class="i5 sel">▾ ▢ พื้นที่บริการ ชั้น G (G-SVC)</div>
+   <div class="i6">⚙ ปั๊มน้ำ FRT-DEMO-PUMP-001 <span class="pill remap">! ตรวจตำแหน่ง</span></div>
+   <div class="i6">◉ P-003 ปั๊มน้ำ · กระแส/สถานะ <span class="pill ok">เดิน</span></div>
+   <div class="i6">⛁ บ่อสูบน้ำ FRT-DEMO-PIT-001</div>
+   <div class="i6">◉ WL-001 ระดับน้ำบ่อ <span class="pill ok">61.2 cm</span></div>
+   <div class="i6">◌ PG-101 น้ำรั่วห้องปั๊ม <span class="pill pre">เสนอ</span></div>
+   <div class="i5">▸ ▢ ลานจอดรถ ชั้น G</div>
+   <div class="i4">▸ ชั้น 1 <span class="pill ok">1</span></div>
+   <div class="i4">▸ ชั้น 2 <span class="pill ok">1</span></div>
+   <div class="i4">▸ ชั้น 3 <span class="pill remap">!</span></div>
+   <div class="i4">▸ ชั้น 4 <span class="pill ok">1</span></div>
+   <div class="i4">▸ ชั้น 11–32 (สำนักงาน)</div>
+   <div class="i1" style="margin-top:8px;color:var(--mut)">▸ 📁 โครงการอื่น (ไม่แสดงถ้าไม่ใช่สมาชิก)</div>
+   <p class="mut" style="margin-top:14px">◉ จุดตรวจวัด (Sensor) · ⚙/⛁ อุปกรณ์ (Asset) · ▢ ห้อง/พื้นที่<br>ตัวเลขสรุปนับเฉพาะจุดที่ติดตั้งแล้ว (กติกาเดียวกับ KPI)</p>
+  </div>
+  <div class="col" style="flex:1">
+   <div class="box">
+    <h3>พื้นที่บริการ ชั้น G <span class="mut">· G-SVC · ห้อง/พื้นที่</span></h3>
+    <div class="kpis"><div class="kpi"><b>3</b>จุดติดตั้งแล้ว</div><div class="kpi"><b>0</b>ต้องดูแล</div><div class="kpi"><b>1</b>ยังไม่ติดตั้ง</div><div class="kpi"><b>1</b>ตรวจตำแหน่ง</div><div class="kpi"><b>2</b>รูป/แผนภาพ</div></div>
+    <p style="margin:10px 0 0"><span class="btn p">ดูบนผัง 2D</span><span class="btn p">ดูในโมเดล 3D</span><span class="btn p">ดูรูปห้อง (2)</span><span class="btn">+ เพิ่ม Asset</span><span class="btn">+ เพิ่มจุด</span><span class="btn">อัปโหลดรูป</span></p>
+   </div>
+   <div class="box"><h3>ภายในพื้นที่นี้</h3>
+    <table><tr><th>ชนิด</th><th>รหัส</th><th>ชื่อ</th><th>สถานะติดตั้ง</th><th>ค่าล่าสุด</th><th>ปรากฏใน</th></tr>
+     <tr><td>Asset</td><td>FRT-DEMO-PUMP-001</td><td>ปั๊มน้ำ (สาธิต)</td><td>ติดตั้งแล้ว <span class="pill remap">! ตรวจตำแหน่ง</span></td><td>เดิน</td><td>2D · 3D · รูป 1</td></tr>
+     <tr><td>Sensor</td><td>P-003</td><td>ปั๊มน้ำ · run/current</td><td>ติดตั้งแล้ว</td><td>เดิน · 12.1 A</td><td>2D · 3D · รูป 1</td></tr>
+     <tr><td>Asset</td><td>FRT-DEMO-PIT-001</td><td>บ่อสูบน้ำ</td><td>ติดตั้งแล้ว</td><td>—</td><td>2D · 3D · รูป 1</td></tr>
+     <tr><td>Sensor</td><td>WL-001</td><td>ระดับน้ำบ่อ</td><td>ติดตั้งแล้ว</td><td>61.2 cm <span class="pill ok">ปกติ</span></td><td>2D · 3D · รูป 2</td></tr>
+     <tr><td>Sensor</td><td>PG-101</td><td>น้ำรั่วห้องปั๊ม</td><td><span class="pill pre">เสนอ</span></td><td>ไม่มีข้อมูล Sensor</td><td>2D · 3D</td></tr>
+    </table></div>
+   <div class="box"><h3>ข้อมูลอุปกรณ์ของจุด WL-001</h3>
+    <table><tr><th>อุปกรณ์ (Device)</th><th>รุ่น</th><th>ติดตั้ง</th><th>ถอด</th><th>หมายเหตุ</th></tr>
+     <tr><td>GW-02</td><td>Level sensor</td><td>10 ต.ค. 2569</td><td>—</td><td>ใช้งานอยู่</td></tr>
+     <tr><td>GW-01</td><td>Level sensor</td><td>1 ต.ค. 2569</td><td>10 ต.ค. 2569</td><td>เปลี่ยนเครื่อง — ประวัติค่าวัดยังเป็นของ WL-001</td></tr></table></div>
+  </div>
+ </div>
+ <div class="note" style="left:400px;top:760px">ต้นไม้โหลดทีละระดับ (depth 2) · ค้นด้วยรหัสได้เฉพาะภายในโครงการ · ไม่ใช่สมาชิก = มองไม่เห็นโครงการ</div>
+</section>
+
+<!-- W2 Desktop: Photo View -->
+<section class="screen d" id="w2"><div class="tag">W2 · Desktop · Photo View (รูปห้องปั๊ม)</div>
+ <div class="top"><b>NEXZA | Floor Plan Platform</b><div class="crumb">FRT › ฟอร์จูนทาวน์ › ชั้น G › พื้นที่บริการ › <span>รูป: ห้องปั๊ม ชั้น G</span></div></div>
+ <div class="row" style="padding:12px;height:852px">
+  <div class="col" style="flex:1">
+   <div class="row" style="align-items:center"><div class="tabs" style="width:420px"><div>ผัง 2D</div><div>โมเดล 3D</div><div class="on">รูป/แผนภาพ (2)</div></div>
+     <span class="btn">⤢ เต็มจอ</span><span class="btn">แสดง: ค่า ▾</span><span class="btn">แก้ไข Hotspot (Admin)</span>
+     <div class="legend" style="margin-left:auto"><span><span class="pill ok">ค่า</span> ปกติ</span><span><span class="pill warn">!</span> เฝ้าระวัง</span><span><span class="pill pre">เสนอ</span> ยังไม่ติดตั้ง</span><span><span class="pill remap">!</span> ตรวจตำแหน่ง</span></div></div>
+   <div class="photo" style="height:600px"><div class="lbl">รูปถ่าย 4000×3000 · ถ่าย 12 ต.ค. 2569 · ตัด GPS/EXIF แล้ว</div>
+    <div class="shape" style="left:120px;top:300px;width:260px;height:180px"></div>
+    <div class="shape" style="left:420px;top:330px;width:140px;height:150px;border-radius:70px 70px 6px 6px"></div>
+    <div class="shape" style="left:640px;top:250px;width:300px;height:240px"></div>
+    <div class="rect" style="left:640px;top:250px;width:300px;height:240px"></div>
+    <div class="hs" style="left:250px;top:280px"><i></i><span>ปั๊ม P-003 · เดิน · 12.1 A</span></div>
+    <div class="hs rm" style="left:490px;top:310px"><i></i><span>! FRT-DEMO-PUMP-001 ต้องตรวจตำแหน่ง</span></div>
+    <div class="hs" style="left:790px;top:230px"><i></i><span>WL-001 · 61.2 cm ปกติ</span></div>
+    <div class="hs pr" style="left:1000px;top:520px"><i></i><span>PG-101 · เสนอ · ไม่มีข้อมูล</span></div>
+   </div>
+   <div class="thumbs"><div class="on">ห้องปั๊ม ชั้น G</div><div>บ่อสูบน้ำ (มุมบน)</div><div>แผนภาพระบบน้ำ</div><div style="border-style:dashed;background:#fff">+ อัปโหลด</div></div>
+  </div>
+  <div class="box" style="width:380px">
+   <h3>WL-001 · ระดับน้ำบ่อสูบน้ำ</h3><div class="mut">ชั้น G › พื้นที่บริการ · ติดตั้งแล้ว · อุปกรณ์ GW-02</div>
+   <p><span class="pill ok">ปกติ</span><span class="pill ok">สดใหม่</span><span class="pill">ข้อมูลจำลอง</span></p>
+   <div style="font-size:28px;font-weight:700">61.2 cm</div><div class="mut">ล่าสุด 09:12:30 · เกณฑ์ เตือน 120 / วิกฤต 150</div>
+   <div class="chart" style="margin:10px 0"><svg viewBox="0 0 340 110" preserveAspectRatio="none"><polyline fill="none" stroke="#0f6f69" stroke-width="2" points="0,70 30,68 60,72 90,66 120,69 150,64 180,67 210,62 240,65 270,60 300,63 340,61"/></svg></div>
+   <h3>การแจ้งเตือน</h3><p class="mut">ไม่มีการแจ้งเตือนที่ยังไม่ปิด</p>
+   <h3>ดูจุดนี้ในมุมมองอื่น</h3>
+   <p><span class="btn">ผัง 2D ชั้น G</span><span class="btn">โมเดล 3D ชั้น G</span><span class="btn p">รูป: ห้องปั๊ม (กำลังดู)</span><span class="btn">รูป: บ่อสูบน้ำ</span></p>
+   <p class="mut">แผงนี้คือคอมโพเนนต์เดียวกับแผงรายละเอียดใน 2D/3D — เรียก /points/{pointId} · /series · /alarms ชุดเดียวกัน</p>
+  </div>
+ </div>
+ <div class="note" style="left:860px;top:700px">Hotspot = placement ของจุด/อุปกรณ์บนรูป (u,v 0–1 ของภาพ) · สี/เส้นประ/“!” ใช้กติกาเดียวกับหมุด 2D/3D</div>
+</section>
+
+<!-- W3 Mobile: Photo View -->
+<section class="screen m" id="w3"><div class="tag">W3 · มือถือ · Photo View</div>
+ <div class="top" style="height:44px"><b style="font-size:13px">FRT › ชั้น G › ห้องปั๊ม</b></div>
+ <div class="tabs" style="background:#fff"><div>2D</div><div>3D</div><div class="on">รูป</div></div>
+ <div class="photo" style="height:300px;margin:8px;border-radius:8px">
+  <div class="lbl">ถ่างนิ้วเพื่อซูม · แตะ Hotspot</div>
+  <div class="shape" style="left:30px;top:140px;width:110px;height:80px"></div><div class="shape" style="left:200px;top:110px;width:130px;height:110px"></div>
+  <div class="hs" style="left:85px;top:125px"><i></i><span>เดิน</span></div>
+  <div class="hs" style="left:265px;top:95px"><i></i><span>61.2 cm</span></div>
+  <div class="hs pr" style="left:300px;top:250px"><i></i><span>เสนอ</span></div>
+ </div>
+ <div class="sheet" style="height:420px">
+  <div class="grab"></div>
+  <h3>WL-001 · ระดับน้ำบ่อสูบน้ำ</h3><div class="mut">ชั้น G › พื้นที่บริการ · ติดตั้งแล้ว</div>
+  <p><span class="pill ok">ปกติ</span><span class="pill ok">สดใหม่</span></p>
+  <div style="font-size:26px;font-weight:700">61.2 cm</div>
+  <div class="chart" style="margin:8px 0;height:90px"><svg viewBox="0 0 340 90" preserveAspectRatio="none"><polyline fill="none" stroke="#0f6f69" stroke-width="2" points="0,60 40,58 80,62 120,55 160,58 200,52 240,56 280,50 340,52"/></svg></div>
+  <p><span class="btn">ดูบนผัง 2D</span><span class="btn">ดูใน 3D</span><span class="btn">ประวัติ</span></p>
+  <p class="mut">ปัดลงเพื่อปิด · ปุ่มแตะได้ ≥ 44 px</p>
+ </div>
+</section>
+
+<!-- W4 Desktop: Hotspot editor -->
+<section class="screen d" id="w4"><div class="tag">W4 · Desktop · แก้ไข Hotspot (Admin/Editor) + ตรวจตำแหน่งหลังเปลี่ยนรูป</div>
+ <div class="top"><b>NEXZA | Floor Plan Platform</b><div class="crumb">FRT › ชั้น G › พื้นที่บริการ › รูป: ห้องปั๊ม › <span>แก้ไข Hotspot (ฉบับร่าง)</span></div></div>
+ <div class="row" style="padding:12px;height:852px">
+  <div class="box" style="width:300px">
+   <h3>ยังไม่ได้วางบนรูปนี้</h3>
+   <p class="mut">ลากรายการไปวางบนรูป · รายการมาจากพื้นที่นี้ (ลำดับชั้น)</p>
+   <div class="box" style="margin-bottom:6px">⛁ FRT-DEMO-PIT-001 บ่อสูบน้ำ <span class="btn">ลากวาง</span></div>
+   <div class="box" style="margin-bottom:6px">◌ PG-101 น้ำรั่วห้องปั๊ม <span class="pill pre">เสนอ</span> <span class="btn">ลากวาง</span></div>
+   <h3 style="margin-top:14px">เครื่องมือ</h3>
+   <p><span class="btn p">● หมุด</span><span class="btn">▭ กรอบ</span><span class="btn">⬠ หลายเหลี่ยม</span></p>
+   <p>แสดงบนรูป: <span class="btn p">ค่า</span><span class="btn">สถานะ</span><span class="btn">ชื่อ</span><span class="btn">ไอคอน</span></p>
+   <h3 style="margin-top:14px">ต้องตรวจตำแหน่ง (2)</h3>
+   <p class="mut">รูปถูกเปลี่ยนเป็นฉบับใหม่ — Hotspot ไม่ถูกลบ แสดงที่ตำแหน่งเดิมให้ยืนยันหรือย้าย</p>
+   <div class="box" style="margin-bottom:6px;border-color:var(--remap)">! P-003 · รูปเปลี่ยน <span class="btn p">ยืนยัน</span><span class="btn">ย้าย</span></div>
+   <div class="box" style="border-color:var(--remap)">! WL-001 · รูปเปลี่ยน <span class="btn p">ยืนยัน</span><span class="btn">ย้าย</span></div>
+   <p style="margin-top:16px"><span class="btn">บันทึกร่าง</span><span class="btn p">ส่งตรวจ</span></p>
+   <p class="mut">อนุมัติ/เผยแพร่: เฉพาะผู้อนุมัติที่เป็นคน (AI/บัญชีบริการทำไม่ได้)</p>
+  </div>
+  <div class="col" style="flex:1">
+   <div class="row"><div style="flex:1"><div class="mut">รูปเดิม (sha256 b3f1…)</div><div class="photo" style="height:330px"><div class="shape" style="left:60px;top:150px;width:200px;height:130px"></div><div class="hs" style="left:150px;top:135px"><i></i><span>P-003</span></div><div class="hs" style="left:420px;top:120px"><i></i><span>WL-001</span></div><div class="shape" style="left:340px;top:140px;width:180px;height:150px"></div></div></div>
+     <div style="flex:1"><div class="mut">รูปใหม่ (sha256 9c0e…) — มุมกล้องต่างเล็กน้อย</div><div class="photo" style="height:330px"><div class="shape" style="left:90px;top:160px;width:200px;height:130px"></div><div class="shape" style="left:370px;top:150px;width:180px;height:150px"></div><div class="hs rm" style="left:150px;top:135px"><i></i><span>! P-003</span></div><div class="hs rm" style="left:420px;top:120px"><i></i><span>! WL-001</span></div><div style="position:absolute;left:180px;top:150px;color:var(--remap);font-size:20px">→ ⊕</div></div></div></div>
+   <div class="photo" style="flex:1"><div class="lbl">โหมดแก้ไข: ลากหมุดเพื่อย้าย · Shift = ล็อกแนว · ซูม 100–400%</div>
+    <div class="shape" style="left:180px;top:250px;width:260px;height:170px"></div><div class="shape" style="left:620px;top:220px;width:240px;height:200px"></div>
+    <div class="rect" style="left:620px;top:220px;width:240px;height:200px;border-style:dashed"></div>
+    <div class="hs" style="left:310px;top:235px"><i></i><span>P-003</span></div><div class="hs" style="left:740px;top:205px"><i></i><span>WL-001 (กรอบ)</span></div>
+    <div class="hs pr" style="left:520px;top:400px;opacity:.7"><i></i><span>กำลังวาง: PG-101</span></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- W5: same point across views -->
+<section class="screen d" id="w5" style="height:560px"><div class="tag">W5 · จุดเดียวกัน Stable ID เดียวกัน จาก Photo / 2D / 3D</div>
+ <div style="padding:24px">
+  <div class="flow">
+   <div class="col">
+    <div class="box"><h3>รูปห้องปั๊ม (Photo)</h3><div class="photo" style="height:120px"><div class="hs" style="left:150px;top:60px"><i></i><span>WL-001</span></div></div><div class="mut">placement: view=photo, rect u .60 v .55</div></div>
+    <div class="box"><h3>ผัง 2D ชั้น G</h3><div class="photo" style="height:120px;background:#fff"><div class="hs" style="left:240px;top:80px"><i></i><span>11</span></div></div><div class="mut">placement: view=plan, pin u .88 v .86</div></div>
+    <div class="box"><h3>โมเดล 3D</h3><div class="photo" style="height:120px;background:#2b3a3f"><div class="hs" style="left:200px;top:50px"><i></i><span>11</span></div></div><div class="mut">placement: view=model, xyz (FloorFrame)</div></div>
+   </div>
+   <div class="arrow">⟶<br>⟶<br>⟶</div>
+   <div class="box" style="width:330px;text-align:center"><h3>pointId</h3><div style="font-family:monospace;font-size:13px">ecadb467-…-WL-001 (UUID ถาวร)</div><p class="mut">code = WL-001 ใช้แสดงผลเท่านั้น<br>เปลี่ยนเครื่องเซนเซอร์ได้ โดย UUID ไม่เปลี่ยน</p></div>
+   <div class="arrow">⟶</div>
+   <div class="col">
+    <div class="box">GET /points/{pointId} — รายละเอียด + สถานะ (กติกา Lifecycle เดียว)</div>
+    <div class="box">GET /points/{pointId}/series — กราฟชุดเดียว</div>
+    <div class="box">GET /points/{pointId}/alarms — แจ้งเตือนชุดเดียว</div>
+    <div class="box">GET /points/{pointId}/appearances — ปุ่ม “ดูในมุมมองอื่น”</div>
+   </div>
+  </div>
+  <p class="mut" style="margin-top:18px">ทดสอบรับมอบ: เปิด WL-001 จากทั้ง 3 มุมมอง → ค่า สถานะ เวลาสังเกต กราฟ (จำนวนจุดข้อมูล/ค่าสุดท้าย) และรายการแจ้งเตือนต้องเท่ากันทุกตัว</p>
+ </div>
+</section>
+
+<!-- W6 Mobile hierarchy -->
+<section class="screen m" id="w6"><div class="tag">W6 · มือถือ · ลำดับชั้นแบบเจาะทีละระดับ</div>
+ <div class="top" style="height:44px"><b style="font-size:13px">‹ ชั้น G</b></div>
+ <div style="padding:10px">
+  <input style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px" value="ค้นหารหัส/ชื่อ">
+  <div class="mut" style="margin:8px 0">FRT › ฟอร์จูนทาวน์ › อาคาร › <b>ชั้น G</b></div>
+  <div class="box" style="margin-bottom:8px">▢ พื้นที่บริการ ชั้น G <span class="pill ok">3</span><span class="pill pre">1</span><span style="float:right">›</span><div class="mut">ปั๊ม · บ่อ · 3 จุด · 2 รูป</div></div>
+  <div class="box" style="margin-bottom:8px">▢ ลานจอดรถ ชั้น G <span style="float:right">›</span><div class="mut">ไม่มีจุดตรวจวัด</div></div>
+  <div class="box" style="margin-bottom:8px">◉ WL-001 ระดับน้ำบ่อ <span class="pill ok">61.2 cm</span><span style="float:right">›</span></div>
+  <div class="box" style="margin-bottom:8px">◌ PG-101 น้ำรั่วห้องปั๊ม <span class="pill pre">เสนอ</span><span style="float:right">›</span></div>
+  <p><span class="btn p">ดูบนผัง 2D</span><span class="btn p">ดูใน 3D</span><span class="btn p">รูป (2)</span></p>
+  <p class="mut">แต่ละระดับเป็นหน้าเดียว (ไม่โหลดทั้งต้นไม้) · ปุ่มแตะได้ ≥ 44 px · ไม่ล้นแนวนอน</p>
+ </div>
+</section>
+</body></html>

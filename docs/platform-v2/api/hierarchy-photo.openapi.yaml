@@ -1,0 +1,670 @@
+openapi: 3.1.0
+info:
+  title: Floor Plan Platform v2 — Project Hierarchy + Photo & Diagram View
+  version: 0.1.0-draft
+  description: |
+    ร่างสัญญา API เพื่ออนุมัติ — ยังไม่มีระบบจริง
+    - ทุกคำขอต้องมี session (Bearer token จาก OIDC) · Server หา project membership เอง ห้ามเชื่อ projectId จาก Frontend ว่ามีสิทธิ์
+    - projectId ใน path ใช้ "ระบุ" โครงการเท่านั้น — ไม่ใช่สมาชิกโครงการ = 404 (ไม่บอกว่ามีอยู่จริง ป้องกันการเดา)
+    - ทุก Entity อ้างด้วย UUID ถาวร · การค้นด้วยรหัส (code) ต้องอยู่ในโครงการเสมอ (/resolve)
+    - จุดเดียวกันเปิดจาก Photo / 2D / 3D ใช้ endpoint ข้อมูลเดียวกัน: /points/{pointId}, /series, /alarms
+    - ไฟล์อยู่ใน bucket แบบ private · อัปโหลดด้วย pre-signed URL อายุสั้น · ดาวน์โหลดด้วย signed URL อายุสั้น (ไม่บันทึก URL ลงข้อมูล)
+servers:
+  - url: https://api.example.invalid/v2
+security:
+  - session: []
+
+tags:
+  - name: hierarchy
+    description: องค์กร → โครงการ/ไซต์ → อาคาร → ชั้น → ห้อง/พื้นที่ → Asset → Sensor (จุด + อุปกรณ์) → ค่าวัด
+  - name: points
+    description: ข้อมูลชุดเดียวของจุด (ใช้ร่วมทุกมุมมอง)
+  - name: media
+    description: อัปโหลดรูป/ผัง/แผนภาพ
+  - name: views
+    description: มุมมอง Photo / Diagram / Plan / Model และ Hotspot (placement)
+
+paths:
+  /me/projects:
+    get:
+      tags: [hierarchy]
+      summary: โครงการที่ผู้ใช้เป็นสมาชิก (พร้อมบทบาท)
+      responses:
+        '200':
+          description: รายการโครงการ
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProjectSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /projects/{projectId}/hierarchy:
+    parameters: [{ $ref: '#/components/parameters/projectId' }]
+    get:
+      tags: [hierarchy]
+      summary: ต้นไม้ลำดับชั้นของโครงการ (โหลดทีละระดับได้)
+      parameters:
+        - name: rootType
+          in: query
+          schema: { type: string, enum: [project, site, building, floor, space] }
+        - name: rootId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: depth
+          in: query
+          description: จำนวนระดับที่ต้องการ (ค่าเริ่มต้น 2) — ต้นไม้ใหญ่โหลดเป็นช่วงเพื่อไม่ให้หน้าเว็บช้า
+          schema: { type: integer, minimum: 1, maximum: 4, default: 2 }
+      responses:
+        '200':
+          description: ต้นไม้
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HierarchyNode' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /projects/{projectId}/resolve:
+    parameters: [{ $ref: '#/components/parameters/projectId' }]
+    get:
+      tags: [hierarchy]
+      summary: แปลงรหัสที่คนอ่าน (P-005, FRT-DEMO-PUMP-001) เป็น UUID ภายในโครงการนี้เท่านั้น
+      parameters:
+        - { name: type, in: query, required: true, schema: { type: string, enum: [point, asset, space, floor, building, site] } }
+        - { name: code, in: query, required: true, schema: { type: string, maxLength: 64 } }
+      responses:
+        '200':
+          description: พบ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntityRef' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /projects/{projectId}/{collection}:
+    parameters:
+      - { $ref: '#/components/parameters/projectId' }
+      - name: collection
+        in: path
+        required: true
+        schema: { type: string, enum: [sites, buildings, floors, spaces, assets, points, devices, bindings] }
+    get:
+      tags: [hierarchy]
+      summary: รายการ Entity ของโครงการ (กรองตามพ่อแม่ได้)
+      parameters:
+        - { name: parentId, in: query, schema: { type: string, format: uuid } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        '200':
+          description: หน้าข้อมูล
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Entity' } }
+                  nextCursor: { type: [string, 'null'] }
+    post:
+      tags: [hierarchy]
+      summary: สร้าง Entity (owner/admin/editor/installer) — สถานะติดตั้งเริ่มต้นจาก settings ของโครงการ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntityInput' }
+      responses:
+        '201':
+          description: สร้างแล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entity' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+
+  /projects/{projectId}/{collection}/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/projectId' }
+      - name: collection
+        in: path
+        required: true
+        schema: { type: string, enum: [sites, buildings, floors, spaces, assets, points, devices, bindings] }
+      - { $ref: '#/components/parameters/id' }
+    get:
+      tags: [hierarchy]
+      summary: อ่าน Entity
+      responses:
+        '200':
+          description: Entity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entity' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [hierarchy]
+      summary: แก้ไข (ต้องส่ง If-Match = version เพื่อกันเขียนทับกัน) — แก้ code ได้ UUID ไม่เปลี่ยน
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: { $ref: '#/components/schemas/EntityInput' }
+      responses:
+        '200':
+          description: แก้แล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entity' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { description: version ไม่ตรง (มีคนแก้ก่อน) }
+
+  /projects/{projectId}/points/{pointId}:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
+    get:
+      tags: [points]
+      summary: ข้อมูลชุดเดียวของจุด — Photo, 2D และ 3D เรียก endpoint นี้เหมือนกัน
+      responses:
+        '200':
+          description: รายละเอียด + ค่าล่าสุด + สถานะ + ตำแหน่งที่ปรากฏ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PointDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /projects/{projectId}/points/{pointId}/series:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
+    get:
+      tags: [points]
+      summary: กราฟค่าวัด (ชุดเดียวกันไม่ว่าเปิดจากมุมมองใด)
+      parameters:
+        - { name: metricId, in: query, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: maxPoints, in: query, schema: { type: integer, minimum: 50, maximum: 5000, default: 600 } }
+      responses:
+        '200':
+          description: อนุกรมเวลา (ย่อขนาดฝั่ง Server ตาม maxPoints)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Series' }
+
+  /projects/{projectId}/points/{pointId}/alarms:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
+    get:
+      tags: [points]
+      summary: เหตุการณ์แจ้งเตือนของจุด (ชุดเดียวกันทุกมุมมอง)
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [open, all], default: open } }
+      responses:
+        '200':
+          description: เหตุการณ์
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/AlarmEpisode' } }
+
+  /projects/{projectId}/points/{pointId}/appearances:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
+    get:
+      tags: [points]
+      summary: จุดนี้ปรากฏในมุมมองใดบ้าง (ผัง 2D / โมเดล 3D / รูป / แผนภาพ) — ใช้ปุ่ม "ดูในมุมมองอื่น"
+      responses:
+        '200':
+          description: รายการ placement
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Placement' } }
+
+  /projects/{projectId}/media/uploads:
+    parameters: [{ $ref: '#/components/parameters/projectId' }]
+    post:
+      tags: [media]
+      summary: ขอ pre-signed URL สำหรับอัปโหลด (อายุ ≤ 10 นาที, จำกัดชนิด/ขนาด)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, contentType, bytes, sha256]
+              properties:
+                kind: { type: string, enum: [photo, diagram, plan, model, document] }
+                contentType: { type: string, enum: [image/jpeg, image/png, image/webp, application/pdf, model/gltf-binary] }
+                bytes: { type: integer, minimum: 1, maximum: 52428800 }
+                sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+      responses:
+        '201':
+          description: URL อัปโหลด (ใช้ครั้งเดียว)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [uploadId, url, expiresAt, headers]
+                properties:
+                  uploadId: { type: string, format: uuid }
+                  url: { type: string, format: uri }
+                  expiresAt: { type: string, format: date-time }
+                  headers: { type: object, additionalProperties: { type: string } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /projects/{projectId}/media/uploads/{uploadId}/complete:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { name: uploadId, in: path, required: true, schema: { type: string, format: uuid } }]
+    post:
+      tags: [media]
+      summary: ยืนยันการอัปโหลด → Server ตรวจ SHA-256, magic bytes, ขนาดภาพ, สแกน แล้ว worker เข้ารหัสใหม่ (ตัด EXIF/GPS) + สร้างขนาดย่อ
+      responses:
+        '202':
+          description: รับไว้ตรวจ (scanStatus = pending)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaFile' }
+        '422': { $ref: '#/components/responses/Invalid' }
+
+  /projects/{projectId}/media/{fileId}/url:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }]
+    get:
+      tags: [media]
+      summary: signed URL อายุสั้นของไฟล์ (เลือกขนาด) — เฉพาะไฟล์ที่ scanStatus = clean
+      parameters:
+        - { name: size, in: query, schema: { type: string, enum: ['480', '1600', '4096'], default: '1600' } }
+      responses:
+        '200':
+          description: URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expiresAt]
+                properties:
+                  url: { type: string, format: uri }
+                  expiresAt: { type: string, format: date-time }
+
+  /projects/{projectId}/views:
+    parameters: [{ $ref: '#/components/parameters/projectId' }]
+    get:
+      tags: [views]
+      summary: มุมมองของ Entity (เช่น รูปทั้งหมดของห้องปั๊ม)
+      parameters:
+        - { name: subjectType, in: query, schema: { type: string, enum: [floor, space, asset] } }
+        - { name: subjectId, in: query, schema: { type: string, format: uuid } }
+        - { name: kind, in: query, schema: { type: string, enum: [plan, model, photo, diagram] } }
+      responses:
+        '200':
+          description: รายการมุมมอง
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/View' } }
+    post:
+      tags: [views]
+      summary: สร้างมุมมองจากไฟล์ที่ตรวจแล้ว (สถานะ draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, title, subjectType, subjectId, fileId]
+              properties:
+                kind: { type: string, enum: [photo, diagram] }
+                title: { type: string, maxLength: 120 }
+                subjectType: { type: string, enum: [floor, space, asset] }
+                subjectId: { type: string, format: uuid }
+                fileId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: สร้างแล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/View' }
+
+  /projects/{projectId}/views/{viewId}:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/viewId' }]
+    get:
+      tags: [views]
+      summary: มุมมอง + Hotspot ทั้งหมด + สถานะล่าสุดของแต่ละเป้าหมาย (โหลดครั้งเดียวพอแสดงผล)
+      responses:
+        '200':
+          description: มุมมองพร้อม Hotspot
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/View' }
+                  - type: object
+                    required: [placements, live]
+                    properties:
+                      placements: { type: array, maxItems: 300, items: { $ref: '#/components/schemas/Placement' } }
+                      live:
+                        type: object
+                        description: สถานะล่าสุดต่อ pointId (ค่า คุณภาพ ระดับแจ้งเตือน สถานะติดตั้ง) — กติกาเดียวกับ 2D/3D
+                        additionalProperties: { $ref: '#/components/schemas/PointLive' }
+    patch:
+      tags: [views]
+      summary: เปลี่ยนชื่อ/เปลี่ยนรูป (fileId ใหม่ → Hotspot เป็น needs_remapping 'image-changed') / ส่งตรวจ / อนุมัติ (มนุษย์เท่านั้น)
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 120 }
+                fileId: { type: string, format: uuid }
+                status: { type: string, enum: [review_required, approved, published, archived] }
+      responses:
+        '200':
+          description: แก้แล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/View' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /projects/{projectId}/views/{viewId}/placements:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/viewId' }]
+    post:
+      tags: [views]
+      summary: วาง Hotspot ของจุด/อุปกรณ์/พื้นที่บนรูป (หนึ่งเป้าหมายต่อมุมมอง)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacementInput' }
+      responses:
+        '201':
+          description: วางแล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Invalid' }
+
+  /projects/{projectId}/views/{viewId}/placements/{placementId}:
+    parameters:
+      - { $ref: '#/components/parameters/projectId' }
+      - { $ref: '#/components/parameters/viewId' }
+      - { name: placementId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [views]
+      summary: ย้าย/ปรับ Hotspot หรือยืนยันตำแหน่งหลังเปลี่ยนรูป (confirm = mapped + resolvedFileSha256 ใหม่)
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              properties:
+                geometry: { $ref: '#/components/schemas/Geometry' }
+                labelMode: { type: string, enum: [value, status, name, icon] }
+                metricId: { type: [string, 'null'] }
+                confirmPosition: { type: boolean }
+      responses:
+        '200':
+          description: แก้แล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Placement' }
+    delete:
+      tags: [views]
+      summary: เอา Hotspot ออกจากรูป (จุดและข้อมูลไม่ถูกลบ)
+      responses:
+        '204': { description: ลบตำแหน่งบนรูปแล้ว }
+
+components:
+  securitySchemes:
+    session:
+      type: http
+      scheme: bearer
+      description: Access token จาก OIDC (เช่น Google Workspace ขององค์กร) — Server ตรวจและหา user id เอง
+
+  parameters:
+    projectId: { name: projectId, in: path, required: true, schema: { type: string, format: uuid } }
+    id: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    pointId: { name: pointId, in: path, required: true, schema: { type: string, format: uuid } }
+    viewId: { name: viewId, in: path, required: true, schema: { type: string, format: uuid } }
+
+  responses:
+    Unauthorized: { description: ไม่มี session หรือหมดอายุ, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Forbidden: { description: เป็นสมาชิกแต่บทบาทไม่พอ (บันทึก audit), content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    NotFound: { description: ไม่พบ หรือไม่ใช่สมาชิกโครงการ (ตอบเหมือนกันเพื่อไม่ให้เดาได้), content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Conflict: { description: รหัสซ้ำในโครงการ / Hotspot ซ้ำในมุมมอง, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+    Invalid: { description: ข้อมูลไม่ผ่านการตรวจ, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors: { type: array, items: { type: object, properties: { path: { type: string }, message: { type: string } } } }
+
+    InstallStatus:
+      type: string
+      enum: [draft, proposed, pending_approval, approved, installed, commissioned, rejected, decommissioned]
+
+    ProjectSummary:
+      type: object
+      required: [id, code, name, role, organization]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [owner, admin, editor, installer, approver, viewer] }
+        organization: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+
+    EntityRef:
+      type: object
+      required: [type, id, code]
+      properties:
+        type: { type: string, enum: [site, building, floor, space, asset, point, device, binding] }
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+
+    HierarchyNode:
+      type: object
+      required: [ref, childCount]
+      properties:
+        ref: { $ref: '#/components/schemas/EntityRef' }
+        installStatus: { $ref: '#/components/schemas/InstallStatus' }
+        summary:
+          type: object
+          description: สรุปสถานะของทุกจุดใต้โหนดนี้ (นับเฉพาะจุดที่ติดตั้งแล้ว/ส่งมอบแล้ว — กติกาเดียวกับ KPI)
+          properties:
+            points: { type: integer }
+            attention: { type: integer }
+            critical: { type: integer }
+            notInstalled: { type: integer }
+        childCount: { type: integer }
+        children: { type: array, items: { $ref: '#/components/schemas/HierarchyNode' } }
+
+    Entity:
+      type: object
+      required: [type, id, projectId, code, version]
+      properties:
+        type: { type: string, enum: [site, building, floor, space, asset, point, device, binding] }
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        parentId: { type: [string, 'null'], format: uuid }
+        installStatus: { $ref: '#/components/schemas/InstallStatus' }
+        attributes: { type: object, additionalProperties: true }
+        version: { type: string, description: ใช้กับ If-Match }
+
+    EntityInput:
+      type: object
+      properties:
+        code: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$' }
+        name: { type: string, maxLength: 160 }
+        parentId: { type: string, format: uuid }
+        installStatus: { $ref: '#/components/schemas/InstallStatus' }
+        attributes: { type: object, additionalProperties: true }
+
+    PointLive:
+      type: object
+      required: [installStatus, accept, quality, severity]
+      properties:
+        installStatus: { $ref: '#/components/schemas/InstallStatus' }
+        accept: { type: boolean, description: กติกา Lifecycle เดียว (รับข้อมูล/นับ KPI/แจ้งเตือน) }
+        quality: { type: string, enum: [fresh, stale, nodata, invalid, not-installed] }
+        severity: { type: string, enum: [normal, warning, critical] }
+        value: { description: ค่าหลักล่าสุด (ตัวเลขหรือสถานะ) }
+        unit: { type: [string, 'null'] }
+        observedAt: { type: [string, 'null'], format: date-time }
+        mappingStatus: { type: string, enum: [mapped, unanchored, needs_remapping] }
+
+    PointDetail:
+      type: object
+      required: [point, metrics, live, appearances]
+      properties:
+        point: { $ref: '#/components/schemas/Entity' }
+        path: { type: array, description: ลำดับชั้นจากไซต์ถึงห้อง, items: { $ref: '#/components/schemas/EntityRef' } }
+        metrics:
+          type: array
+          items:
+            type: object
+            required: [id, name, kind]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              kind: { type: string, enum: [numeric, discrete] }
+              unit: { type: [string, 'null'] }
+        assets: { type: array, items: { $ref: '#/components/schemas/EntityRef' } }
+        device: { oneOf: [{ $ref: '#/components/schemas/EntityRef' }, { type: 'null' }] }
+        live: { $ref: '#/components/schemas/PointLive' }
+        appearances: { type: array, items: { $ref: '#/components/schemas/Placement' } }
+
+    Series:
+      type: object
+      required: [pointId, metricId, unit, samples]
+      properties:
+        pointId: { type: string, format: uuid }
+        metricId: { type: string }
+        unit: { type: [string, 'null'] }
+        samples:
+          type: array
+          items:
+            type: array
+            prefixItems: [{ type: string, format: date-time }, {}]
+            minItems: 2
+            maxItems: 2
+
+    AlarmEpisode:
+      type: object
+      required: [id, pointId, metricId, severity, openedAt]
+      properties:
+        id: { type: string, format: uuid }
+        pointId: { type: string, format: uuid }
+        metricId: { type: string }
+        severity: { type: string, enum: [warning, critical] }
+        openedAt: { type: string, format: date-time }
+        recoveredAt: { type: [string, 'null'], format: date-time }
+        acknowledged: { type: boolean }
+
+    MediaFile:
+      type: object
+      required: [id, kind, sha256, contentType, scanStatus]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [plan, model, photo, diagram, document] }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        contentType: { type: string }
+        widthPx: { type: [integer, 'null'] }
+        heightPx: { type: [integer, 'null'] }
+        bytes: { type: integer }
+        scanStatus: { type: string, enum: [pending, clean, rejected] }
+
+    View:
+      type: object
+      required: [id, kind, title, subject, file, status, version]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [plan, model, photo, diagram] }
+        title: { type: string }
+        subject: { $ref: '#/components/schemas/EntityRef' }
+        file: { $ref: '#/components/schemas/MediaFile' }
+        status: { type: string, enum: [draft, review_required, approved, published, archived] }
+        version: { type: string }
+
+    Geometry:
+      oneOf:
+        - type: object
+          title: pin
+          required: [u, v]
+          properties: { u: { type: number, minimum: 0, maximum: 1 }, v: { type: number, minimum: 0, maximum: 1 } }
+          additionalProperties: false
+        - type: object
+          title: rect
+          required: [u, v, w, h]
+          properties:
+            u: { type: number, minimum: 0, maximum: 1 }
+            v: { type: number, minimum: 0, maximum: 1 }
+            w: { type: number, exclusiveMinimum: 0, maximum: 1 }
+            h: { type: number, exclusiveMinimum: 0, maximum: 1 }
+          additionalProperties: false
+        - type: object
+          title: polygon
+          required: [pts]
+          properties:
+            pts:
+              type: array
+              minItems: 3
+              maxItems: 64
+              items: { type: array, prefixItems: [{ type: number, minimum: 0, maximum: 1 }, { type: number, minimum: 0, maximum: 1 }], minItems: 2, maxItems: 2 }
+          additionalProperties: false
+        - type: object
+          title: xyz
+          required: [x, y, z]
+          properties: { x: { type: number }, y: { type: number }, z: { type: number } }
+          additionalProperties: false
+
+    PlacementInput:
+      type: object
+      required: [target, shape, geometry]
+      properties:
+        target:
+          type: object
+          required: [type, id]
+          properties:
+            type: { type: string, enum: [point, asset, space] }
+            id: { type: string, format: uuid }
+        shape: { type: string, enum: [pin, rect, polygon, xyz] }
+        geometry: { $ref: '#/components/schemas/Geometry' }
+        labelMode: { type: string, enum: [value, status, name, icon], default: value }
+        metricId: { type: [string, 'null'] }
+
+    Placement:
+      allOf:
+        - { $ref: '#/components/schemas/PlacementInput' }
+        - type: object
+          required: [id, viewId, viewKind, mappingStatus, resolvedFileSha256]
+          properties:
+            id: { type: string, format: uuid }
+            viewId: { type: string, format: uuid }
+            viewKind: { type: string, enum: [plan, model, photo, diagram] }
+            viewTitle: { type: string }
+            mappingStatus: { type: string, enum: [mapped, unanchored, needs_remapping] }
+            remapReasons: { type: array, items: { type: string, enum: [plan-changed, model-changed, image-changed, crs-changed, anchor-not-found, manual] } }
+            resolvedFileSha256: { type: string, pattern: '^[0-9a-f]{64}$' }
