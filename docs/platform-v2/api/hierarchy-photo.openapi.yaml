@@ -1,9 +1,11 @@
 openapi: 3.1.0
 info:
   title: Floor Plan Platform v2 — Project Hierarchy + Photo & Diagram View
-  version: 0.1.0-draft
+  version: 0.2.0-draft
   description: |
-    ร่างสัญญา API เพื่ออนุมัติ — ยังไม่มีระบบจริง
+    ร่างสัญญา API เพื่ออนุมัติ — ยังไม่มีระบบจริง (ฉบับแก้ครั้งที่ 2: Site เสริม · แยก Monitoring Point / Device / Asset / Metric · บทบาท 6 แบบ)
+    - Monitoring Point (จุดตรวจวัด เช่น P-003) ≠ Device (เครื่องเซนเซอร์/เกตเวย์ เช่น GW-02) — เปลี่ยน Device ได้ ประวัติ กราฟ Alarm ของจุดคงอยู่
+    - เปลี่ยนสถานะติดตั้งผ่าน /install-status เท่านั้น (ตรวจบทบาทที่ Server และ DB) · AI/บัญชีระบบอนุมัติหรือ Commission ไม่ได้
     - ทุกคำขอต้องมี session (Bearer token จาก OIDC) · Server หา project membership เอง ห้ามเชื่อ projectId จาก Frontend ว่ามีสิทธิ์
     - projectId ใน path ใช้ "ระบุ" โครงการเท่านั้น — ไม่ใช่สมาชิกโครงการ = 404 (ไม่บอกว่ามีอยู่จริง ป้องกันการเดา)
     - ทุก Entity อ้างด้วย UUID ถาวร · การค้นด้วยรหัส (code) ต้องอยู่ในโครงการเสมอ (/resolve)
@@ -16,9 +18,13 @@ security:
 
 tags:
   - name: hierarchy
-    description: องค์กร → โครงการ/ไซต์ → อาคาร → ชั้น → ห้อง/พื้นที่ → Asset → Sensor (จุด + อุปกรณ์) → ค่าวัด
+    description: องค์กร → โครงการ → (ไซต์ — เสริม) → อาคาร → ชั้น → ห้อง/พื้นที่ → Asset → Monitoring Point → ค่าวัด · Device ติดตั้งที่ Monitoring Point
   - name: points
-    description: ข้อมูลชุดเดียวของจุด (ใช้ร่วมทุกมุมมอง)
+    description: ข้อมูลชุดเดียวของ Monitoring Point (ใช้ร่วมทุกมุมมอง)
+  - name: devices
+    description: เครื่องเซนเซอร์/เกตเวย์ และประวัติการติดตั้งที่ Monitoring Point
+  - name: lifecycle
+    description: สถานะติดตั้งและการอนุมัติตามบทบาท
   - name: media
     description: อัปโหลดรูป/ผัง/แผนภาพ
   - name: views
@@ -47,7 +53,7 @@ paths:
     parameters: [{ $ref: '#/components/parameters/projectId' }]
     get:
       tags: [hierarchy]
-      summary: ต้นไม้ลำดับชั้นของโครงการ (โหลดทีละระดับได้)
+      summary: ต้นไม้ลำดับชั้นของโครงการ (โหลดทีละระดับได้) — showSiteLevel = false เมื่อโครงการมี Site ไม่เกิน 1 แห่ง (UI ซ่อนระดับนี้)
       parameters:
         - name: rootType
           in: query
@@ -64,14 +70,19 @@ paths:
           description: ต้นไม้
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/HierarchyNode' }
+              schema:
+                type: object
+                required: [showSiteLevel, root]
+                properties:
+                  showSiteLevel: { type: boolean }
+                  root: { $ref: '#/components/schemas/HierarchyNode' }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /projects/{projectId}/resolve:
     parameters: [{ $ref: '#/components/parameters/projectId' }]
     get:
       tags: [hierarchy]
-      summary: แปลงรหัสที่คนอ่าน (P-005, FRT-DEMO-PUMP-001) เป็น UUID ภายในโครงการนี้เท่านั้น
+      summary: แปลงรหัสที่คนอ่าน (Monitoring Point P-005, Asset FRT-DEMO-PUMP-001, Device GW-02) เป็น UUID ภายในโครงการนี้เท่านั้น
       parameters:
         - { name: type, in: query, required: true, schema: { type: string, enum: [point, asset, space, floor, building, site] } }
         - { name: code, in: query, required: true, schema: { type: string, maxLength: 64 } }
@@ -89,7 +100,7 @@ paths:
       - name: collection
         in: path
         required: true
-        schema: { type: string, enum: [sites, buildings, floors, spaces, assets, points, devices, bindings] }
+        schema: { type: string, enum: [sites, buildings, floors, spaces, assets, points, metrics, devices, bindings] }
     get:
       tags: [hierarchy]
       summary: รายการ Entity ของโครงการ (กรองตามพ่อแม่ได้)
@@ -110,7 +121,7 @@ paths:
                   nextCursor: { type: [string, 'null'] }
     post:
       tags: [hierarchy]
-      summary: สร้าง Entity (owner/admin/editor/installer) — สถานะติดตั้งเริ่มต้นจาก settings ของโครงการ
+      summary: สร้าง Entity (technical_editor · devices ได้ทั้ง installer) — จุด/อุปกรณ์ใหม่เริ่มที่ draft หรือ proposed เท่านั้น (สถานะอื่นผ่าน /install-status)
       requestBody:
         required: true
         content:
@@ -132,7 +143,7 @@ paths:
       - name: collection
         in: path
         required: true
-        schema: { type: string, enum: [sites, buildings, floors, spaces, assets, points, devices, bindings] }
+        schema: { type: string, enum: [sites, buildings, floors, spaces, assets, points, metrics, devices, bindings] }
       - { $ref: '#/components/parameters/id' }
     get:
       tags: [hierarchy]
@@ -146,7 +157,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     patch:
       tags: [hierarchy]
-      summary: แก้ไข (ต้องส่ง If-Match = version เพื่อกันเขียนทับกัน) — แก้ code ได้ UUID ไม่เปลี่ยน
+      summary: แก้ไขข้อมูลทั่วไป (technical_editor · ต้องส่ง If-Match) — แก้ code ได้ UUID ไม่เปลี่ยน · ห้ามแก้ installStatus ผ่านทางนี้ (422)
       parameters:
         - { name: If-Match, in: header, required: true, schema: { type: string } }
       requestBody:
@@ -168,7 +179,7 @@ paths:
     parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
     get:
       tags: [points]
-      summary: ข้อมูลชุดเดียวของจุด — Photo, 2D และ 3D เรียก endpoint นี้เหมือนกัน
+      summary: ข้อมูลชุดเดียวของ Monitoring Point — Photo, 2D และ 3D เรียก endpoint นี้เหมือนกัน
       responses:
         '200':
           description: รายละเอียด + ค่าล่าสุด + สถานะ + ตำแหน่งที่ปรากฏ
@@ -181,7 +192,7 @@ paths:
     parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
     get:
       tags: [points]
-      summary: กราฟค่าวัด (ชุดเดียวกันไม่ว่าเปิดจากมุมมองใด)
+      summary: กราฟค่าวัดของจุด (ชุดเดียวกันไม่ว่าเปิดจากมุมมองใด · ต่อเนื่องข้ามการเปลี่ยน Device — แต่ละค่าระบุ Device ที่ส่ง)
       parameters:
         - { name: metricId, in: query, required: true, schema: { type: string } }
         - { name: from, in: query, required: true, schema: { type: string, format: date-time } }
@@ -227,6 +238,121 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/Placement' } }
+
+  /projects/{projectId}/{collection}/{id}/install-status:
+    parameters:
+      - { $ref: '#/components/parameters/projectId' }
+      - name: collection
+        in: path
+        required: true
+        schema: { type: string, enum: [points, assets] }
+      - { $ref: '#/components/parameters/id' }
+    post:
+      tags: [lifecycle]
+      summary: เปลี่ยนสถานะติดตั้งตามบทบาท (ตรวจซ้ำใน DB trigger)
+      description: |
+        | ไปสถานะ | จากสถานะ | บทบาท | ต้องเป็นคน |
+        |---|---|---|---|
+        | draft / proposed / pending_approval | draft, proposed, pending_approval, rejected | technical_editor | – |
+        | approved / rejected | pending_approval | client_approver | ✓ |
+        | installed | approved (Monitoring Point ต้องมี Device ติดอยู่) | installer | – |
+        | commissioned | installed | commissioning_engineer | ✓ |
+        | decommissioned | installed, commissioned | commissioning_engineer | ✓ |
+        AI/บัญชีระบบ (users.kind = service) ได้ 403 เสมอสำหรับข้อที่ต้องเป็นคน แม้มีบทบาท · ทุกครั้งบันทึก Audit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { $ref: '#/components/schemas/InstallStatus' }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: เปลี่ยนแล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entity' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: เปลี่ยนจากสถานะปัจจุบันไปสถานะนี้ไม่ได้ (เช่น installed โดยยังไม่มี Device) }
+
+  /projects/{projectId}/points/{pointId}/device-installations:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { $ref: '#/components/parameters/pointId' }]
+    get:
+      tags: [devices]
+      summary: ประวัติ Device ที่เคยติดตั้งที่ Monitoring Point นี้ (ใหม่สุดก่อน)
+      responses:
+        '200':
+          description: ประวัติการติดตั้ง
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/DeviceInstallation' } }
+    post:
+      tags: [devices]
+      summary: ติดตั้งหรือเปลี่ยน Device (installer) — มีเครื่องเดิมอยู่ จะถูกปิด (removedAt) ในธุรกรรมเดียวกัน · pointId ไม่เปลี่ยน ประวัติ/กราฟ/Alarm คงอยู่
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId, installedAt]
+              properties:
+                deviceId: { type: string, format: uuid }
+                installedAt: { type: string, format: date-time }
+                replaceCurrent: { type: boolean, default: false, description: ต้องเป็น true ถ้ามีเครื่องติดอยู่แล้ว (กันเปลี่ยนโดยไม่ตั้งใจ) }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '201':
+          description: บันทึกแล้ว
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceInstallation' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: มีเครื่องติดอยู่แล้วแต่ไม่ได้ส่ง replaceCurrent = true / Device ติดอยู่ที่จุดอื่น }
+
+  /projects/{projectId}/alarms/{episodeId}/acknowledgements:
+    parameters: [{ $ref: '#/components/parameters/projectId' }, { name: episodeId, in: path, required: true, schema: { type: string, format: uuid } }]
+    post:
+      tags: [points]
+      summary: รับทราบ Alarm (คนเท่านั้น ในนามตัวเอง · technical_editor / installer / client_approver / commissioning_engineer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '201': { description: บันทึกแล้ว }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /projects/{projectId}/comments:
+    parameters: [{ $ref: '#/components/parameters/projectId' }]
+    post:
+      tags: [lifecycle]
+      summary: ความเห็นของผู้ตรวจ (client_reviewer ขึ้นไป) ต่อจุด/อุปกรณ์/รูป/Hotspot — ไม่เปลี่ยนข้อมูล
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entityType, entityId, body]
+              properties:
+                entityType: { type: string, enum: [site, building, floor, space, asset, point, view, placement] }
+                entityId: { type: string, format: uuid }
+                body: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '201': { description: บันทึกแล้ว }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /projects/{projectId}/media/uploads:
     parameters: [{ $ref: '#/components/parameters/projectId' }]
@@ -459,25 +585,49 @@ components:
         detail: { type: string }
         errors: { type: array, items: { type: object, properties: { path: { type: string }, message: { type: string } } } }
 
+    Role:
+      type: string
+      enum: [viewer, client_reviewer, technical_editor, installer, client_approver, commissioning_engineer]
+      description: |
+        viewer ดูอย่างเดียว · client_reviewer ดู + ความเห็น · technical_editor สร้าง/แก้ลำดับชั้น จุด อุปกรณ์ รูป Hotspot
+        installer ติดตั้ง/เปลี่ยน Device และตั้ง "ติดตั้งแล้ว" · client_approver อนุมัติ/ไม่อนุมัติ และเผยแพร่มุมมอง
+        commissioning_engineer ส่งมอบใช้งาน/ปลดระวาง · AI/บัญชีระบบไม่ได้สิทธิ์อนุมัติหรือ Commission แม้ถูกกำหนดบทบาท
+
+    DeviceInstallation:
+      type: object
+      required: [id, device, pointId, installedAt]
+      properties:
+        id: { type: string, format: uuid }
+        device: { $ref: '#/components/schemas/EntityRef' }
+        pointId: { type: string, format: uuid }
+        installedAt: { type: string, format: date-time }
+        removedAt: { type: [string, 'null'], format: date-time }
+        installedBy: { type: [string, 'null'], format: uuid }
+        removedBy: { type: [string, 'null'], format: uuid }
+        note: { type: [string, 'null'] }
+
     InstallStatus:
       type: string
       enum: [draft, proposed, pending_approval, approved, installed, commissioned, rejected, decommissioned]
 
     ProjectSummary:
       type: object
-      required: [id, code, name, role, organization]
+      required: [id, code, name, roles, organization]
       properties:
         id: { type: string, format: uuid }
         code: { type: string }
         name: { type: string }
-        role: { type: string, enum: [owner, admin, editor, installer, approver, viewer] }
+        roles:
+          type: array
+          description: ผู้ใช้หนึ่งคนมีได้หลายบทบาท
+          items: { $ref: '#/components/schemas/Role' }
         organization: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
 
     EntityRef:
       type: object
       required: [type, id, code]
       properties:
-        type: { type: string, enum: [site, building, floor, space, asset, point, device, binding] }
+        type: { type: string, enum: [site, building, floor, space, asset, point, metric, device, binding], description: point = Monitoring Point (จุดตรวจวัด) · device = เครื่องเซนเซอร์/เกตเวย์ }
         id: { type: string, format: uuid }
         code: { type: string }
         name: { type: string }
@@ -503,7 +653,7 @@ components:
       type: object
       required: [type, id, projectId, code, version]
       properties:
-        type: { type: string, enum: [site, building, floor, space, asset, point, device, binding] }
+        type: { type: string, enum: [site, building, floor, space, asset, point, metric, device, binding], description: point = Monitoring Point (จุดตรวจวัด) · device = เครื่องเซนเซอร์/เกตเวย์ }
         id: { type: string, format: uuid }
         projectId: { type: string, format: uuid }
         code: { type: string }
@@ -551,8 +701,9 @@ components:
               name: { type: string }
               kind: { type: string, enum: [numeric, discrete] }
               unit: { type: [string, 'null'] }
-        assets: { type: array, items: { $ref: '#/components/schemas/EntityRef' } }
-        device: { oneOf: [{ $ref: '#/components/schemas/EntityRef' }, { type: 'null' }] }
+        assets: { type: array, description: Asset ที่จุดนี้วัด (ผ่าน Binding), items: { $ref: '#/components/schemas/EntityRef' } }
+        currentDevice: { description: Device ที่ติดอยู่ตอนนี้ (null = ยังไม่ติดตั้ง), oneOf: [{ $ref: '#/components/schemas/DeviceInstallation' }, { type: 'null' }] }
+        deviceHistoryCount: { type: integer }
         live: { $ref: '#/components/schemas/PointLive' }
         appearances: { type: array, items: { $ref: '#/components/schemas/Placement' } }
 
@@ -567,9 +718,10 @@ components:
           type: array
           items:
             type: array
-            prefixItems: [{ type: string, format: date-time }, {}]
+            description: '[observedAt, value, deviceSourceKey|null]'
+            prefixItems: [{ type: string, format: date-time }, {}, { type: [string, 'null'] }]
             minItems: 2
-            maxItems: 2
+            maxItems: 3
 
     AlarmEpisode:
       type: object
@@ -582,6 +734,12 @@ components:
         openedAt: { type: string, format: date-time }
         recoveredAt: { type: [string, 'null'], format: date-time }
         acknowledged: { type: boolean }
+        acknowledgements:
+          type: array
+          items:
+            type: object
+            required: [by, at]
+            properties: { by: { type: string }, at: { type: string, format: date-time }, note: { type: [string, 'null'] } }
 
     MediaFile:
       type: object
